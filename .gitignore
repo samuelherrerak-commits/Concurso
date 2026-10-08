@@ -1,0 +1,4 @@
+node_modules/
+capturas/
+.DS_Store
+.impeccable/config.local.json
