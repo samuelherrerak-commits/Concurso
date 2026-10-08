@@ -4,7 +4,10 @@
  * Implementar → Administrar implementaciones → copia "URL de la aplicación web".
  */
 export const CONFIG = {
-  API_URL: 'PEGA_AQUI_LA_URL_DEL_WEB_APP',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzLSNBJ9mr82WxWMf5hmiNJA60OndCrNiAi2oT4t8nT3DulIyukuEjRzJ14HUqm_7xnBw/exec',
+
+  // Debe ser igual a token_api en la hoja Configuracion.
+  API_TOKEN: 'copaprosein',
 
   // Tiempo máximo de espera por solicitud (las fotos pueden tardar con datos móviles).
   TIMEOUT_MS: 45000,

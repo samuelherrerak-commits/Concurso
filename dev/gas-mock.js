@@ -442,8 +442,10 @@ function crearEntorno(opciones = {}) {
   servicios.ss.Fecha = vm.runInContext('Date', gas);
   vm.runInContext(fs.readFileSync(CODE_PATH, 'utf8'), gas, { filename: 'Code.gs' });
 
+  // Por defecto el simulador manda la misma clave que el portal (token_api).
+  const apiToken = opciones.apiToken === undefined ? 'copaprosein' : opciones.apiToken;
   function api(action, datos = {}) {
-    const salida = gas.doPost({ postData: { contents: JSON.stringify({ action, ...datos }) } });
+    const salida = gas.doPost({ postData: { contents: JSON.stringify({ action, api_token: apiToken, ...datos }) } });
     if (salida.mime !== 'application/json') throw new Error('La respuesta no es JSON');
     return JSON.parse(salida.getContent());
   }

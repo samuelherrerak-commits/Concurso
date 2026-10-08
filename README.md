@@ -81,6 +81,7 @@ Crea un Google Sheet nuevo (por ejemplo "Copa Prosein 2026") en la cuenta de Goo
 | `semana_ranking` | Semana que muestra la hoja Ranking (vacío = semana actual). |
 | `dias_sesion` | Días que dura una sesión (7). |
 | `monto_maximo_venta` | Tope por factura para atajar errores de tipeo (100000). |
+| `token_api` | Clave que el portal manda en cada solicitud: `copaprosein`. Debe ser igual a `API_TOKEN` en `web/config.js`. Vacío = sin clave. |
 
 ### 5. Desplegar como aplicación web
 
@@ -90,11 +91,17 @@ Crea un Google Sheet nuevo (por ejemplo "Copa Prosein 2026") en la cuenta de Goo
 4. **Implementar** y copia la **URL de la aplicación web** (termina en `/exec`).
 5. Para probarla, ábrela en el navegador: debe responder `{"ok":true,...}`.
 
-> **Si cambias `Code.gs` después:** ve a **Implementar → Administrar implementaciones → Editar (lápiz) → Versión: Nueva versión → Implementar**. Así la URL no cambia. Si creas una implementación nueva, la URL sí cambia y tendrás que actualizar `config.js`.
+> **Si cambias `Code.gs` después:**
+> 1. Pega el nuevo `Code.gs` y guarda.
+> 2. Ejecuta `setup()` otra vez: agrega las filas nuevas de Configuracion (por ejemplo `token_api`) sin borrar datos.
+> 3. **Implementar → Administrar implementaciones → Editar (lápiz) → Versión: Nueva versión → Implementar**. Así la URL no cambia. Si creas una implementación nueva, la URL sí cambia y tendrás que actualizar `config.js`.
 
-### 6. Pegar la URL en el portal
+### 6. Pegar la URL y la clave en el portal
 
-Abre [`web/config.js`](web/config.js) y reemplaza `PEGA_AQUI_LA_URL_DEL_WEB_APP` con tu URL `/exec`.
+En [`web/config.js`](web/config.js):
+
+- `API_URL`: tu URL `/exec` (ya está puesta la de Prosein).
+- `API_TOKEN`: `copaprosein`, igual que `token_api` en la hoja Configuracion. Si algún día la cambias, cámbiala en los dos lugares.
 
 ### 7. Publicar el sitio
 
@@ -162,7 +169,8 @@ La mecánica (cuántos premios, si un vendedor puede ganar dos veces, etc.) toda
 ## Seguridad
 
 - Las contraseñas se guardan con **hash SHA-256 + salt** por usuario, repetido 300 veces. Nunca en texto.
-- La sesión es un token aleatorio que **vence** (7 días). En el servidor se guarda solo un hash del token.
+- Cada solicitud lleva la clave del portal (`token_api`). Sin ella, el Web App no responde. Es un filtro contra llamadas de afuera, no una contraseña: la clave queda visible en el código del sitio. La protección real es el login de cada vendedor.
+- La sesión de cada vendedor es un token aleatorio que **vence** (7 días). En el servidor se guarda solo un hash del token.
 - Cada acción usa **la cédula del token**, nunca una cédula enviada por el navegador.
 - 5 intentos fallidos → bloqueo de 15 minutos.
 - Todo se valida en el servidor: fechas dentro del concurso y no futuras, montos, m² obligatorios si vendió Austral, y que la foto sea realmente una imagen.
@@ -185,7 +193,7 @@ La mecánica (cuántos premios, si un vendedor puede ganar dos veces, etc.) toda
 Requiere [Node.js](https://nodejs.org) 18 o superior. No hace falta instalar nada más.
 
 ```bash
-npm test          # 25 pruebas del backend (cupones, semanas, duplicadas, sesiones, fórmulas…)
+npm test          # 26 pruebas del backend (cupones, semanas, duplicadas, sesiones, fórmulas…)
 npm run dev       # portal en http://localhost:5173 con datos de prueba
 ```
 

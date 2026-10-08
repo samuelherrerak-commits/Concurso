@@ -150,7 +150,7 @@ async function registrarVenta(page, { factura, monto, m2, foto = true }) {
 
   paso('Sesión vencida (token borrado en el servidor)');
   const token = await page.evaluate(() => JSON.parse(localStorage.getItem('copa-prosein:sesion')).token);
-  await page.evaluate(async (t) => { await fetch('/api', { method: 'POST', body: JSON.stringify({ action: 'logout', token: t }) }); }, token);
+  await page.evaluate(async (t) => { await fetch('/api', { method: 'POST', body: JSON.stringify({ action: 'logout', token: t, api_token: 'copaprosein' }) }); }, token);
   await page.evaluate(() => localStorage.setItem('copa-prosein:sesion', JSON.stringify({ ...JSON.parse(localStorage.getItem('copa-prosein:sesion')) })));
   await page.reload();
   await page.waitForSelector('#vista-acceso:not([hidden])');

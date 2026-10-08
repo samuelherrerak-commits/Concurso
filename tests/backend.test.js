@@ -474,5 +474,18 @@ test('acciones desconocidas o cuerpo inválido no rompen el servicio', () => {
   const salida = e.gas.doPost({ postData: { contents: '{no es json' } });
   assert.equal(JSON.parse(salida.getContent()).code, 'BAD_REQUEST');
   assert.equal(JSON.parse(e.gas.doGet({ parameter: {} }).getContent()).ok, true);
-  assert.equal(JSON.parse(e.gas.doGet({ parameter: { action: 'config' } }).getContent()).data.nombre, 'Copa Prosein');
+  assert.equal(JSON.parse(e.gas.doGet({ parameter: { action: 'config', api_token: 'copaprosein' } }).getContent()).data.nombre, 'Copa Prosein');
+});
+
+test('token_api: sin la clave del portal no se atiende ninguna acción', () => {
+  const e = entorno();
+  e.registrar('98000001');
+  assert.equal(e.api('config', { api_token: undefined }).code, 'FORBIDDEN_API');
+  assert.equal(e.api('login', { cedula: '98000001', password: 'secreto1', api_token: 'otra' }).code, 'FORBIDDEN_API');
+  assert.equal(JSON.parse(e.gas.doGet({ parameter: { action: 'config' } }).getContent()).code, 'FORBIDDEN_API');
+  assert.equal(JSON.parse(e.gas.doGet({ parameter: {} }).getContent()).ok, true, 'el chequeo de salud no pide clave');
+  assert.equal(e.api('login', { cedula: '98000001', password: 'secreto1' }).ok, true);
+  // Vacío en Configuracion = sin clave.
+  e.gas.escribirConfig_('token_api', '');
+  assert.equal(e.api('config', { api_token: undefined }).ok, true);
 });

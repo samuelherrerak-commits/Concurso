@@ -77,6 +77,7 @@ function configuracionPorDefecto_() {
     ['semana_ranking', '', 'Semana que muestra la hoja Ranking. Vacío = semana actual.'],
     ['dias_sesion', 7, 'Días que dura una sesión antes de pedir login otra vez.'],
     ['monto_maximo_venta', 100000, 'Tope por factura para atajar errores de tipeo.'],
+    ['token_api', 'copaprosein', 'Clave que el portal envía en cada solicitud (API_TOKEN en web/config.js). Si la cambias aquí, cámbiala también allá. Vacío = sin clave.'],
   ];
 }
 
@@ -87,7 +88,7 @@ function configuracionPorDefecto_() {
 /** GET sirve para probar la URL desde el navegador. */
 function doGet(e) {
   const accion = e && e.parameter && e.parameter.action;
-  if (accion === 'config') return salidaJson_(enrutar_({ action: 'config' }));
+  if (accion === 'config') return salidaJson_(enrutar_({ action: 'config', api_token: e.parameter.api_token }));
   return salidaJson_(ok_({ servicio: 'Copa Prosein API', estado: 'activo' }));
 }
 
@@ -122,11 +123,25 @@ function enrutar_(solicitud) {
   const fn = solicitud && typeof solicitud.action === 'string' ? ACCIONES_[solicitud.action] : null;
   if (!fn) return fallo_('BAD_REQUEST', 'Acción desconocida.');
   try {
+    verificarTokenApi_(solicitud);
     return fn(solicitud);
   } catch (err) {
     if (err && err.esErrorApi) return fallo_(err.code, err.message, err.extra);
     console.error('Error en ' + solicitud.action + ': ' + (err && err.stack ? err.stack : err));
     return fallo_('SERVER', 'Ocurrió un error inesperado. Intenta de nuevo en unos segundos.');
+  }
+}
+
+/**
+ * Clave compartida del portal (token_api en Configuracion).
+ * Filtra llamadas que no vienen del portal. Ojo: la clave viaja en el código
+ * del sitio, así que no reemplaza el login de cada vendedor.
+ */
+function verificarTokenApi_(solicitud) {
+  const esperado = leerConfig_().token_api;
+  if (!esperado) return;
+  if (String(solicitud.api_token || '') !== esperado) {
+    throw errorApi_('FORBIDDEN_API', 'Este portal no está autorizado para conectarse. Revisa API_TOKEN en config.js.');
   }
 }
 
@@ -754,6 +769,7 @@ function leerConfig_() {
     semana_ranking: parseInt(crudo.semana_ranking, 10) || 0,
     dias_sesion: Math.max(1, numero(crudo.dias_sesion, 7)),
     monto_maximo_venta: numero(crudo.monto_maximo_venta, 100000),
+    token_api: String(crudo.token_api === undefined || crudo.token_api === null ? '' : crudo.token_api).trim(),
   };
   cfg.monto_por_cupon_centavos = Math.round(cfg.monto_por_cupon * 100);
   if (!cfg.fecha_inicio || !cfg.fecha_fin) throw errorApi_('SERVER', 'Faltan fecha_inicio o fecha_fin en la hoja Configuracion.');
@@ -1332,7 +1348,7 @@ function setup() {
     const celda = shCfg.getRange(f._fila, 2);
     if (['concurso_abierto', 'contar_solo_aprobadas', 'mostrar_ranking_publico'].indexOf(clave) > -1) celda.setDataValidation(siNo);
     if (clave.indexOf('fecha_') === 0) celda.setNumberFormat('dd/mm/yyyy');
-    if (clave === 'carpeta_fotos_id' || clave === 'semana_ranking') celda.setNumberFormat('@');
+    if (clave === 'carpeta_fotos_id' || clave === 'semana_ranking' || clave === 'token_api') celda.setNumberFormat('@');
   });
 
   // Usuarios

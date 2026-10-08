@@ -49,6 +49,7 @@ export async function llamar(accion, datos = {}, opciones = {}) {
   }
   const s = sesion.leer();
   const cuerpo = { action: accion, ...datos };
+  if (CONFIG.API_TOKEN) cuerpo.api_token = CONFIG.API_TOKEN;
   if (s && !('token' in cuerpo)) cuerpo.token = s.token;
 
   const control = new AbortController();
