@@ -2,11 +2,13 @@
 
 Portal web para el concurso interno de ventas de Prosein. Cada vendedor:
 
-- se registra con su **cédula** y una contraseña,
+- se registra con su **cédula**, una contraseña y su **tienda Prosein** (obligatoria),
 - carga sus ventas (día, número de factura, monto, **foto de la factura** y, si vendió Austral, los **m²**),
-- ve su récord, sus **cupones** para el sorteo final y el ranking.
+- ve su récord, su **categoría**, sus **cupones** para el sorteo final, sus **cupones del viaje** (Austral) y el ranking.
 
-Cuando una venta completa un cupón, el portal **imprime un ticket de supermercado** con el número del cupón.
+Cuando una venta completa un cupón, el portal **imprime un ticket de supermercado** con el número del cupón (rojo; los del viaje salen en tinta azul). Después, tocando cualquier cupón en "Mis cupones", el vendedor lo vuelve a ver sin animación y lo **descarga como imagen**.
+
+Hay además una cuenta de **administrador** (la agregas a mano en la hoja Usuarios) para **auditar todo** desde el portal y **imprimir los cupones** de cada urna para el sorteo.
 
 El sitio es **estático** (HTML, CSS y JavaScript sin frameworks) y el backend es **Google Apps Script** con **Google Sheets** como base de datos.
 
@@ -15,11 +17,13 @@ apps-script/
   Code.gs            ← backend completo (se pega en el editor de Apps Script)
   appsscript.json    ← manifiesto opcional (zona horaria Caracas)
 web/                 ← el sitio que se publica
-  index.html
+  index.html         ← portal del vendedor y del administrador
+  cupones.html       ← cupones para imprimir (solo administrador)
   styles.css         ← colores de Prosein en :root
+  imprimir.css       ← hoja carta, 24 cupones por hoja
   config.js          ← AQUÍ va la URL del Web App
   app.js
-  js/                ← módulos (api, panel, venta, ticket, imagen…)
+  js/                ← módulos (api, panel, venta, ticket, cupon, admin, imprimir…)
   assets/
 dev/                 ← solo para probar en tu computadora (no se publica)
 tests/               ← pruebas del backend
@@ -29,17 +33,21 @@ tests/               ← pruebas del backend
 
 ## Reglas del concurso (cómo calcula el sistema)
 
+Todos los números de esta tabla se cambian en la hoja **Configuracion** (y las fechas en **Periodos**).
+
 | Regla | Cómo se calcula |
 |---|---|
 | **Cupones** | `cupones = piso(total vendido acumulado ÷ monto_por_cupon)`. Con $1.500: $4.600 = 3 cupones. El sobrante nunca se pierde. |
-| **Cupones de la semana** | Son los cupones que el vendedor **completó** esa semana: `piso(acumulado al cierre de la semana ÷ M) − piso(acumulado al cierre de la semana anterior ÷ M)`. |
+| **Semanas y cortes** | 10 semanas desde el **jueves 15/10/2026**. Cada semana va de **jueves a miércoles**; el **corte** es el jueves siguiente a las **3:00 p. m.** y los premios se entregan el **viernes en la mañana**. El corte final es el jueves 24/12/2026 a las 3:00 p. m. |
+| **Semana de una venta** | La define el **día de la venta** (no el día en que se cargó). Hasta el corte del jueves se pueden cargar las ventas del miércoles. Después del corte, esa semana queda cerrada (`bloquear_semanas_cerradas = SI`). |
+| **Cupones de la semana** | Los cupones que el vendedor **completó** esa semana: `piso(acumulado al cierre ÷ M) − piso(acumulado al cierre de la semana anterior ÷ M)`. Lo que sobra pasa a la semana siguiente. |
 | **Ejemplo** | Semana 1 vende $4.000 → 2 cupones, sobran $1.000. Semana 2 vende $600 → $1.000 + $600 completan 1 cupón; sobran $100. |
-| **Semana de una venta** | La define el **día de la venta**, no el día en que se cargó. La semana 1 empieza en `fecha_inicio`. |
-| **Premios semanales** | Los `premios_semanales` (6) vendedores con más cupones completados en la semana. Desempate: mayor venta de la semana → mayor acumulado al cierre de esa semana → quien llegó primero a su marca. Quien tiene 0 cupones esa semana no califica. |
-| **Premio mayor (viaje para dos)** | Quien venda más **m² de Austral** en todo el concurso. Desempate: mayor monto total vendido. |
-| **Sorteo final** | Cada cupón acumulado es una participación. La mecánica exacta todavía se está definiendo (ver [Sorteo final](#sorteo-final)). |
+| **Premios semanales** | Los `premios_semanales` (6) vendedores con más cupones completados en la semana. Desempate: mayor venta de la semana → mayor acumulado al cierre → quien llegó primero. Con 0 cupones esa semana no se califica. |
+| **Categorías** | Al corte final, quienes tienen cupones quedan en 3 categorías. Por defecto: **Oro** = el 20 % con más cupones, **Plata** = el 30 % siguiente, **Bronce** = el resto. Si hay empate en el límite, se sube a la categoría mayor. También se puede usar por cupones mínimos (`categorias_modo = cupones`). Durante el concurso la categoría es **provisional** ("Plata · hoy"). |
+| **Sorteo final por categoría** | Cada categoría sortea sus premios **solo entre sus cupones**: 2 premios en Oro (los buenos), 1 en Plata y 1 en Bronce. |
+| **Viaje todo incluido** | Cada **100 m² de Austral** = **1 cupón del viaje** (el sobrante de m² también se acumula). Solo entran a la urna del viaje los cupones de los vendedores de **Oro** (`viaje_hasta_categoria = 1`). |
 
-Todo se recalcula desde la hoja **Registros** en cada consulta. No hay contadores guardados: si apruebas, rechazas o corriges una factura, los cupones totales y semanales se ajustan solos.
+Todo se recalcula desde la hoja **Registros** en cada consulta. No hay contadores guardados: si apruebas, rechazas o corriges una factura, los cupones, las categorías y las urnas se ajustan solos.
 
 ---
 
@@ -60,28 +68,53 @@ Crea un Google Sheet nuevo (por ejemplo "Copa Prosein 2026") en la cuenta de Goo
 
 1. En el selector de funciones (arriba), elige **`setup`** y pulsa **Ejecutar**.
 2. Google pedirá permisos. Si aparece "Google no ha verificado esta app": **Configuración avanzada → Ir a … (no seguro)**. Es normal en scripts propios.
-3. `setup()` crea las hojas **Configuracion**, **Registros**, **Usuarios** y **Ranking**, con sus formatos y listas desplegables. También crea en tu Drive la carpeta **"Copa Prosein · Fotos de facturas"**. Puedes correrlo otra vez sin perder datos.
+3. `setup()` crea las hojas **Configuracion**, **Periodos**, **Registros**, **Usuarios** y **Ranking**, con sus formatos y listas desplegables. También crea en tu Drive la carpeta **"Copa Prosein · Fotos de facturas"**. Puedes correrlo otra vez sin perder datos.
 4. Recarga el Sheet: aparecerá el menú **Copa Prosein**.
 
 ### 4. Revisar la hoja Configuracion
 
-| clave | qué es |
-|---|---|
-| `nombre_concurso` | Copa Prosein |
-| `fecha_inicio` | Primer día del concurso. La semana 1 empieza aquí. |
-| `fecha_fin` | Último día de ventas válidas. |
-| `fecha_sorteo` | Fecha del sorteo final (se muestra en el portal). |
-| `monto_por_cupon` | 1500 |
-| `premios_semanales` | 6 |
-| `moneda` | USD |
-| `concurso_abierto` | SI / NO. Con NO nadie puede cargar ventas. Úsalo para cerrar el concurso. |
-| `contar_solo_aprobadas` | NO = las facturas suman al cargarlas (puedes rechazarlas después). SI = solo suman al aprobarlas. |
-| `mostrar_ranking_publico` | SI / NO. Si es SI, los vendedores ven el top 10, sin cédulas. |
-| `carpeta_fotos_id` | La crea `setup()`. No la cambies salvo que quieras usar otra carpeta. |
-| `semana_ranking` | Semana que muestra la hoja Ranking (vacío = semana actual). |
-| `dias_sesion` | Días que dura una sesión (7). |
-| `monto_maximo_venta` | Tope por factura para atajar errores de tipeo (100000). |
-| `token_api` | Clave que el portal manda en cada solicitud: `copaprosein`. Debe ser igual a `API_TOKEN` en `web/config.js`. Vacío = sin clave. |
+Cada fila tiene su explicación en la columna **descripción**. Las más importantes:
+
+| clave | valor inicial | qué es |
+|---|---|---|
+| `fecha_inicio` | 15/10/2026 | Primer día del concurso (jueves). |
+| `num_semanas` | 10 | Cantidad de semanas (cortes). |
+| `dias_por_semana` | 7 | De jueves a miércoles. |
+| `hora_corte` | 15:00 | Hora del corte, el día siguiente al último día de la semana. |
+| `texto_entrega` | en la mañana | Se muestra junto a la fecha de entrega de premios. |
+| `bloquear_semanas_cerradas` | SI | Después del corte ya no se cargan ventas con fecha de esa semana. |
+| `fecha_sorteo` | (vacío) | Fecha del sorteo final, informativa. |
+| `monto_por_cupon` | 1500 | Monto que completa 1 cupón. |
+| `premios_semanales` | 6 | Ganadores por semana. |
+| `m2_por_cupon_austral` | 100 | m² de Austral que completan 1 cupón del viaje. |
+| `sucursales` | Boleíta, La Castellana, Los Naranjos, El Bosque, Las Mercedes, San Martín, Maracaibo, Acarigua, Barquisimeto | Tiendas para elegir al registrarse, separadas por coma. |
+| `categorias_modo` | porcentaje | `porcentaje` o `cupones`. |
+| `categoria_1_nombre` … `categoria_3_nombre` | Oro, Plata, Bronce | Nombres visibles. |
+| `categoria_1_porcentaje` / `categoria_2_porcentaje` | 20 / 30 | Modo porcentaje (el resto queda en la 3). |
+| `categoria_1_min_cupones` / `categoria_2_min_cupones` | 30 / 10 | Modo cupones. |
+| `premios_categoria_1` … `premios_categoria_3` | 2 / 1 / 1 | Premios que sortea cada categoría. |
+| `premios_viaje` | 1 | Viajes que se sortean con los cupones Austral. |
+| `viaje_hasta_categoria` | 1 | 1 = solo Oro entra al viaje; 2 = Oro y Plata. |
+| `concurso_abierto` | SI | Con NO nadie puede cargar ventas. |
+| `contar_solo_aprobadas` | NO | NO = las facturas suman al cargarlas (puedes rechazarlas después). SI = solo suman al aprobarlas. |
+| `mostrar_ranking_publico` | SI | Los vendedores ven el top 10, sin cédulas. |
+| `token_api` | copaprosein | Igual que `API_TOKEN` en `web/config.js`. |
+
+Otras claves: `nombre_concurso`, `moneda`, `carpeta_fotos_id` (la crea `setup()`), `semana_ranking`, `dias_sesion`, `monto_maximo_venta`.
+
+### 4b. Revisar la hoja Periodos (semanas y cortes)
+
+`setup()` llena **Periodos** con una fila por semana: `semana`, `inicio`, `fin`, `corte` (fecha y hora) y `entrega`. La semana 1 queda del jueves 15/10 al miércoles 21/10, corte el jueves 22/10 a las 3:00 p. m. y entrega el viernes 23/10.
+
+- Puedes **editar cualquier fila a mano** (por ejemplo, mover un corte por un feriado). El portal usa lo que diga esta hoja.
+- Si cambias `fecha_inicio`, `num_semanas`, `dias_por_semana` u `hora_corte`, usa el menú **Copa Prosein → Generar periodos** para recalcular todas las filas (borra los cambios hechos a mano).
+- La semana 10 entrega premios el **viernes 25/12**. Si ese día no se entrega, cambia la celda `entrega` de la semana 10.
+
+### 4c. Crear el usuario administrador
+
+En la hoja **Usuarios**, agrega una fila a mano con: `cedula`, `nombre`, `apellido`, `telefono` y **`rol` = `admin`**. Deja `password_hash` vacío.
+
+Luego entra al portal con esa cédula: te pedirá el teléfono que escribiste y una contraseña nueva. A partir de ahí entras directo a la vista de **Administración**. Puedes tener varios administradores.
 
 ### 5. Desplegar como aplicación web
 
@@ -123,6 +156,29 @@ Comparte la dirección con los vendedores. Desde el celular pueden usar **"Agreg
 
 ## Administración del concurso
 
+### Panel del administrador (en el portal)
+
+Es de **solo lectura**: sirve para auditar sin tocar el Sheet.
+
+| Pestaña | Qué muestra |
+|---|---|
+| **Resumen** | Semana en juego, corte y entrega; vendedores, facturas (pendientes y rechazadas), monto, cupones, m² Austral y cupones del viaje; las 3 categorías con su rango de cupones; totales por tienda. |
+| **Vendedores** | Todos los vendedores con tienda, categoría, cupones, vendido, m² y cupones del viaje (y si entran o no al viaje). Búsqueda, filtros y descarga **CSV**. |
+| **Ventas** | Todas las facturas con su estado, semana y foto. Filtros por estado, semana y tienda; descarga **CSV**. |
+| **Semanas** | Las 10 semanas con su corte y estado; los ganadores de cada semana, con aviso si hay empate exacto en el último puesto. |
+| **Sorteo** | Las 4 urnas (Oro, Plata, Bronce y Viaje) con sus cupones, y los botones para **imprimirlos**. |
+
+### Imprimir los cupones para las urnas
+
+En **Sorteo → Imprimir** se abre `cupones.html`:
+
+- Papel **carta**, **24 cupones por hoja** (3 × 8) con líneas punteadas para recortar. Cada urna empieza en una hoja nueva.
+- Cada cupón lleva su código único dentro de la urna (`C1-0001` para Oro, `C2-…` Plata, `C3-…` Bronce, `V-0001` viaje), el nombre, la cédula, la tienda y la factura que lo completó.
+- Los cupones del **viaje** llevan una **banda negra** para no mezclarlos. En el diálogo de impresión activa **"Gráficos de fondo"** y usa **escala 100 %**.
+- Antes del corte final las hojas salen marcadas **PROVISIONAL** (las categorías todavía pueden cambiar). Imprime después del corte del jueves 24/12.
+
+La misma lista queda en la hoja **Ranking** con el menú **Generar cupones para sorteo**, para verificar un código cuando salga.
+
 ### Revisar facturas
 
 En **Registros** cada venta llega como **Pendiente**. Revisa la foto (columna `url_foto`) y cambia `estado` a **Aprobada** o **Rechazada**. En `nota_admin` puedes escribir el motivo: el vendedor lo ve en su historial.
@@ -141,28 +197,28 @@ Otros casos en **Usuarios**:
 
 - **Bloqueo temporal:** tras 5 intentos fallidos la cuenta queda en pausa 15 minutos (`bloqueado_hasta`). Para desbloquear antes, borra esa celda.
 - **Bloquear a alguien:** cambia `estado` a `bloqueado`. Pierde la sesión de inmediato.
+- **Cambio de tienda:** edita `sucursal_o_zona` (usa un nombre de la lista `sucursales`). Las cuentas creadas sin tienda la eligen la próxima vez que entran.
 
 ### Menú "Copa Prosein"
 
 | Opción | Qué hace |
 |---|---|
 | **Inicializar hojas** | Corre `setup()` (no borra datos). |
-| **Recalcular rankings** | Reescribe la hoja Ranking: general, Austral, semana y cupones. |
-| **Generar cupones para sorteo** | Lista numerada `Cupón 0001 → cédula / vendedor`, en el orden en que se completaron. |
+| **Generar periodos (semanas y cortes)** | Recalcula la hoja Periodos desde Configuracion. |
+| **Recalcular rankings** | Reescribe la hoja Ranking: general (con categoría), viaje Austral, semana y urnas. |
+| **Generar cupones para sorteo** | Lista de cada urna con su código (`C1-0001`, `V-0001`…), cédula, vendedor y factura. |
 | **Ganadores semanales (elegir semana)** | Pide el número de semana y muestra los ganadores. Avisa si hay empate exacto en el último puesto premiado. |
-| **Ganador Austral** | Muestra el top 5 de m² Austral. El primero gana el viaje. |
-| **Cargar / Borrar datos de prueba** | 8 vendedores de prueba (cédulas 90000001–90000008, contraseña `prueba123`) con ventas. Sirve para ver los rankings antes del lanzamiento. Bórralos antes de empezar. |
+| **Resumen del sorteo final** | Cuántos vendedores y cupones hay en cada categoría y en la urna del viaje. |
+| **Cargar / Borrar datos de prueba** | 8 vendedores de prueba (cédulas 90000001–90000008, contraseña `prueba123`) con ventas. Bórralos antes de empezar. |
 
-> **Recomendación para los premios semanales:** corre "Ganadores semanales" el mismo día y hora después de cerrar cada semana y guarda el resultado. Una factura cargada tarde con fecha de una semana pasada puede cambiar esa semana.
+> **Premios semanales:** después del corte del jueves a las 3:00 p. m. corre "Ganadores semanales" (o mira la pestaña Semanas del panel) y guarda el resultado para la entrega del viernes.
 
 ### Sorteo final
 
-1. Cierra la carga: `concurso_abierto = NO`.
-2. Revisa las facturas pendientes.
-3. Menú **Generar cupones para sorteo**. En la hoja Ranking queda la lista `Cupón 0001 … Cupón N`.
-4. Para sortear, puedes usar `=ALEATORIO.ENTRE(1; N)` en una celda aparte o un generador público, y grabar el momento.
-
-La mecánica (cuántos premios, si un vendedor puede ganar dos veces, etc.) todavía se está definiendo. La lista sale de `cuponesParaSorteo_()` en `Code.gs`, así que es fácil ajustarla.
+1. Después del corte final (jueves 24/12, 3:00 p. m.) pon `concurso_abierto = NO` y revisa las facturas pendientes.
+2. En el panel: **Sorteo → Imprimir todos**. Recorta y pon cada grupo en su urna: Oro, Plata, Bronce y Viaje.
+3. Saca los premios de cada urna (2 en Oro, 1 en Plata, 1 en Bronce) y el viaje de la urna del viaje.
+4. Verifica cada código en la hoja Ranking (menú **Generar cupones para sorteo**) o en el panel.
 
 ---
 
@@ -176,7 +232,8 @@ La mecánica (cuántos premios, si un vendedor puede ganar dos veces, etc.) toda
 - Todo se valida en el servidor: fechas dentro del concurso y no futuras, montos, m² obligatorios si vendió Austral, y que la foto sea realmente una imagen.
 - Los textos que empiezan con `=`, `+`, `-` o `@` se guardan como texto (evita fórmulas maliciosas en el Sheet).
 - Las escrituras usan `LockService` para que dos ventas simultáneas no se pisen.
-- Las fotos quedan **privadas** en tu Drive. El vendedor ve solo las suyas a través del portal. Tú las abres desde la columna `url_foto`.
+- Las fotos quedan **privadas** en tu Drive. El vendedor ve solo las suyas a través del portal; el administrador puede ver todas desde el panel. También las abres desde la columna `url_foto`.
+- El rol de administrador solo se asigna a mano en la hoja (`rol = admin`). Las acciones del panel verifican el rol en el servidor: un vendedor no puede pedir esos datos.
 
 ---
 
@@ -188,15 +245,30 @@ La mecánica (cuántos premios, si un vendedor puede ganar dos veces, etc.) toda
 
 ---
 
+## Actualizar desde la primera versión
+
+Si ya tenías el Sheet de la versión anterior (con `fecha_inicio` 08/10/2026):
+
+1. Pega el nuevo [`apps-script/Code.gs`](apps-script/Code.gs) y guarda.
+2. Ejecuta **`setup()`**: agrega las claves nuevas de Configuracion, la hoja **Periodos** y la columna **`rol`** en Usuarios, sin borrar datos. La fila `fecha_fin` queda marcada como "YA NO SE USA".
+3. En Configuracion pon **`fecha_inicio` = 15/10/2026**.
+4. Menú **Copa Prosein → Generar periodos**.
+5. **Implementar → Administrar implementaciones → Editar → Versión: Nueva versión → Implementar** (la URL no cambia).
+6. Agrega tu fila de administrador en Usuarios (paso 4c).
+
+Los vendedores que se registraron sin tienda la eligen la próxima vez que entran.
+
+---
+
 ## Probar en tu computadora (opcional, para desarrolladores)
 
 Requiere [Node.js](https://nodejs.org) 18 o superior. No hace falta instalar nada más.
 
 ```bash
-npm test          # 26 pruebas del backend (cupones, semanas, duplicadas, sesiones, fórmulas…)
-npm run dev       # portal en http://localhost:5173 con datos de prueba
+npm test          # 37 pruebas del backend (cupones, cortes, categorías, urnas, admin, sesiones…)
+npm run dev       # portal en http://localhost:5173 con datos de prueba y un administrador
 ```
 
-`npm run dev` corre el mismo `Code.gs` sobre un simulador de Google Sheets, así que puedes probar todo el flujo sin desplegar. Opciones: `--solo-aprobadas`, `--sin-ranking`, `--latencia=800`.
+`npm run dev` corre el mismo `Code.gs` sobre un simulador de Google Sheets, así que puedes probar todo el flujo sin desplegar. El administrador de prueba es la cédula `11111111` con contraseña `admin123`. Opciones: `--solo-aprobadas`, `--sin-ranking`, `--sin-bloqueo`, `--dia=-3` (el concurso empieza en 3 días), `--latencia=800`.
 
-Con [Playwright](https://playwright.dev) instalado, `node dev/e2e.js capturas/` recorre el portal en un iPhone simulado (registro, venta, ticket, duplicada, sesión vencida, escritorio y movimiento reducido) y guarda capturas.
+Con [Playwright](https://playwright.dev) instalado, `node dev/e2e.js capturas/` recorre el portal (registro con tienda, ventas, tickets normales y del viaje, ver y descargar cupones, tienda faltante, panel del administrador, cupones para imprimir en PDF y movimiento reducido) y guarda capturas.

@@ -10,10 +10,12 @@ let foto = null;
 let enviando = false;
 let dialogo = null;
 let alRegistrarCb = null;
+let alNecesitarSucursalCb = null;
 let limpio = true;
 
-export function iniciarVenta({ alRegistrar }) {
+export function iniciarVenta({ alRegistrar, alNecesitarSucursal }) {
   alRegistrarCb = alRegistrar;
+  alNecesitarSucursalCb = alNecesitarSucursal;
   const dlg = $('#dlg-venta');
   const form = $('#form-venta');
   // Mientras se envía no se puede cerrar (Escape, fondo o la X).
@@ -47,11 +49,11 @@ export function abrirVenta(datos) {
   contexto = datos;
   const form = $('#form-venta');
   const c = datos.concurso;
-  const max = c.hoy < c.fecha_fin ? c.hoy : c.fecha_fin;
+  // Solo días de semanas que no han cerrado su corte (lo decide el servidor).
   const dia = form.elements.dia_venta;
-  dia.min = c.fecha_inicio;
-  dia.max = max;
-  if (limpio || !dia.value) dia.value = max;
+  dia.min = c.dia_min_carga;
+  dia.max = c.dia_max_carga;
+  if (limpio || !dia.value || dia.value < dia.min || dia.value > dia.max) dia.value = c.dia_max_carga;
   mostrarErrores(form, {});
   actualizarAyudaMonto();
   dialogo.abrir();
@@ -127,8 +129,9 @@ function validar(form) {
   const c = contexto.concurso;
   const dia = form.elements.dia_venta.value;
   if (!dia) e.dia_venta = 'Elige el día de la venta.';
-  else if (dia > form.elements.dia_venta.max) e.dia_venta = dia > c.hoy ? 'La fecha no puede ser futura.' : `La Copa terminó el ${fechaCorta(c.fecha_fin)}.`;
+  else if (dia > c.dia_max_carga) e.dia_venta = dia > c.hoy ? 'La fecha no puede ser futura.' : `La Copa terminó el ${fechaCorta(c.fecha_fin)}.`;
   else if (dia < c.fecha_inicio) e.dia_venta = `La Copa empezó el ${fechaCorta(c.fecha_inicio)}.`;
+  else if (dia < c.dia_min_carga) e.dia_venta = `Esa semana ya cerró. Puedes cargar ventas desde el ${fechaCorta(c.dia_min_carga)}.`;
 
   const factura = form.elements.numero_factura.value.trim();
   if (!factura) e.numero_factura = 'Escribe el número de factura.';
@@ -168,6 +171,12 @@ async function enviar(ev) {
 
   if (!r.ok) {
     if (r.code === 'AUTH') { dialogo.cerrar(); return; }
+    if (r.code === 'NEED_SUCURSAL' && alNecesitarSucursalCb) {
+      // Los datos de la venta se quedan en el formulario para enviarla después.
+      dialogo.cerrar('ok');
+      alNecesitarSucursalCb();
+      return;
+    }
     if (r.campo) mostrarErrores(form, { [r.campo]: r.message });
     else mostrarErrores(form, {}, r.message);
     if (r.code === 'NETWORK' || r.code === 'TIMEOUT') avisar('Tu venta no se envió. Tus datos siguen aquí: intenta de nuevo.', { tipo: 'error' });

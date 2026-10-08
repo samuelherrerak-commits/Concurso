@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es-VE">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#DF1630">
+  <title>Cupones para el sorteo · Copa Prosein</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Chivo+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@115,800&text=CopaPrseinPROSEINVIAJETODOINCLUD&display=swap">
+  <link rel="stylesheet" href="imprimir.css">
+  <script type="module" src="js/imprimir.js"></script>
+</head>
+<body>
+  <header class="barra-imprimir" id="barra">
+    <div class="barra-imprimir__interior">
+      <div>
+        <a class="volver" href="./">← Volver al portal</a>
+        <h1>Cupones para el sorteo</h1>
+        <p id="resumen">Cargando cupones…</p>
+      </div>
+      <div class="barra-imprimir__acciones">
+        <label class="campo-urna">
+          <span>Urna</span>
+          <select id="urna">
+            <option value="todas">Todas las urnas</option>
+          </select>
+        </label>
+        <button type="button" class="boton" id="imprimir" disabled>Imprimir</button>
+      </div>
+    </div>
+    <p class="aviso" id="aviso" hidden></p>
+    <p class="consejo">Papel carta · escala 100 % (sin “ajustar a la página”) · activa “gráficos de fondo” para la banda negra de los cupones del viaje.</p>
+  </header>
+  <main id="hojas" aria-live="polite"></main>
+</body>
+</html>

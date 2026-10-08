@@ -63,7 +63,11 @@ function parseDate(texto, zona, patron, Fecha = Date) {
     const local = Date.UTC(+m[1], +m[2] - 1, +m[3]);
     return new Fecha(local - desfaseZona(local, zona));
   }
-  throw new Error('parseDate: patrón no soportado en el simulador: ' + patron);
+  if (patron === 'yyyy-MM-dd HH:mm' && (m = String(texto).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/))) {
+    const local = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    return new Fecha(local - desfaseZona(local, zona));
+  }
+  throw new Error('parseDate: patrón o texto no soportado en el simulador: ' + patron + ' / ' + texto);
 }
 
 // ---------- Hojas ----------

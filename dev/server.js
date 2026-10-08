@@ -2,9 +2,12 @@
  * Servidor local para probar el portal SIN desplegar Apps Script.
  * Sirve /web y responde /api con el mismo Code.gs corriendo en el simulador.
  *
- *   node dev/server.js            → concurso vacío
+ *   node dev/server.js            → concurso vacío (empezó hace 9 días)
  *   node dev/server.js --demo     → con 8 vendedores de prueba (contraseña prueba123)
+ *   node dev/server.js --admin    → agrega un administrador: cédula 11111111, contraseña admin123
  *   node dev/server.js --solo-aprobadas   → contar_solo_aprobadas = SI
+ *   node dev/server.js --sin-bloqueo      → bloquear_semanas_cerradas = NO
+ *   node dev/server.js --dia=-3   → el concurso empieza dentro de 3 días
  *   PORT=8080 node dev/server.js --latencia=800
  *
  * Los datos viven en memoria: se pierden al cerrar el servidor.
@@ -24,13 +27,26 @@ const WEB = path.join(__dirname, '..', 'web');
 const e = crearEntorno({ silencioso: true, sinUi: true });
 e.gas.setup();
 const hoy = e.gas.hoyISO_();
+const SEMANAS = 10;
 const inicio = e.gas.sumarDias_(hoy, -Number((args.find((a) => a.startsWith('--dia=')) || '--dia=9').split('=')[1]));
 e.gas.escribirConfig_('fecha_inicio', e.gas.fechaDesdeISO_(inicio));
-e.gas.escribirConfig_('fecha_fin', e.gas.fechaDesdeISO_(e.gas.sumarDias_(inicio, 8 * 7 - 1)));
-e.gas.escribirConfig_('fecha_sorteo', e.gas.fechaDesdeISO_(e.gas.sumarDias_(inicio, 8 * 7 + 3)));
+e.gas.escribirConfig_('num_semanas', SEMANAS);
+e.gas.escribirConfig_('fecha_sorteo', e.gas.fechaDesdeISO_(e.gas.sumarDias_(inicio, SEMANAS * 7 + 3)));
 if (args.includes('--solo-aprobadas')) e.gas.escribirConfig_('contar_solo_aprobadas', 'SI');
 if (args.includes('--sin-ranking')) e.gas.escribirConfig_('mostrar_ranking_publico', 'NO');
+if (args.includes('--sin-bloqueo')) e.gas.escribirConfig_('bloquear_semanas_cerradas', 'NO');
+e.gas.escribirPeriodos_(e.gas.periodosDesdeConfig_());
 if (args.includes('--demo')) e.gas.cargarDatosPrueba_();
+if (args.includes('--admin')) {
+  // Igual que agregarlo a mano en la hoja Usuarios, pero ya con contraseña.
+  const salt = e.gas.generarSalt_();
+  e.gas.escribirFilaUsuario_({
+    cedula: '11111111', nombre: 'Coordinación', apellido: 'Prosein', telefono: '04140000000', sucursal_o_zona: '',
+    password_hash: e.gas.hashClave_('admin123', salt), salt, fecha_registro: new Date(), estado: 'activo',
+    intentos_fallidos: 0, bloqueado_hasta: '', rol: 'admin',
+  });
+}
+e.servicios.cache._vaciar();
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8',
@@ -57,12 +73,13 @@ function leerCuerpo(req, limite = 8 * 1024 * 1024) {
   });
 }
 
-/** Utilidad solo de desarrollo: simula ediciones del admin en el Sheet. */
-function editarRegistro({ id, columna, valor }) {
-  const sh = e.servicios.ss.getSheetByName('Registros');
+/** Utilidad solo de desarrollo: simula ediciones del admin en el Sheet (Registros o Usuarios). */
+function editarRegistro({ id, columna, valor, hoja = 'Registros' }) {
+  if (!['Registros', 'Usuarios'].includes(hoja)) return { ok: false };
+  const sh = e.servicios.ss.getSheetByName(hoja);
   const enc = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues().map((f) => f[0]);
-  const fila = ids.indexOf(id) + 1;
+  const ids = sh.getRange(1, 1, sh.getLastRow(), 1).getValues().map((f) => String(f[0]));
+  const fila = ids.indexOf(String(id)) + 1;
   if (fila < 2) return { ok: false };
   sh.getRange(fila, enc.indexOf(columna) + 1).setValue(valor);
   e.servicios.cache._vaciar();
@@ -109,6 +126,7 @@ const servidor = http.createServer(async (req, res) => {
 
 servidor.listen(PORT, () => {
   console.log(`Copa Prosein (local) en http://localhost:${PORT}`);
-  console.log(`Concurso: ${inicio} → ${e.gas.sumarDias_(inicio, 8 * 7 - 1)} · latencia simulada ${latencia} ms`);
+  console.log(`Concurso: ${inicio} → ${e.gas.sumarDias_(inicio, SEMANAS * 7 - 1)} (${SEMANAS} semanas) · latencia simulada ${latencia} ms`);
   if (args.includes('--demo')) console.log('Vendedores de prueba: cédulas 90000001 a 90000008, contraseña "prueba123"');
+  if (args.includes('--admin')) console.log('Administrador: cédula 11111111, contraseña "admin123"');
 });

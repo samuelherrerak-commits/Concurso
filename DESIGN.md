@@ -16,7 +16,7 @@ Prosein's own identity (red shell, charcoal ink, Poppins) plus one signature: **
 | `--tinta-2` / `--tinta-3` | `#5C5F63` / `#707377` | Secondary text / placeholders (AA on white) |
 | `--fondo` / `--linea` | `#F7F7F7` / `#E4E4E4` | Ground / hairlines (from prosein.com.ve) |
 | `--papel` / `--papel-tinta` | `#FFFDF6` / `#2A2926` | Thermal paper |
-| `--austral` | `#0B5CD5` | Austral m² (values, toggle, leader badge) |
+| `--austral` | `#0B5CD5` | Austral m², trip coupons (ink, stamp, progress), toggle, leader badge |
 | `--ok` `--espera` `--error` | green / amber / deep red | Invoice states (Aprobada / Pendiente / Rechazada) |
 
 ## Type
@@ -32,7 +32,12 @@ Prosein's own identity (red shell, charcoal ink, Poppins) plus one signature: **
 - Stamp: double red border, -7° rotation, multiply blend, SVG-noise mask for rubber-ink texture.
 - Bottom sheet on mobile (registrar venta), centered dialog from 720px.
 - Fixed bottom action bar on mobile; inline in the left column from 960px.
-- Desktop: two columns (summary + coupons sticky on the left; sales table + ranking on the right).
+- Desktop: two columns (summary + coupons + trip sticky on the left; sales table + ranking on the right).
+- Mini tickets are buttons: tap opens the coupon viewer (same ticket, no printing, stamp already on) with "Descargar imagen" (canvas PNG at 3×, same rows as the on-screen ticket) and "Compartir" where the Web Share API takes files.
+- Trip section: blue progress toward the next 100 m², blue mini tickets, one line saying whether the seller's current category enters the trip draw.
+- Store picker: native `<select>` with a chevron; bottom sheet for old accounts without a store.
+- Admin view: same red shell with an "Administración" pill, a white tab bar (selected tab in charcoal), plain tables in scroll containers, a hairline grid of figures. The trip ballot box card carries the same black band as its printed slips.
+- Printable coupons (`cupones.html` + `imprimir.css`): Letter, 8 mm margin, 3 × 8 grid of 66 × 31.8 mm slips with dashed cut lines, one ballot box per page run. Regular slips: wordmark + red rule + red code. Trip slips: black band "VIAJE TODO INCLUIDO" (print-color-adjust exact) and a black code.
 
 ## Motion
 
@@ -40,5 +45,6 @@ Curves: `--ease-out cubic-bezier(0.23,1,0.32,1)`, `--ease-in-out cubic-bezier(0.
 
 - Buttons: `scale(0.97)` on press, 160ms. Hover only with `(hover: hover) and (pointer: fine)`.
 - Sheet 450ms drawer curve. Dialogs and menu 180–250ms. Toasts use transitions (interruptible).
-- **Printer (the one authored moment):** printer drops in 250ms → paper feeds line by line (staircase keyframes, ease-out per line, ~760ms for one ticket) → paper settles 7px on cut → stamp lands with scale 1.7→0.94→1 and rotation → counter counts up, progress bar fills to 100%, resets, fills to the new leftover. Several coupons stack with an offset, ≤4 tickets on screen, about 2.5s total. Only transform and opacity animate.
+- **Printer (the one authored moment):** a sale that completes regular and trip coupons runs two passes: red tickets first, then the blue trip ticket with its own counter. Each pass: printer drops in 250ms → paper feeds line by line (staircase keyframes, ease-out per line, ~760ms for one ticket) → paper settles 7px on cut → stamp lands with scale 1.7→0.94→1 and rotation → counter counts up, progress bar fills to 100%, resets, fills to the new leftover. Several coupons stack with an offset, ≤4 tickets on screen, about 2.5s total. Only transform and opacity animate.
+- Coupon viewer: 200 ms fade and a 10 px rise of the ticket, blurred backdrop.
 - `prefers-reduced-motion`: no printing or rotation; the finished ticket fades in.

@@ -32,6 +32,11 @@
       <symbol id="i-alerta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
       <symbol id="i-mas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
       <symbol id="i-recargar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></symbol>
+      <symbol id="i-descargar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+      <symbol id="i-compartir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/></symbol>
+      <symbol id="i-imprimir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
+      <symbol id="i-avion" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+      <symbol id="i-buscar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
     </defs>
   </svg>
 
@@ -41,7 +46,7 @@
       <div class="acceso__interior">
         <span class="wordmark">PROSEIN</span>
         <h1 class="acceso__titulo">Copa<br>Prosein</h1>
-        <p class="acceso__lema">Registra tus ventas, suma cupones y gana premios cada semana.</p>
+        <p class="acceso__lema">Registra tus ventas, suma cupones y gana premios cada semana. Con Austral, participa por un viaje todo incluido.</p>
         <p class="acceso__fechas" id="acceso-fechas"></p>
       </div>
       <div class="acceso__ticket sombra-papel" aria-hidden="true">
@@ -111,8 +116,23 @@
             <p class="error-campo" data-error="telefono"></p>
           </div>
           <div class="campo">
-            <label class="etiqueta" for="reg-sucursal">Tienda o zona <small>(opcional)</small></label>
-            <input class="entrada" id="reg-sucursal" name="sucursal" autocomplete="organization" placeholder="Ej. Boleíta">
+            <label class="etiqueta" for="reg-sucursal">Tienda Prosein</label>
+            <div class="selector">
+              <select class="entrada" id="reg-sucursal" name="sucursal" required data-sucursales>
+                <option value="">Elige tu tienda</option>
+                <option>Boleíta</option>
+                <option>La Castellana</option>
+                <option>Los Naranjos</option>
+                <option>El Bosque</option>
+                <option>Las Mercedes</option>
+                <option>San Martín</option>
+                <option>Maracaibo</option>
+                <option>Acarigua</option>
+                <option>Barquisimeto</option>
+              </select>
+              <svg class="icono" aria-hidden="true"><use href="#i-abajo"/></svg>
+            </div>
+            <p class="error-campo" data-error="sucursal"></p>
           </div>
           <div class="campo">
             <label class="etiqueta" for="reg-clave">Contraseña <small>(mínimo 6 caracteres)</small></label>
@@ -135,7 +155,7 @@
         <!-- Nueva contraseña (después de que el admin la reinicia) -->
         <form id="form-nueva-clave" class="formulario" novalidate hidden>
           <h2 class="formulario__titulo">Crea tu nueva contraseña</h2>
-          <p class="formulario__texto">Tu coordinador reinició tu contraseña. Confirma tu teléfono registrado y elige una nueva.</p>
+          <p class="formulario__texto">Tu cuenta necesita una contraseña nueva (es tu primer ingreso o el coordinador la reinició). Confirma tu teléfono registrado y elígela.</p>
           <div class="aviso" role="alert" data-aviso></div>
           <div class="campo">
             <label class="etiqueta" for="nc-cedula">Cédula</label>
@@ -168,12 +188,12 @@
     </main>
   </div>
 
-  <!-- ============ Panel del vendedor ============ -->
+  <!-- ============ Panel (vendedor o administrador) ============ -->
   <div id="vista-panel" hidden>
     <header class="barra">
       <div class="barra__interior">
         <div class="barra__fila">
-          <div><span class="wordmark">PROSEIN</span><span class="barra__copa">Copa</span></div>
+          <div class="barra__marca"><span class="wordmark">PROSEIN</span><span class="barra__copa">Copa</span><span class="barra__rol" id="barra-rol" hidden>Administración</span></div>
           <div class="menu-usuario">
             <button type="button" class="avatar" id="btn-avatar" aria-haspopup="true" aria-expanded="false" aria-controls="menu-usuario"><span id="avatar-iniciales"></span><span class="sr-only">Mi cuenta</span></button>
             <div class="menu-usuario__caja" id="menu-usuario" data-cerrado>
@@ -185,11 +205,12 @@
         <div class="saludo">
           <h1 id="saludo-titulo">Hola</h1>
           <p id="saludo-semana">&nbsp;</p>
+          <p class="saludo__corte" id="saludo-corte"></p>
         </div>
       </div>
     </header>
 
-    <main class="panel" id="panel">
+    <main class="panel" id="panel" hidden>
       <div class="columna columna--izq">
         <section class="sombra-papel" aria-labelledby="resumen-titulo">
           <div class="papel papel--abajo resumen" id="resumen" aria-busy="true"></div>
@@ -203,6 +224,11 @@
         <section class="seccion" aria-labelledby="cupones-titulo">
           <div class="seccion__cabeza"><h2 id="cupones-titulo">Mis cupones</h2><span id="cupones-cuenta"></span></div>
           <div id="cupones"></div>
+        </section>
+
+        <section class="seccion seccion--viaje" aria-labelledby="viaje-titulo">
+          <div class="seccion__cabeza"><h2 id="viaje-titulo"><svg class="icono"><use href="#i-avion"/></svg>Viaje todo incluido</h2><span id="viaje-cuenta"></span></div>
+          <div class="superficie viaje" id="viaje"></div>
         </section>
       </div>
 
@@ -229,6 +255,18 @@
           </details>
         </section>
       </div>
+    </main>
+
+    <!-- Administrador: solo lectura, para auditar e imprimir los cupones del sorteo -->
+    <main class="admin" id="admin" hidden>
+      <div class="admin__pestanas" role="tablist" aria-label="Secciones de administración" id="admin-pestanas">
+        <button type="button" role="tab" aria-selected="true" data-vista="resumen">Resumen</button>
+        <button type="button" role="tab" aria-selected="false" data-vista="vendedores">Vendedores</button>
+        <button type="button" role="tab" aria-selected="false" data-vista="ventas">Ventas</button>
+        <button type="button" role="tab" aria-selected="false" data-vista="semanas">Semanas</button>
+        <button type="button" role="tab" aria-selected="false" data-vista="sorteo">Sorteo</button>
+      </div>
+      <div id="admin-vista" role="tabpanel" aria-live="polite"></div>
     </main>
   </div>
 
@@ -319,7 +357,7 @@
       </div>
       <div class="impresora__marcador" id="impresora-marcador">
         <div id="impresora-confirmacion"></div>
-        <div class="marcador__fila"><span>Tus cupones</span><strong id="impresora-cuenta">0</strong></div>
+        <div class="marcador__fila"><span id="impresora-etiqueta">Tus cupones</span><strong id="impresora-cuenta">0</strong></div>
         <div class="progreso">
           <div class="progreso__barra"><div class="progreso__relleno" id="impresora-relleno"></div></div>
         </div>
@@ -327,6 +365,50 @@
         <button type="button" class="btn btn--primario btn--bloque" id="impresora-continuar">Continuar</button>
       </div>
     </div>
+  </dialog>
+
+  <!-- ============ Ver un cupón otra vez (sin animación) ============ -->
+  <dialog class="cupon-dlg" id="dlg-cupon" aria-labelledby="cupon-titulo">
+    <div class="cupon-dlg__escena" id="cupon-escena">
+      <div class="cupon-dlg__cabeza">
+        <h2 id="cupon-titulo">Cupón</h2>
+        <button type="button" class="btn-icono" data-cerrar aria-label="Cerrar"><svg class="icono"><use href="#i-cerrar"/></svg></button>
+      </div>
+      <div class="cupon-dlg__ticket" id="cupon-ticket"></div>
+      <div class="cupon-dlg__pie">
+        <p class="cupon-dlg__nota" id="cupon-nota"></p>
+        <button type="button" class="btn btn--primario btn--bloque" id="cupon-descargar"><span class="girador" aria-hidden="true"></span><svg class="icono"><use href="#i-descargar"/></svg><span data-texto>Descargar imagen</span></button>
+        <button type="button" class="btn btn--secundario btn--bloque" id="cupon-compartir" hidden><svg class="icono"><use href="#i-compartir"/></svg>Compartir</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ============ Elegir tienda (cuentas creadas sin tienda) ============ -->
+  <dialog class="hoja" id="dlg-sucursal" aria-labelledby="sucursal-titulo">
+    <form class="hoja__caja" id="form-sucursal" novalidate>
+      <div class="hoja__asa" aria-hidden="true"></div>
+      <div class="hoja__cabeza">
+        <h2 id="sucursal-titulo">¿En qué tienda trabajas?</h2>
+        <button type="button" class="btn-icono" data-cerrar aria-label="Cerrar"><svg class="icono"><use href="#i-cerrar"/></svg></button>
+      </div>
+      <div class="hoja__cuerpo">
+        <p class="formulario__texto">Para participar en la Copa tu cuenta debe tener su tienda Prosein. Elígela una sola vez: si luego cambias de tienda, avísale al coordinador.</p>
+        <div class="aviso" role="alert" data-aviso></div>
+        <div class="campo">
+          <label class="etiqueta" for="suc-sucursal">Tienda Prosein</label>
+          <div class="selector">
+            <select class="entrada" id="suc-sucursal" name="sucursal" required data-sucursales>
+              <option value="">Elige tu tienda</option>
+            </select>
+            <svg class="icono" aria-hidden="true"><use href="#i-abajo"/></svg>
+          </div>
+          <p class="error-campo" data-error="sucursal"></p>
+        </div>
+      </div>
+      <div class="hoja__pie">
+        <button class="btn btn--primario btn--grande btn--bloque" type="submit"><span class="girador" aria-hidden="true"></span><span data-texto>Guardar tienda</span></button>
+      </div>
+    </form>
   </dialog>
 
   <!-- ============ Visor de foto ============ -->

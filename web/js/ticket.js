@@ -8,9 +8,11 @@
  *  - Al cortar el papel cae unos píxeles y se asienta (física creíble).
  *  - El sello entra con escala + rotación, como un sello de goma.
  *  - prefers-reduced-motion: sin impresión ni rotación, solo un fundido.
+ *
+ * Hay dos tipos de ticket: el cupón normal (rojo) y el cupón del viaje (Austral, azul).
  */
 import { $, h, icono, svgEl, prepararDialogo, reducirMovimiento, esperar } from './dom.js';
-import { dinero, plural } from './formato.js';
+import { dinero, plural, decimal } from './formato.js';
 
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 const EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
@@ -25,63 +27,105 @@ function corte() {
   return h('hr', { class: 'corte', 'data-l': true });
 }
 
-/** Código de barras decorativo, siempre igual para el mismo texto. */
-function codigoBarras(semilla) {
+/**
+ * Barras del código de barras decorativo: siempre las mismas para el mismo texto.
+ * Devuelve [[x, ancho], ...] en un lienzo de 200 × 40 (lo usan el SVG y la imagen descargable).
+ */
+export function barras(semilla) {
   let x = 2166136261;
   for (const c of String(semilla)) x = Math.imul(x ^ c.charCodeAt(0), 16777619);
   const azar = () => {
     x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
     return (x >>> 0) / 4294967296;
   };
-  const svg = svgEl('svg', { viewBox: '0 0 200 40', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
-  const barra = (pos, ancho) => svg.append(svgEl('rect', { x: pos, y: 0, width: ancho, height: 40, fill: 'currentColor' }));
-  barra(0, 2); barra(4, 1);
+  const lista = [[0, 2], [4, 1]];
   let pos = 8;
   while (pos < 190) {
     const ancho = 1 + Math.floor(azar() * 3);
-    barra(pos, ancho);
+    lista.push([pos, ancho]);
     pos += ancho + 1 + Math.floor(azar() * 2.4);
   }
-  barra(195, 1); barra(198, 2);
+  lista.push([195, 1], [198, 2]);
+  return lista;
+}
+
+function codigoBarras(semilla) {
+  const svg = svgEl('svg', { viewBox: '0 0 200 40', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+  barras(semilla).forEach(([pos, ancho]) => svg.append(svgEl('rect', { x: pos, y: 0, width: ancho, height: 40, fill: 'currentColor' })));
   return svg;
 }
 
 /**
- * @param {object} d { n, hasta?, fechaHora, factura, vendedor, cedula, monto?, acumulado, falta }
+ * Filas de texto de un ticket, en orden. Las comparten el ticket en pantalla
+ * y la imagen PNG que se descarga.
+ * @param {object} d { tipo?, n, hasta?, fechaHora, factura, vendedor, cedula, monto?, acumulado, falta, m2?, m2Acumulado?, m2Falta? }
  */
-export function crearTicket(d) {
+export function contenidoTicket(d) {
+  const austral = d.tipo === 'austral';
   const rango = d.hasta && d.hasta > d.n;
-  const sello = h('div', { class: 'sello', 'data-sello': true },
-    h('small', {}, rango ? 'CUPONES' : 'CUPÓN'),
-    h('strong', {}, rango ? `N° ${d.n} al ${d.hasta}` : `N° ${d.n}`));
-  const papel = h('div', { class: 'papel' },
-    h('div', { class: 'ticket__marca', 'data-l': true }, 'PROSEIN'),
-    h('div', { class: 'ticket__sub', 'data-l': true }, 'COPA PROSEIN'),
-    corte(),
-    fila('FECHA', d.fechaHora),
-    fila('FACTURA', d.factura),
-    fila('VENDEDOR', String(d.vendedor || '').toUpperCase()),
-    fila('C.I.', d.cedula),
-    d.monto !== null && d.monto !== undefined ? fila('MONTO', dinero(d.monto)) : null,
-    corte(),
-    h('div', { class: 'ticket__cupon', 'data-l': true }, sello),
-    corte(),
-    fila('ACUMULADO', dinero(d.acumulado)),
-    fila('PRÓXIMO CUPÓN EN', dinero(d.falta)),
-    h('div', { class: 'ticket__barras', 'data-l': true }, codigoBarras(`${d.factura}-${d.n}`), h('span', { class: 'ticket__codigo' }, `CP ${String(d.n).padStart(4, '0')}`)),
-    h('div', { class: 'ticket__gracias', 'data-l': true }, '¡GRACIAS POR SU VENTA!'),
+  const filas = [
+    { t: 'marca', texto: 'PROSEIN' },
+    { t: 'sub', texto: austral ? 'VIAJE TODO INCLUIDO' : 'COPA PROSEIN' },
+    { t: 'corte' },
+    { t: 'fila', a: 'FECHA', b: d.fechaHora },
+    { t: 'fila', a: 'FACTURA', b: d.factura },
+    { t: 'fila', a: 'VENDEDOR', b: String(d.vendedor || '').toUpperCase() },
+    { t: 'fila', a: 'C.I.', b: d.cedula },
+  ];
+  if (austral) filas.push({ t: 'fila', a: 'AUSTRAL', b: `${decimal(d.m2)} m²` });
+  else if (d.monto !== null && d.monto !== undefined) filas.push({ t: 'fila', a: 'MONTO', b: dinero(d.monto) });
+  filas.push(
+    { t: 'corte' },
+    { t: 'sello', arriba: austral ? (rango ? 'CUPONES VIAJE' : 'CUPÓN VIAJE') : (rango ? 'CUPONES' : 'CUPÓN'), abajo: rango ? `N° ${d.n} al ${d.hasta}` : `N° ${d.n}` },
+    { t: 'corte' },
   );
-  return h('div', { class: 'ticket sombra-papel', role: 'img', 'aria-label': rango ? `Cupones ${d.n} al ${d.hasta}` : `Cupón número ${d.n}, factura ${d.factura}` }, papel);
+  if (austral) {
+    filas.push({ t: 'fila', a: 'M² ACUMULADOS', b: `${decimal(d.m2Acumulado)} m²` }, { t: 'fila', a: 'PRÓXIMO CUPÓN EN', b: `${decimal(d.m2Falta)} m²` });
+  } else {
+    filas.push({ t: 'fila', a: 'ACUMULADO', b: dinero(d.acumulado) }, { t: 'fila', a: 'PRÓXIMO CUPÓN EN', b: dinero(d.falta) });
+  }
+  filas.push(
+    { t: 'barras', semilla: `${d.factura}-${austral ? 'V' : ''}${d.n}`, codigo: `${austral ? 'CV' : 'CP'} ${String(d.n).padStart(4, '0')}` },
+    { t: 'gracias', texto: '¡GRACIAS POR SU VENTA!' },
+  );
+  return filas;
 }
 
-/** Mini ticket para "Mis cupones". */
-export function crearMini({ n, dia, factura, nuevo }) {
-  return h('div', { class: 'mini sombra-papel' + (nuevo ? ' mini--nuevo' : ''), role: 'listitem' },
-    h('div', { class: 'papel' },
-      h('div', { class: 'mini__titulo' }, 'CUPÓN'),
-      h('div', { class: 'mini__n' }, `N° ${String(n).padStart(2, '0')}`),
-      h('div', { class: 'mini__dato' }, dia),
-      h('div', { class: 'mini__dato', title: factura }, `Fact. ${factura}`)));
+export function crearTicket(d) {
+  const austral = d.tipo === 'austral';
+  const rango = d.hasta && d.hasta > d.n;
+  const nodos = contenidoTicket(d).map((f) => {
+    switch (f.t) {
+      case 'marca': return h('div', { class: 'ticket__marca', 'data-l': true }, f.texto);
+      case 'sub': return h('div', { class: 'ticket__sub', 'data-l': true }, f.texto);
+      case 'corte': return corte();
+      case 'fila': return fila(f.a, f.b);
+      case 'sello': return h('div', { class: 'ticket__cupon', 'data-l': true },
+        h('div', { class: 'sello', 'data-sello': true }, h('small', {}, f.arriba), h('strong', {}, f.abajo)));
+      case 'barras': return h('div', { class: 'ticket__barras', 'data-l': true }, codigoBarras(f.semilla), h('span', { class: 'ticket__codigo' }, f.codigo));
+      default: return h('div', { class: 'ticket__gracias', 'data-l': true }, f.texto);
+    }
+  });
+  const etiqueta = austral
+    ? (rango ? `Cupones del viaje ${d.n} al ${d.hasta}` : `Cupón del viaje número ${d.n}, factura ${d.factura}`)
+    : (rango ? `Cupones ${d.n} al ${d.hasta}` : `Cupón número ${d.n}, factura ${d.factura}`);
+  return h('div', { class: 'ticket sombra-papel' + (austral ? ' ticket--austral' : ''), role: 'img', 'aria-label': etiqueta }, h('div', { class: 'papel' }, nodos));
+}
+
+/** Mini ticket tocable para "Mis cupones" y "Viaje todo incluido". */
+export function crearMini({ n, dia, factura, nuevo, tipo, alTocar }) {
+  const austral = tipo === 'austral';
+  return h('button', {
+    type: 'button',
+    class: 'mini sombra-papel' + (nuevo ? ' mini--nuevo' : '') + (austral ? ' mini--austral' : ''),
+    'aria-label': `Ver ${austral ? 'cupón del viaje' : 'cupón'} número ${n}, factura ${factura}`,
+    onclick: alTocar,
+  },
+  h('span', { class: 'papel' },
+    h('span', { class: 'mini__titulo' }, austral ? 'VIAJE' : 'CUPÓN'),
+    h('span', { class: 'mini__n' }, `N° ${String(n).padStart(2, '0')}`),
+    h('span', { class: 'mini__dato' }, dia),
+    h('span', { class: 'mini__dato', title: factura }, `Fact. ${factura}`)));
 }
 
 // ---------- Animación ----------
@@ -128,13 +172,12 @@ async function sellar(ticket, { golpe = true } = {}) {
   const sello = ticket.querySelector('[data-sello]');
   vibrar(14);
   await Promise.all([
-    // (sin golpe en los tickets que luego se apilan: su transform lo maneja apilar)
     animar(sello, [
       { opacity: 0, transform: 'rotate(-16deg) scale(1.7)' },
       { opacity: 1, transform: 'rotate(-6deg) scale(0.94)', offset: 0.65 },
       { opacity: 1, transform: 'rotate(-7deg) scale(1)' },
     ], { duration: 320, easing: EASE_OUT }),
-    // El golpe del sello mueve el papel apenas.
+    // El golpe del sello mueve el papel apenas (no en los que luego se apilan: su transform lo maneja apilar).
     !golpe ? null : animar(ticket, [
       { transform: 'translateY(0) scale(1)' },
       { transform: 'translateY(1.5px) scale(0.992)', offset: 0.7 },
@@ -203,6 +246,7 @@ function preparar() {
  *   tickets: datos de cada ticket (vacío = confirmación sobria)
  *   cuponesAntes, cuponesDespues, progresoAntes, progresoDespues (0..1)
  *   titulo, mensaje (nodos o texto), modo: 'cupon' | 'sobrio' | 'pendiente'
+ *   etiqueta: texto del contador ('Tus cupones' por defecto), variante: 'austral' para el viaje
  */
 export function mostrarImpresora(o) {
   const ctl = preparar();
@@ -220,9 +264,11 @@ export function mostrarImpresora(o) {
   const conTickets = o.tickets && o.tickets.length > 0;
 
   dlg.classList.toggle('impresora--sobria', !conTickets);
+  dlg.classList.toggle('impresora--austral', o.variante === 'austral');
   maquina.hidden = !conTickets;
   salida.hidden = !conTickets;
   $('#impresora-titulo').textContent = o.titulo || 'Venta registrada';
+  $('#impresora-etiqueta').textContent = o.etiqueta || 'Tus cupones';
 
   // Máximo 4 tickets en pantalla: si son más, el último agrupa el resto.
   let datos = o.tickets || [];
@@ -246,8 +292,8 @@ export function mostrarImpresora(o) {
   relleno.style.transform = `scaleX(${o.progresoAntes})`;
   mensaje.replaceChildren(...[].concat(o.mensaje || []));
 
-  const elementosMarcador = [marcador];
-  elementosMarcador.forEach((el) => { el.style.opacity = reducido ? '1' : '0'; el.style.transform = ''; });
+  marcador.style.opacity = reducido ? '1' : '0';
+  marcador.style.transform = '';
   maquina.style.opacity = reducido ? '1' : '0';
   continuar.disabled = !reducido;
 
@@ -261,8 +307,7 @@ export function mostrarImpresora(o) {
       await esperar(reducido ? 0 : 90);
       if (reducido) {
         // Sin movimiento: todo aparece ya impreso con un fundido.
-        const todo = [...tickets, maquina, marcador];
-        todo.forEach((el) => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' }));
+        [...tickets, maquina, marcador].forEach((el) => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' }));
         tickets.forEach((t, i) => {
           t.querySelector('[data-sello]').style.opacity = '1';
           const d = tickets.length - 1 - i;
@@ -307,5 +352,13 @@ export function mensajeMarcador({ nuevos, falta }) {
   const partes = [];
   if (nuevos > 0) partes.push(h('strong', {}, nuevos === 1 ? '¡Ganaste un cupón! ' : `¡Ganaste ${plural(nuevos, 'cupón', 'cupones')}! `));
   partes.push('Te faltan ', h('strong', {}, dinero(falta, { compacto: true })), ' para tu próximo cupón.');
+  return partes;
+}
+
+export function mensajeViaje({ nuevos, falta, participa, categoria }) {
+  const partes = [];
+  if (nuevos > 0) partes.push(h('strong', {}, nuevos === 1 ? '¡Un cupón más para el viaje! ' : `¡${plural(nuevos, 'cupón', 'cupones')} más para el viaje! `));
+  partes.push('Te faltan ', h('strong', {}, `${decimal(falta)} m²`), ' de Austral para el próximo.');
+  if (!participa && categoria) partes.push(` Para entrar al sorteo necesitas estar en ${categoria} al cierre.`);
   return partes;
 }

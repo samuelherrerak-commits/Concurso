@@ -1,6 +1,6 @@
 /** Pantalla de acceso: ingresar, crear cuenta y crear nueva contraseña. */
 import { llamar, sesion } from './api.js';
-import { $, $$, mostrarErrores, cargando } from './dom.js';
+import { $, $$, h, mostrarErrores, cargando } from './dom.js';
 import { fechaLarga } from './formato.js';
 
 let alEntrar = null;
@@ -76,7 +76,18 @@ async function cargarFechas() {
   const r = await llamar('config', {}, { timeout: 15000 });
   if (!r.ok) return;
   const c = r.data;
-  $('#acceso-fechas').textContent = `Del ${fechaLarga(c.fecha_inicio)} al ${fechaLarga(c.fecha_fin)}`;
+  $('#acceso-fechas').textContent = `Del ${fechaLarga(c.fecha_inicio)} al ${fechaLarga(c.fecha_fin)} · ${c.total_semanas} semanas`;
+  llenarSucursales(c.sucursales);
+}
+
+/** Las tiendas salen de la hoja Configuracion (la lista del HTML es solo el respaldo). */
+export function llenarSucursales(lista) {
+  if (!Array.isArray(lista) || !lista.length) return;
+  $$('select[data-sucursales]').forEach((sel) => {
+    const elegida = sel.value;
+    sel.replaceChildren(h('option', { value: '' }, 'Elige tu tienda'), ...lista.map((s) => h('option', { value: s }, s)));
+    if (lista.includes(elegida)) sel.value = elegida;
+  });
 }
 
 function guardarYEntrar(datos, cedula) {
@@ -132,6 +143,7 @@ async function registrar(ev) {
   if (!/^\d{6,9}$/.test(cedula)) errores.cedula = 'La cédula debe tener entre 6 y 9 dígitos.';
   const telefono = soloDigitos(v('telefono'));
   if (telefono.length < 10 || telefono.length > 13) errores.telefono = 'Escribe tu teléfono con código, por ejemplo 0414 123 4567.';
+  if (!v('sucursal')) errores.sucursal = 'Elige la tienda Prosein donde trabajas.';
   validarClaves(form, errores);
   if (Object.keys(errores).length) { mostrarErrores(form, errores); return; }
 

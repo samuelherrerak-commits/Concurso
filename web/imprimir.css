@@ -1,0 +1,161 @@
+/* ==========================================================
+   Copa Prosein · cupones para imprimir (urnas del sorteo)
+   Hoja carta (215,9 × 279,4 mm), margen 8 mm, 3 × 8 cupones.
+   ========================================================== */
+
+:root {
+  --rojo: #DF1630;
+  --carbon: #141618;
+  --tinta: #303133;
+  --tinta-2: #5C5F63;
+  --linea: #E4E4E4;
+  --fondo: #EDEDED;
+  --corte: #8A8D91;
+  --f-ui: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --f-marca: 'Archivo', 'Arial Black', 'Helvetica Neue', sans-serif;
+  --f-ticket: 'Chivo Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font: 400 14px/1.5 var(--f-ui);
+  -webkit-font-smoothing: antialiased;
+}
+h1, p { margin: 0; }
+[hidden] { display: none !important; }
+
+/* ---------- Barra (solo pantalla) ---------- */
+
+.barra-imprimir { background: #fff; border-bottom: 1px solid var(--linea); padding: 16px; }
+.barra-imprimir__interior {
+  max-width: 900px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;
+}
+.barra-imprimir h1 { font-size: 22px; font-weight: 600; color: var(--carbon); margin-top: 4px; }
+.barra-imprimir p { color: var(--tinta-2); font-size: 14px; }
+.volver { color: #B70F25; font-size: 14px; text-underline-offset: 3px; }
+.barra-imprimir__acciones { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.campo-urna { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+.campo-urna select {
+  min-height: 44px; padding: 0 12px; min-width: 220px;
+  border: 1px solid #D6D6D6; border-radius: 12px; background: #fff;
+  font: inherit; font-size: 15px;
+}
+.boton {
+  min-height: 44px; padding: 0 24px;
+  border: 0; border-radius: 12px;
+  background: var(--rojo); color: #fff;
+  font: 600 15px/1 var(--f-ui);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease;
+}
+.boton:active:not(:disabled) { transform: scale(0.97); }
+.boton:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (hover: hover) and (pointer: fine) { .boton:hover:not(:disabled) { background: #B70F25; } }
+.aviso, .consejo { max-width: 900px; margin: 12px auto 0; font-size: 13px; }
+.aviso { padding: 10px 14px; border-radius: 12px; background: #FFF3DC; color: #865100; }
+.consejo { color: var(--tinta-2); }
+
+main { overflow-x: auto; padding: 24px 16px 48px; }
+
+/* ---------- Hojas ---------- */
+
+.hoja {
+  width: 215.9mm;
+  min-height: 279.4mm;
+  margin: 0 auto 24px;
+  padding: 8mm;
+  background: #fff;
+  box-shadow: 0 2px 10px rgb(20 22 24 / 0.12);
+  break-after: page;
+  page-break-after: always;
+}
+.hoja:last-child { break-after: auto; page-break-after: auto; }
+.hoja__cab {
+  display: flex; gap: 6mm; align-items: baseline;
+  height: 7mm;
+  font: 400 8pt/1 var(--f-ticket);
+  color: var(--tinta-2);
+}
+.hoja__cab strong { font: 600 9pt/1 var(--f-ui); color: var(--carbon); }
+.hoja__cab span:nth-child(3) { margin-left: auto; }
+.hoja__provisional { font-weight: 700; color: var(--rojo); letter-spacing: 0.1em; }
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 31.8mm;
+  border-top: 0.3mm dashed var(--corte);
+  border-left: 0.3mm dashed var(--corte);
+}
+
+/* ---------- Cupón ---------- */
+
+.boleto {
+  display: flex; flex-direction: column;
+  min-width: 0;
+  padding: 2.6mm 3.4mm 2.2mm;
+  border-right: 0.3mm dashed var(--corte);
+  border-bottom: 0.3mm dashed var(--corte);
+  overflow: hidden;
+  color: var(--carbon);
+}
+.boleto__cab {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 2mm;
+  padding-bottom: 1.2mm;
+  border-bottom: 0.6mm solid var(--rojo);
+  font: 500 6.5pt/1 var(--f-ui);
+  letter-spacing: 0.04em;
+  color: var(--tinta-2);
+  white-space: nowrap;
+}
+.boleto__marca { font: 800 9pt/1 var(--f-marca); font-stretch: 115%; color: var(--carbon); letter-spacing: 0; }
+.boleto__codigo {
+  margin-top: 1.6mm;
+  font: 700 17pt/1 var(--f-ticket);
+  letter-spacing: -0.02em;
+  color: var(--rojo);
+}
+.boleto__nombre {
+  margin-top: 1.4mm;
+  font: 600 8.5pt/1.2 var(--f-ui);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.boleto__dato {
+  font: 400 6.8pt/1.35 var(--f-ticket);
+  color: var(--tinta-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.boleto__dato--pie { margin-top: auto; }
+
+/* Cupón del viaje: banda negra y código en negro, para distinguirlo de un vistazo. */
+.boleto--viaje .boleto__banda {
+  display: flex; align-items: center; gap: 1.6mm;
+  margin: -2.6mm -3.4mm 0;
+  padding: 1.5mm 3.4mm;
+  background: var(--carbon);
+  color: #fff;
+  font: 700 7pt/1 var(--f-ui);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.boleto--viaje .boleto__banda .boleto__marca { margin-left: auto; color: #fff; font-size: 8pt; }
+.boleto--viaje .avion { width: 3.4mm; height: 3.4mm; flex: none; }
+.boleto--viaje .boleto__codigo { color: var(--carbon); }
+
+/* ---------- Impresión ---------- */
+
+@page { size: letter; margin: 8mm; }
+
+@media print {
+  body { background: #fff; }
+  .barra-imprimir { display: none; }
+  main { padding: 0; overflow: visible; }
+  .hoja { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+}

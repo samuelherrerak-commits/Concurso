@@ -131,3 +131,46 @@ export function pesoArchivo(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
 }
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+/** "jueves" para una fecha yyyy-mm-dd. */
+export function diaSemana(iso) {
+  if (!iso) return '';
+  const { a, m, d } = partes(iso);
+  return DIAS[new Date(Date.UTC(a, m - 1, d)).getUTCDay()];
+}
+
+/** "viernes 23 de oct." */
+export function fechaConDia(iso) {
+  if (!iso) return '';
+  const { m, d } = partes(iso);
+  return `${diaSemana(iso)} ${d} de ${MESES_CORTOS[m - 1]}`;
+}
+
+/** Fecha y hora de Caracas desde milisegundos: { iso, hora: "3:00 p. m." }. */
+export function enCaracas(ms) {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Caracas', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+    const h24 = Number(p.hour);
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    return { iso: `${p.year}-${p.month}-${p.day}`, hora: `${h12}:${p.minute} ${h24 < 12 ? 'a. m.' : 'p. m.'}` };
+  } catch {
+    const d = new Date(ms);
+    return { iso: d.toISOString().slice(0, 10), hora: d.toLocaleTimeString() };
+  }
+}
+
+/** Cierra una frase con punto sin duplicarlo ("14 de oct." no lleva otro). */
+export function conPunto(texto) {
+  return /\.$/.test(texto) ? texto : texto + '.';
+}
+
+/** "jueves 22 de oct., 3:00 p. m." */
+export function momento(ms) {
+  if (!ms) return '';
+  const c = enCaracas(ms);
+  return `${fechaConDia(c.iso)}, ${c.hora}`;
+}

@@ -4,7 +4,7 @@
   "description": "Portal del concurso Copa Prosein: sitio estático + backend en Google Apps Script. El sitio no necesita build; esto es solo para probar en local.",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "dev": "node dev/server.js --demo"
+    "dev": "node dev/server.js --demo --admin"
   },
   "engines": {
     "node": ">=18"
