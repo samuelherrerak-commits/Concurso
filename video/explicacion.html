@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="es-VE">
+<head>
+<meta charset="utf-8">
+<title>La bolsa de los deseos · Video explicativo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Chivo+Mono:wght@400;700&family=Archivo:wdth,wght@115,800&display=swap">
+<style>
+  :root {
+    --rojo: #DF1630; --rojo-hondo: #B70F25; --carbon: #141618; --tinta: #303133; --tinta-2: #5C5F63;
+    --papel: #FFFDF6; --papel-tinta: #2A2926; --papel-tinta-2: #6B6860; --oro: #F2B233; --austral: #0B5CD5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--rojo); }
+  body { font-family: 'Poppins', sans-serif; color: #fff; }
+  #escenario { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: radial-gradient(120% 80% at 50% 0%, #EC2A42 0%, #DF1630 45%, #B70F25 100%); }
+  .nieve { position: absolute; border-radius: 50%; background: #fff; }
+  .escena { position: absolute; inset: 0; opacity: 0; }
+  .a { position: absolute; will-change: transform, opacity; }
+  .centro { left: 0; right: 0; text-align: center; }
+  .marca { font-family: 'Archivo', sans-serif; font-weight: 800; font-stretch: 115%; letter-spacing: -0.02em; line-height: 0.95; }
+  .titulo { font-size: 92px; font-weight: 800; line-height: 1.02; letter-spacing: -0.02em; }
+  .sub { font-size: 44px; font-weight: 500; line-height: 1.3; color: #FFE3E7; }
+  .paso { font-size: 50px; font-weight: 700; line-height: 1.2; }
+  .chip { display: inline-block; padding: 14px 30px; border-radius: 999px; background: rgb(255 255 255 / 0.16); font-size: 34px; font-weight: 600; }
+  .tarjeta { background: #fff; color: var(--tinta); border-radius: 36px; box-shadow: 0 24px 60px rgb(60 0 10 / 0.35); }
+
+  /* Mini cupones (papel térmico) */
+  .mini { width: 150px; padding: 18px 10px 20px; background: var(--papel); color: var(--papel-tinta); font-family: 'Chivo Mono', monospace; text-align: center; border-radius: 6px; box-shadow: 0 10px 24px rgb(40 0 0 / 0.3);
+    -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 51% repeat-x, conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 14px 51% repeat-x; }
+  .mini b { display: block; font-size: 40px; color: var(--rojo); line-height: 1.1; }
+  .mini small { font-size: 16px; letter-spacing: 0.1em; color: var(--papel-tinta-2); }
+  .mini.azul b, .mini.azul small { color: var(--austral); }
+
+  /* Teléfono */
+  .telefono { position: absolute; left: 240px; top: 560px; width: 600px; height: 1230px; border-radius: 86px; background: var(--carbon); padding: 18px; box-shadow: 0 40px 90px rgb(50 0 8 / 0.5); }
+  .pantalla { position: relative; width: 100%; height: 100%; border-radius: 70px; overflow: hidden; background: #F7F7F7; color: var(--tinta); }
+  .muesca { position: absolute; top: 18px; left: 50%; width: 170px; height: 46px; margin-left: -85px; border-radius: 30px; background: var(--carbon); z-index: 50; }
+  .capa { position: absolute; inset: 0; }
+  .dedo { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; background: rgb(255 255 255 / 0.35); border: 5px solid #fff; box-shadow: 0 6px 20px rgb(0 0 0 / 0.3); z-index: 60; opacity: 0; }
+
+  /* Portal dentro del teléfono */
+  .p-barra { background: var(--rojo); color: #fff; padding: 86px 34px 120px; }
+  .p-marca { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 25px; }
+  .p-hola { font-size: 44px; font-weight: 700; margin-top: 22px; }
+  .p-ronda { font-size: 22px; color: #FFE3E7; }
+  .p-recibo { position: absolute; left: 28px; right: 28px; top: 300px; background: var(--papel); color: var(--papel-tinta); font-family: 'Chivo Mono', monospace; padding: 26px; border-radius: 8px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.12); }
+  .p-recibo .n { font-size: 96px; font-weight: 700; line-height: 1; }
+  .p-recibo .r { display: flex; justify-content: space-between; font-size: 19px; color: var(--papel-tinta-2); margin-top: 12px; }
+  .p-recibo .r b { color: var(--rojo-hondo); }
+  .barra-prog { height: 12px; border-radius: 99px; background: repeating-linear-gradient(90deg, #E8E3D7 0 7px, transparent 7px 9px); margin-top: 10px; overflow: hidden; }
+  .barra-prog i { display: block; height: 100%; background: var(--rojo); border-radius: 99px; transform-origin: left; }
+  .p-boton { position: absolute; left: 28px; right: 28px; height: 92px; border-radius: 22px; background: var(--rojo); color: #fff; font-weight: 700; font-size: 30px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+
+  .hoja { position: absolute; left: 0; right: 0; bottom: 0; height: 960px; background: #fff; border-radius: 40px 40px 0 0; box-shadow: 0 -10px 40px rgb(0 0 0 / 0.2); padding: 30px 30px; }
+  .hoja h4 { font-size: 34px; font-weight: 700; color: var(--carbon); margin: 10px 0 18px; }
+  .campo { margin-top: 18px; }
+  .campo label { display: block; font-size: 20px; font-weight: 500; color: var(--tinta); margin-bottom: 8px; }
+  .entrada { height: 68px; border: 2px solid #D6D6D6; border-radius: 16px; padding: 0 20px; display: flex; align-items: center; font-size: 26px; color: var(--carbon); background: #fff; }
+  .entrada.activa { border-color: var(--rojo); box-shadow: 0 0 0 5px rgb(223 22 48 / 0.12); }
+  .ayuda { font-size: 19px; color: var(--tinta-2); margin-top: 8px; }
+  .ayuda b { color: var(--carbon); }
+  .foto { border: 2px dashed #CFCFCF; border-radius: 20px; padding: 16px; display: flex; gap: 12px; align-items: center; }
+  .boton2 { flex: 1; height: 60px; border: 2px solid #E4E4E4; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: var(--carbon); }
+  .interruptor { display: flex; justify-content: space-between; align-items: center; border: 2px solid #E4E4E4; border-radius: 16px; padding: 14px 18px; font-size: 22px; font-weight: 500; color: var(--carbon); }
+  .sw { width: 70px; height: 40px; border-radius: 99px; background: #D2D2D2; position: relative; }
+  .sw i { position: absolute; top: 4px; left: 4px; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.3); }
+
+  .oscuro { position: absolute; inset: 0; background: rgb(20 22 24 / 0.7); }
+  .impresora { position: absolute; left: 40px; right: 40px; top: 110px; height: 52px; border-radius: 18px; background: linear-gradient(#2A2D31, #141618); z-index: 3; }
+  .impresora::after { content: ''; position: absolute; left: 40px; right: 40px; bottom: 10px; height: 6px; border-radius: 4px; background: #000; }
+  .recorte { position: absolute; left: 60px; right: 60px; top: 150px; height: 900px; overflow: hidden; }
+  .ticket { width: 100%; background: var(--papel); color: var(--papel-tinta); font-family: 'Chivo Mono', monospace; padding: 30px 30px 34px; font-size: 21px; line-height: 1.6;
+    -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 18px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 18px 51% repeat-x; }
+  .ticket .t1 { font-family: 'Archivo', sans-serif; font-weight: 800; font-stretch: 115%; font-size: 40px; text-align: center; }
+  .ticket .t2 { text-align: center; letter-spacing: 0.16em; font-size: 17px; color: var(--papel-tinta-2); }
+  .ticket .f { display: flex; justify-content: space-between; } .ticket .f span:first-child { color: var(--papel-tinta-2); }
+  .ticket hr { border: 0; border-top: 2px dashed #C9C4B8; margin: 12px 0; }
+  .sello { margin: 14px auto; width: 270px; padding: 10px 0; border: 5px double var(--rojo); border-radius: 14px; color: var(--rojo); text-align: center; font-weight: 700; transform: rotate(-7deg); }
+  .sello small { display: block; font-size: 17px; letter-spacing: 0.2em; } .sello b { font-size: 46px; }
+
+  /* Safari / Chrome / inicio */
+  .safari-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: rgb(248 248 248 / 0.96); border-top: 1px solid #ddd; display: flex; justify-content: space-around; align-items: flex-start; padding-top: 26px; z-index: 5; }
+  .safari-bar span { width: 46px; height: 46px; border-radius: 10px; }
+  .url { position: absolute; left: 30px; right: 30px; bottom: 150px; height: 66px; border-radius: 18px; background: #EDEDED; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #555; z-index: 5; }
+  .compartir { position: absolute; left: 0; right: 0; bottom: 0; background: #F2F2F6; border-radius: 34px 34px 0 0; padding: 30px 26px 60px; z-index: 8; }
+  .fila-c { background: #fff; border-radius: 18px; padding: 22px 24px; font-size: 26px; display: flex; justify-content: space-between; align-items: center; margin-top: 14px; color: #111; }
+  .chrome-bar { position: absolute; left: 0; right: 0; top: 0; height: 150px; background: #fff; padding: 74px 22px 0; display: flex; gap: 14px; align-items: center; z-index: 5; border-bottom: 1px solid #e5e5e5; }
+  .chrome-bar .u { flex: 1; height: 56px; border-radius: 99px; background: #F1F3F4; display: flex; align-items: center; padding: 0 22px; font-size: 20px; color: #444; }
+  .dialogo { position: absolute; left: 50px; right: 50px; top: 420px; background: #fff; border-radius: 34px; padding: 40px 34px 30px; z-index: 9; box-shadow: 0 20px 60px rgb(0 0 0 / 0.35); color: #111; }
+  .inicio { position: absolute; inset: 0; z-index: 10; background: linear-gradient(160deg, #1F3B73, #4C2A7A 55%, #C2185B); }
+  .app { position: absolute; width: 112px; text-align: center; font-size: 19px; color: #fff; }
+  .app i { display: block; width: 112px; height: 112px; border-radius: 28px; background: rgb(255 255 255 / 0.25); margin-bottom: 8px; }
+  .app img { width: 112px; height: 112px; border-radius: 28px; display: block; margin-bottom: 8px; box-shadow: 0 8px 20px rgb(0 0 0 / 0.3); }
+</style>
+</head>
+<body>
+<div id="escenario">
+  <div id="nieve"></div>
+
+  <!-- 1. Intro -->
+  <section class="escena" id="s1">
+    <img class="a" id="s1-bolsa" src="../web/assets/bolsa.svg" style="left:330px;top:420px;width:420px">
+    <div class="a centro marca" id="s1-titulo" style="top:930px;font-size:130px">La bolsa<br>de los deseos</div>
+    <div class="a centro sub" id="s1-sub" style="top:1230px">Copa Prosein · fin de año 2026</div>
+    <div class="a centro" id="s1-chip" style="top:1390px"><span class="chip">Te lo explicamos en un minuto</span></div>
+  </section>
+
+  <!-- 2. ¿De qué va? -->
+  <section class="escena" id="s2">
+    <div class="a centro titulo" id="s2-t" style="top:170px">¿De qué va?</div>
+    <div class="a centro sub" id="s2-s" style="top:300px;padding:0 90px">Vende, registra tus facturas<br>y llena tu bolsa de cupones</div>
+    <img class="a" id="s2-bolsa" src="../web/assets/bolsa.svg" style="left:310px;top:820px;width:460px">
+    <div class="a mini" id="s2-c1" style="left:465px;top:560px"><small>CUPÓN</small><b>N° 01</b></div>
+    <div class="a mini" id="s2-c2" style="left:465px;top:560px"><small>CUPÓN</small><b>N° 02</b></div>
+    <div class="a mini" id="s2-c3" style="left:465px;top:560px"><small>CUPÓN</small><b>N° 03</b></div>
+    <div class="a mini" id="s2-c4" style="left:465px;top:560px"><small>CUPÓN</small><b>N° 04</b></div>
+    <div class="a centro" id="s2-cuenta" style="top:1330px"><span class="chip" style="font-size:44px">Tus cupones: <b id="s2-n">0</b></span></div>
+    <div class="a centro paso" id="s2-r1" style="top:1480px;padding:0 70px">Cada <span style="color:#FFE08A">$1.500</span> vendidos = 1 cupón</div>
+    <div class="a centro sub" id="s2-r2" style="top:1560px;font-size:34px">(el valor depende de tu tienda o canal)</div>
+    <div class="a centro sub" id="s2-r3" style="top:1680px;font-size:38px;padding:0 80px">Lo que sobra no se pierde:<br>suma para tu próximo cupón</div>
+  </section>
+
+  <!-- 3. Rondas -->
+  <section class="escena" id="s3">
+    <div class="a centro titulo" id="s3-t" style="top:150px">3 rondas,<br>3 sorteos</div>
+    <div class="a tarjeta" id="s3-r1" style="left:90px;width:900px;top:440px;padding:30px 40px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:46px;color:var(--carbon)">Ronda 1</b><span style="font-size:30px;color:var(--rojo);font-weight:700">Sorteo lun 9 nov</span></div><div style="font-size:30px;color:var(--tinta-2)">15 de oct. al 5 de nov.</div></div>
+    <div class="a tarjeta" id="s3-r2" style="left:90px;width:900px;top:660px;padding:30px 40px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:46px;color:var(--carbon)">Ronda 2</b><span style="font-size:30px;color:var(--rojo);font-weight:700">Sorteo lun 30 nov</span></div><div style="font-size:30px;color:var(--tinta-2)">6 al 26 de nov.</div></div>
+    <div class="a tarjeta" id="s3-r3" style="left:90px;width:900px;top:880px;padding:30px 40px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:46px;color:var(--carbon)">Ronda 3</b><span style="font-size:30px;color:var(--rojo);font-weight:700">Sorteo lun 14 dic</span></div><div style="font-size:30px;color:var(--tinta-2)">27 de nov. al 10 de dic.</div></div>
+    <div class="a tarjeta" id="s3-r4" style="left:90px;width:900px;top:1100px;padding:30px 40px;background:#FFF6E6"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:46px;color:var(--carbon)">La Ñapa</b><span style="font-size:30px;color:var(--tinta-2);font-weight:700">Sin sorteo</span></div><div style="font-size:30px;color:var(--tinta-2)">11 al 19 de dic. · suma para el final</div></div>
+    <div class="a centro paso" id="s3-p1" style="top:1390px;padding:0 70px">A cada sorteo entran los cupones que completes en esa ronda</div>
+    <div class="a centro sub" id="s3-p2" style="top:1620px;font-size:36px;padding:0 80px">Cada ronda cierra al día siguiente de su último día, a las 3:00 p. m.</div>
+  </section>
+
+  <!-- 4. Gran Sorteo Final -->
+  <section class="escena" id="s4">
+    <div class="a centro titulo" id="s4-t" style="top:150px">Gran Sorteo Final</div>
+    <div class="a centro" id="s4-f" style="top:280px"><span class="chip" style="font-size:40px">Lunes 21 de diciembre</span></div>
+    <div id="s4-diez"></div>
+    <div class="a centro" id="s4-igual" style="top:700px;font-size:60px;font-weight:800">=</div>
+    <div class="a" id="s4-final" style="left:340px;top:800px;width:400px;padding:26px;background:var(--papel);color:var(--papel-tinta);border-radius:10px;text-align:center;font-family:'Chivo Mono',monospace;box-shadow:0 20px 50px rgb(0 0 0 / 0.35)"><div style="font-size:20px;letter-spacing:0.15em;color:var(--papel-tinta-2)">GRAN SORTEO FINAL</div><div style="font-size:58px;font-weight:700;color:var(--rojo)">1 ticket</div><div style="font-size:20px;color:var(--papel-tinta-2)">por cada 10 cupones</div></div>
+    <div class="a tarjeta" id="s4-meta" style="left:90px;width:900px;top:1130px;padding:34px 40px">
+      <div style="display:flex;justify-content:space-between;font-size:32px;font-weight:700;color:var(--carbon)"><span>Tu meta</span><span id="s4-pct">0 %</span></div>
+      <div style="position:relative;height:30px;border-radius:99px;background:#EEE;margin-top:20px"><i id="s4-barra" style="position:absolute;inset:0;border-radius:99px;background:var(--carbon);transform-origin:left;transform:scaleX(0)"></i><span style="position:absolute;left:80%;top:-12px;bottom:-12px;width:6px;margin-left:-3px;border-radius:4px;background:var(--rojo)"></span><span style="position:absolute;left:80%;top:44px;transform:translateX(-50%);font-size:24px;font-weight:700;color:var(--rojo)">80 %</span></div>
+      <div style="font-size:28px;color:var(--tinta-2);margin-top:56px">Para entrar, vende al menos el <b style="color:var(--carbon)">80 % de tu meta</b></div>
+    </div>
+    <div class="a mini azul" id="s4-austral" style="left:120px;top:1520px;width:180px"><small>AUSTRAL</small><b>+1</b></div>
+    <div class="a paso" id="s4-at" style="left:340px;top:1530px;width:640px;font-size:42px">Cada 100 m² de Austral = <span style="color:#FFE08A">1 ticket extra</span> para el Gran Sorteo Final</div>
+  </section>
+
+  <!-- 5. Registrar una venta -->
+  <section class="escena" id="s5">
+    <div class="a centro titulo" id="s5-t" style="top:110px;font-size:76px">Cómo registrar una venta</div>
+    <div class="a centro paso" id="s5-paso" style="top:250px;padding:0 70px;min-height:200px"></div>
+    <div class="telefono" id="s5-tel"><div class="pantalla">
+      <div class="muesca"></div>
+      <div class="capa" id="s5-panel">
+        <div class="p-barra"><div class="p-marca"><img src="../web/assets/bolsa.svg" width="40">La bolsa de los deseos</div><div class="p-hola">Hola, Ana</div><div class="p-ronda">Ronda 1 de 3 · 15 oct. al 5 nov.</div></div>
+        <div class="p-recibo"><div style="font-size:18px;color:var(--papel-tinta-2)">TUS CUPONES</div><div class="n" id="s5-n">4</div><div class="r"><span>RONDA 1</span><b id="s5-nr">4 cupones</b></div><div class="r" style="margin-top:22px"><span>PRÓXIMO CUPÓN</span><span>$900 de $1.500</span></div><div class="barra-prog"><i id="s5-prog" style="transform:scaleX(.6)"></i></div><div class="r"><span>TICKETS GRAN FINAL</span><b>0</b></div></div>
+        <div class="p-boton" style="top:960px">＋ Registrar venta</div>
+      </div>
+      <div class="capa" id="s5-hojaCapa" style="background:rgb(0 0 0 / 0.4)">
+        <div class="hoja" id="s5-hoja">
+          <div style="width:70px;height:7px;border-radius:9px;background:#DADADA;margin:0 auto"></div>
+          <h4>Registrar venta</h4>
+          <div style="display:flex;gap:16px"><div class="campo" style="flex:1"><label>Día de la venta</label><div class="entrada">13/10/2026</div></div><div class="campo" style="flex:1"><label>N° de factura</label><div class="entrada" id="s5-fac"></div></div></div>
+          <div class="campo"><label>Monto de la venta</label><div class="entrada" id="s5-mon">$ </div><div class="ayuda" id="s5-ay">$2.300,50 · con esta venta <b>completas 2 cupones</b></div></div>
+          <div class="campo"><label>Foto de la factura</label><div class="foto" id="s5-foto"><div class="boton2" id="s5-tomar">📷 Tomar foto</div><div class="boton2">🖼 Galería</div></div></div>
+          <div class="campo"><div class="interruptor"><span>¿Vendiste mercancía Austral?</span><div class="sw" id="s5-sw"><i id="s5-swb"></i></div></div></div>
+          <div class="campo" id="s5-m2c"><label>Metros cuadrados (m²) Austral</label><div class="entrada" id="s5-m2"></div></div>
+          <div class="p-boton" id="s5-enviar" style="position:absolute;bottom:40px">Registrar venta</div>
+        </div>
+      </div>
+      <div class="capa" id="s5-imp">
+        <div class="oscuro"></div>
+        <div class="impresora"></div>
+        <div class="recorte"><div class="ticket" id="s5-ticket">
+          <div class="t1">PROSEIN</div><div class="t2">LA BOLSA DE LOS DESEOS</div><hr>
+          <div class="f"><span>FACTURA</span><span>000123</span></div><div class="f"><span>VENDEDOR</span><span>ANA PÉREZ</span></div><div class="f"><span>RONDA</span><span>RONDA 1</span></div><div class="f"><span>MONTO</span><span>$2.300,50</span></div><hr>
+          <div class="sello" id="s5-sello"><small>CUPONES</small><b>N° 5 al 6</b></div><hr>
+          <div class="f"><span>PRÓXIMO CUPÓN EN</span><span>$299,50</span></div>
+          <div style="text-align:center;font-weight:700;margin-top:14px">¡GRACIAS POR SU VENTA!</div>
+        </div></div>
+      </div>
+      <div class="dedo" id="s5-dedo"></div>
+    </div></div>
+  </section>
+
+  <!-- 6. iPhone -->
+  <section class="escena" id="s6">
+    <div class="a centro titulo" id="s6-t" style="top:110px;font-size:72px">Agrégala a tu inicio</div>
+    <div class="a centro" id="s6-chip" style="top:220px"><span class="chip" style="font-size:38px"> iPhone · Safari</span></div>
+    <div class="a centro paso" id="s6-paso" style="top:330px;padding:0 70px"></div>
+    <div class="telefono" id="s6-tel"><div class="pantalla">
+      <div class="muesca"></div>
+      <div class="capa" style="background:var(--rojo)">
+        <div style="padding:120px 40px 0;color:#fff"><img src="../web/assets/bolsa.svg" width="150"><div class="marca" style="font-size:72px;margin-top:30px">La bolsa<br>de los deseos</div><div style="font-size:24px;margin-top:20px;color:#FFE3E7">Registra tus ventas y llena tu bolsa de cupones.</div></div>
+        <div style="position:absolute;left:0;right:0;top:760px;bottom:0;background:#fff;border-radius:40px 40px 0 0"></div>
+        <div class="url">🔒 samuelherrerak-commits.github.io</div>
+        <div class="safari-bar"><span style="background:#ccc"></span><span style="background:#ccc"></span><span id="s6-share" style="background:none;font-size:46px;line-height:46px;color:#0A84FF;text-align:center">⇪</span><span style="background:#ccc"></span><span style="background:#ccc"></span></div>
+      </div>
+      <div class="capa" id="s6-hoja" style="z-index:6;background:rgb(0 0 0 / 0.3)"><div class="compartir" id="s6-comp">
+        <div style="display:flex;gap:16px;align-items:center;background:#fff;border-radius:18px;padding:18px"><img src="../web/assets/icono-192.png" width="70" style="border-radius:16px"><div><b style="font-size:24px;color:#111">La bolsa de los deseos</b><div style="font-size:18px;color:#777">samuelherrerak-commits.github.io</div></div></div>
+        <div class="fila-c">Copiar <span>⧉</span></div>
+        <div class="fila-c">Agregar a favoritos <span>☆</span></div>
+        <div class="fila-c" id="s6-agregar"><b>Agregar a inicio</b><span style="border:3px solid #111;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:28px">+</span></div>
+        <div class="fila-c">Buscar en la página <span>⌕</span></div>
+      </div></div>
+      <div class="capa" id="s6-conf" style="z-index:7;background:#F2F2F6">
+        <div style="display:flex;justify-content:space-between;padding:90px 30px 0;font-size:26px;color:#0A84FF"><span>Cancelar</span><b style="color:#111">Agregar a inicio</b><b id="s6-btnAg">Agregar</b></div>
+        <div style="margin:40px 30px;background:#fff;border-radius:20px;padding:24px;display:flex;gap:20px;align-items:center"><img src="../web/assets/icono-192.png" width="110" style="border-radius:24px"><div style="font-size:28px;color:#111;border-bottom:2px solid #eee;flex:1;padding-bottom:10px">La bolsa</div></div>
+      </div>
+      <div class="capa inicio" id="s6-inicio"></div>
+      <div class="dedo" id="s6-dedo"></div>
+    </div></div>
+  </section>
+
+  <!-- 7. Android -->
+  <section class="escena" id="s7">
+    <div class="a centro titulo" id="s7-t" style="top:110px;font-size:72px">Agrégala a tu inicio</div>
+    <div class="a centro" id="s7-chip" style="top:220px"><span class="chip" style="font-size:38px">Android · Chrome</span></div>
+    <div class="a centro paso" id="s7-paso" style="top:330px;padding:0 70px"></div>
+    <div class="telefono" id="s7-tel"><div class="pantalla">
+      <div class="capa" style="background:var(--rojo)">
+        <div class="chrome-bar"><div class="u">🔒 samuelherrerak-commits.github.io</div><b id="s7-menu" style="font-size:40px;color:#444">⋮</b></div>
+        <div style="padding:200px 40px 0;color:#fff"><div class="marca" style="font-size:64px">La bolsa<br>de los deseos</div></div>
+        <div style="position:absolute;left:0;right:0;top:560px;bottom:0;background:#fff;border-radius:40px 40px 0 0;padding:40px 34px">
+          <div style="height:70px;border-radius:18px;background:#EFEFEF;margin-bottom:20px"></div>
+          <div style="font-size:20px;color:#333;margin-bottom:8px">Cédula</div><div class="entrada" style="margin-bottom:16px"></div>
+          <div style="font-size:20px;color:#333;margin-bottom:8px">Contraseña</div><div class="entrada"></div>
+          <div class="p-boton" style="position:static;margin-top:26px">Ingresar</div>
+          <div id="s7-boton" style="margin-top:20px;height:80px;border:2px solid #E4E4E4;border-radius:20px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:24px;font-weight:600;color:var(--carbon)">⬇ Agregar la app a tu inicio</div>
+        </div>
+      </div>
+      <div class="capa" id="s7-dlgCapa" style="z-index:6;background:rgb(0 0 0 / 0.45)"><div class="dialogo" id="s7-dlg">
+        <div style="font-size:32px;font-weight:600">¿Instalar app?</div>
+        <div style="display:flex;gap:20px;align-items:center;margin:30px 0"><img src="../web/assets/icono-192.png" width="96" style="border-radius:22px"><div><b style="font-size:28px">La bolsa</b><div style="font-size:20px;color:#666">samuelherrerak-commits.github.io</div></div></div>
+        <div style="display:flex;justify-content:flex-end;gap:40px;font-size:26px;font-weight:600;color:#1A73E8"><span>Cancelar</span><span id="s7-instalar">Instalar</span></div>
+      </div></div>
+      <div class="capa inicio" id="s7-inicio" style="background:linear-gradient(160deg,#0F5132,#1E6F5C 50%,#2B8C7E)"></div>
+      <div class="dedo" id="s7-dedo"></div>
+    </div></div>
+    <div class="a centro sub" id="s7-alt" style="top:1820px;font-size:34px">También: menú ⋮ → «Instalar app»</div>
+  </section>
+
+  <!-- 8. Cierre -->
+  <section class="escena" id="s8">
+    <img class="a" id="s8-bolsa" src="../web/assets/bolsa.svg" style="left:360px;top:440px;width:360px">
+    <div class="a centro marca" id="s8-t" style="top:880px;font-size:120px">¡Llena tu bolsa!</div>
+    <div class="a centro sub" id="s8-s" style="top:1060px">Cada venta te acerca a un premio</div>
+    <div class="a centro" id="s8-url" style="top:1260px"><span class="chip" style="font-size:32px">samuelherrerak-commits.github.io/Concurso</span></div>
+    <div class="a centro" id="s8-copa" style="top:1700px;font-size:34px;font-weight:600;color:#FFE3E7">Copa Prosein · La bolsa de los deseos</div>
+  </section>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const p = (t, a, b) => clamp((t - a) / (b - a));
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const eback = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+function set(el, { o = 1, x = 0, y = 0, s = 1, r = 0 } = {}) {
+  el.style.opacity = o;
+  el.style.transform = `translate(${x}px, ${y}px) scale(${s}) rotate(${r}deg)`;
+}
+/** Entrada con fundido y subida. */
+function entra(el, t, a, { dur = 0.6, dy = 50, sal = 1e9 } = {}) {
+  const k = eo(p(t, a, a + dur));
+  const z = 1 - eo(p(t, sal, sal + 0.4));
+  set(el, { o: k * z, y: (1 - k) * dy - (1 - z) * 30 });
+}
+function pop(el, t, a, dur = 0.55) {
+  const k = p(t, a, a + dur);
+  set(el, { o: clamp(k * 3), s: k === 0 ? 0.4 : 0.4 + 0.6 * eback(k) });
+}
+function texto(el, full, t, a, b) {
+  const n = Math.round(full.length * p(t, a, b));
+  el.textContent = full.slice(0, n);
+}
+/** Dedo que toca: aparece, presiona y se va. */
+function toque(el, t, a, x, y) {
+  const k = p(t, a - 0.45, a);
+  const presion = p(t, a, a + 0.18) - p(t, a + 0.18, a + 0.36);
+  const sale = p(t, a + 0.5, a + 0.8);
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.opacity = eo(k) * (1 - sale);
+  el.style.transform = `scale(${1.25 - 0.25 * eo(k) - 0.18 * presion})`;
+}
+function pasos(el, t, lista) {
+  let actual = null;
+  for (const [desde, txt] of lista) if (t >= desde) actual = [desde, txt];
+  if (!actual) { el.style.opacity = 0; return; }
+  if (el.textContent !== actual[1]) el.textContent = actual[1];
+  const k = eo(p(t, actual[0], actual[0] + 0.45));
+  set(el, { o: k, y: (1 - k) * 30 });
+}
+
+// Nieve determinista
+const copos = Array.from({ length: 46 }, (_, i) => {
+  const r = (n) => { const x = Math.sin(i * 127.1 + n * 311.7) * 43758.5453; return x - Math.floor(x); };
+  const d = document.createElement('div');
+  d.className = 'nieve';
+  const tam = 4 + r(1) * 10;
+  d.style.width = d.style.height = tam + 'px';
+  $('#nieve').append(d);
+  return { d, x: r(2) * 1080, y0: r(3) * 1920, v: 40 + r(4) * 70, amp: 10 + r(5) * 30, f: 0.3 + r(6), o: 0.15 + r(7) * 0.35 };
+});
+
+// Diez mini cupones del Gran Sorteo Final
+for (let i = 0; i < 10; i++) {
+  const m = document.createElement('div');
+  m.className = 'a mini';
+  m.id = 's4-m' + i;
+  m.style.width = '120px';
+  m.style.padding = '12px 6px 14px';
+  m.style.left = (130 + (i % 5) * 170) + 'px';
+  m.style.top = (400 + Math.floor(i / 5) * 150) + 'px';
+  m.innerHTML = `<small style="font-size:13px">CUPÓN</small><b style="font-size:30px">${String(i + 1).padStart(2, '0')}</b>`;
+  $('#s4-diez').append(m);
+}
+
+// Pantalla de inicio con apps genéricas
+function armarInicio(id, img) {
+  const cont = $(id);
+  for (let i = 0; i < 15; i++) {
+    const a = document.createElement('div');
+    a.className = 'app';
+    a.style.left = (40 + (i % 4) * 135) + 'px';
+    a.style.top = (130 + Math.floor(i / 4) * 175) + 'px';
+    if (i === 14) {
+      a.id = id.slice(1) + '-app';
+      a.innerHTML = `<img src="../web/assets/icono-192.png">La bolsa`;
+    } else a.innerHTML = '<i></i>';
+    cont.append(a);
+  }
+}
+armarInicio('#s6-inicio');
+armarInicio('#s7-inicio');
+
+const ESCENAS = [
+  ['#s1', 0, 5], ['#s2', 5, 16.5], ['#s3', 16.5, 28.5], ['#s4', 28.5, 41], ['#s5', 41, 66],
+  ['#s6', 66, 78], ['#s7', 78, 89], ['#s8', 89, 95],
+];
+const DURACION = 95;
+
+function render(T) {
+  copos.forEach((c) => {
+    const y = (c.y0 + T * c.v) % 1980 - 30;
+    c.d.style.transform = `translate(${c.x + Math.sin(T * c.f + c.y0) * c.amp}px, ${y}px)`;
+    c.d.style.opacity = c.o;
+  });
+  for (const [sel, a, b] of ESCENAS) {
+    const el = $(sel);
+    const vis = (T >= a - 0.01 && T < b + 0.35);
+    el.style.display = vis ? 'block' : 'none';
+    if (!vis) continue;
+    el.style.opacity = eo(p(T, a, a + 0.35)) * (1 - p(T, b, b + 0.35));
+    const t = T - a;
+    ({ '#s1': s1, '#s2': s2, '#s3': s3, '#s4': s4, '#s5': s5, '#s6': s6, '#s7': s7, '#s8': s8 })[sel](t);
+  }
+}
+
+function s1(t) {
+  const k = p(t, 0.2, 1.3);
+  set($('#s1-bolsa'), { o: clamp(k * 4), y: -700 * (1 - eback(k)), r: Math.sin(t * 2.4) * 4 * p(t, 1.0, 1.6) });
+  entra($('#s1-titulo'), t, 1.2);
+  entra($('#s1-sub'), t, 1.8);
+  entra($('#s1-chip'), t, 2.6);
+}
+
+function s2(t) {
+  entra($('#s2-t'), t, 0.1);
+  entra($('#s2-s'), t, 0.5);
+  pop($('#s2-bolsa'), t, 0.8);
+  let n = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = 2 + i * 0.9;
+    const k = p(t, a, a + 0.8);
+    const el = $('#s2-c' + (i + 1));
+    const dentro = k >= 1;
+    if (dentro) n++;
+    set(el, { o: k === 0 ? 0 : 1 - p(k, 0.75, 1), y: -420 + 720 * eio(k), r: (i % 2 ? 12 : -12) * (1 - k), s: 1 - 0.5 * p(k, 0.6, 1) });
+  }
+  $('#s2-n').textContent = String(n);
+  const golpe = [2.8, 3.7, 4.6, 5.5].reduce((acc, a) => acc + (p(t, a, a + 0.12) - p(t, a + 0.12, a + 0.3)), 0);
+  if (t > 1.4) set($('#s2-bolsa'), { s: 1 + 0.05 * golpe, y: 6 * golpe });
+  entra($('#s2-cuenta'), t, 2);
+  entra($('#s2-r1'), t, 6.4);
+  entra($('#s2-r2'), t, 7);
+  entra($('#s2-r3'), t, 8.6);
+}
+
+function s3(t) {
+  entra($('#s3-t'), t, 0.1);
+  ['#s3-r1', '#s3-r2', '#s3-r3', '#s3-r4'].forEach((s, i) => entra($(s), t, 1 + i * 0.7, { dy: 80 }));
+  entra($('#s3-p1'), t, 4.6);
+  entra($('#s3-p2'), t, 7.6);
+}
+
+function s4(t) {
+  entra($('#s4-t'), t, 0.1);
+  entra($('#s4-f'), t, 0.5);
+  for (let i = 0; i < 10; i++) {
+    const el = $('#s4-m' + i);
+    const k = p(t, 1 + i * 0.12, 1.4 + i * 0.12);
+    const junta = eio(p(t, 3.2, 4));
+    const dx = (540 - 60 - (130 + (i % 5) * 170)) * junta;
+    const dy = (860 - (400 + Math.floor(i / 5) * 150)) * junta;
+    set(el, { o: eo(k) * (1 - p(t, 3.8, 4.1)), x: dx, y: dy + (1 - eo(k)) * 40, s: 1 - 0.4 * junta });
+  }
+  pop($('#s4-final'), t, 3.9, 0.6);
+  entra($('#s4-igual'), t, 3.6, { sal: 5.2 });
+  entra($('#s4-meta'), t, 5.4, { dy: 80 });
+  const fill = 0.86 * eio(p(t, 6.2, 8));
+  $('#s4-barra').style.transform = `scaleX(${fill})`;
+  $('#s4-pct').textContent = `${Math.round(fill * 100)} %`;
+  pop($('#s4-austral'), t, 8.8);
+  entra($('#s4-at'), t, 9.1);
+}
+
+function s5(t) {
+  entra($('#s5-t'), t, 0.1);
+  set($('#s5-tel'), { o: eo(p(t, 0.3, 1)), y: (1 - eo(p(t, 0.3, 1))) * 200 });
+  pasos($('#s5-paso'), t, [
+    [0.8, '1. Entra con tu cédula y toca «Registrar venta»'],
+    [4, '2. Día, número de factura y monto'],
+    [9.6, '3. Toma la foto de la factura'],
+    [12.6, '4. ¿Vendiste Austral? Actívalo y escribe los m²'],
+    [16, '5. Toca «Registrar venta»'],
+    [18, '¡Listo! Tu cupón sale impreso'],
+    [22.2, 'Lo verás en «Mis cupones» y puedes descargarlo'],
+  ]);
+  const dedo = $('#s5-dedo');
+  dedo.style.opacity = 0;
+  if (t < 3.4) toque(dedo, t, 2.4, 282, 1006);
+
+  // Hoja del formulario
+  const sube = eo(p(t, 2.9, 3.5));
+  const baja = p(t, 17, 17.4);
+  $('#s5-hojaCapa').style.display = sube > 0 && baja < 1 ? 'block' : 'none';
+  $('#s5-hojaCapa').style.background = `rgb(0 0 0 / ${0.4 * sube * (1 - baja)})`;
+  $('#s5-hoja').style.transform = `translateY(${(1 - sube) * 960 + baja * 960}px)`;
+  texto($('#s5-fac'), '000123', t, 4.6, 5.6);
+  $('#s5-fac').classList.toggle('activa', t > 4.4 && t < 5.9);
+  $('#s5-mon').textContent = '$ ' + '2.300,50'.slice(0, Math.round(8 * p(t, 6.1, 7.3)));
+  $('#s5-mon').classList.toggle('activa', t > 5.9 && t < 7.8);
+  $('#s5-ay').style.opacity = eo(p(t, 7.5, 8));
+  if (t > 9.2 && t < 10.6) toque(dedo, t, 10.1, 160, 680);
+  const foto = p(t, 10.5, 10.9);
+  $('#s5-foto').innerHTML = foto > 0
+    ? `<div style="width:90px;height:110px;border-radius:12px;background:linear-gradient(135deg,#eee,#ccc);opacity:${foto}"></div><div style="font-size:20px;color:#555;opacity:${foto}"><b style="color:#111">Foto lista</b><br>1280 × 960 px · 240 KB</div>`
+    : '<div class="boton2">📷 Tomar foto</div><div class="boton2">🖼 Galería</div>';
+  if (t > 12.6 && t < 13.6) toque(dedo, t, 13.2, 478, 790);
+  const on = eo(p(t, 13.25, 13.5));
+  $('#s5-sw').style.background = on ? `rgb(${210 - 199 * on} ${210 - 118 * on} ${210 + 3 * on})` : '#D2D2D2';
+  $('#s5-swb').style.transform = `translateX(${30 * on}px)`;
+  $('#s5-m2c').style.opacity = eo(p(t, 13.5, 13.9));
+  $('#s5-m2').textContent = '42,5'.slice(0, Math.round(4 * p(t, 14.2, 15))) + (t > 14.2 ? ' m²' : '');
+  $('#s5-m2').classList.toggle('activa', t > 14 && t < 15.4);
+  if (t > 16 && t < 17.2) toque(dedo, t, 16.7, 282, 1100);
+
+  // Impresora
+  const imp = p(t, 17.3, 17.7);
+  $('#s5-imp').style.display = imp > 0 ? 'block' : 'none';
+  $('#s5-imp').style.opacity = eo(imp);
+  const sale = eio(p(t, 17.9, 20));
+  $('#s5-ticket').style.transform = `translateY(${(sale - 1) * 900}px)`;
+  const s = p(t, 20.1, 20.5);
+  $('#s5-sello').style.opacity = s > 0 ? 1 : 0;
+  $('#s5-sello').style.transform = `rotate(${-16 + 9 * eo(s)}deg) scale(${1.7 - 0.7 * eback(s)})`;
+  // El panel cuenta 6 cupones después
+  $('#s5-n').textContent = t > 20.3 ? '6' : '4';
+  $('#s5-nr').textContent = t > 20.3 ? '6 cupones' : '4 cupones';
+}
+
+function s6(t) {
+  entra($('#s6-t'), t, 0.1);
+  entra($('#s6-chip'), t, 0.4);
+  set($('#s6-tel'), { o: eo(p(t, 0.3, 1)), y: (1 - eo(p(t, 0.3, 1))) * 200 });
+  pasos($('#s6-paso'), t, [
+    [1, '1. En Safari, toca Compartir'],
+    [3.4, '2. Elige «Agregar a inicio»'],
+    [5.6, '3. Toca «Agregar»'],
+    [8, '¡Listo! Ábrela desde tu pantalla de inicio'],
+  ]);
+  const dedo = $('#s6-dedo');
+  dedo.style.opacity = 0;
+  if (t < 3) toque(dedo, t, 2.2, 282, 1108);
+  const hoja = eo(p(t, 2.5, 3.1));
+  $('#s6-hoja').style.display = hoja > 0 && t < 6 ? 'block' : 'none';
+  $('#s6-comp').style.transform = `translateY(${(1 - hoja) * 700}px)`;
+  if (t > 3.6 && t < 5) toque(dedo, t, 4.5, 282, 960);
+  const conf = p(t, 4.9, 5.2);
+  $('#s6-conf').style.display = conf > 0 && t < 7.6 ? 'block' : 'none';
+  $('#s6-conf').style.opacity = eo(conf);
+  if (t > 5.8 && t < 7.4) toque(dedo, t, 6.8, 500, 112);
+  const ini = p(t, 7.3, 7.7);
+  $('#s6-inicio').style.display = ini > 0 ? 'block' : 'none';
+  $('#s6-inicio').style.opacity = eo(ini);
+  pop($('#s6-inicio-app'), t, 7.9, 0.6);
+}
+
+function s7(t) {
+  entra($('#s7-t'), t, 0.1);
+  entra($('#s7-chip'), t, 0.4);
+  set($('#s7-tel'), { o: eo(p(t, 0.3, 1)), y: (1 - eo(p(t, 0.3, 1))) * 200 });
+  pasos($('#s7-paso'), t, [
+    [1, '1. Toca «Agregar la app a tu inicio»'],
+    [3.6, '2. Confirma con «Instalar»'],
+    [6.2, '¡Listo! Ya la tienes en tu inicio'],
+  ]);
+  const dedo = $('#s7-dedo');
+  dedo.style.opacity = 0;
+  if (t < 3) toque(dedo, t, 2.2, 282, 1132);
+  const d = p(t, 2.6, 3);
+  $('#s7-dlgCapa').style.display = d > 0 && t < 5.6 ? 'block' : 'none';
+  $('#s7-dlgCapa').style.opacity = eo(d);
+  set($('#s7-dlg'), { s: 0.9 + 0.1 * eo(d) });
+  if (t > 3.8 && t < 5.4) toque(dedo, t, 4.8, 456, 706);
+  const ini = p(t, 5.4, 5.8);
+  $('#s7-inicio').style.display = ini > 0 ? 'block' : 'none';
+  $('#s7-inicio').style.opacity = eo(ini);
+  pop($('#s7-inicio-app'), t, 6, 0.6);
+  entra($('#s7-alt'), t, 7.4);
+}
+
+function s8(t) {
+  pop($('#s8-bolsa'), t, 0.1, 0.7);
+  if (t > 0.8) set($('#s8-bolsa'), { r: Math.sin(t * 3) * 4 });
+  entra($('#s8-t'), t, 0.6);
+  entra($('#s8-s'), t, 1.1);
+  entra($('#s8-url'), t, 1.6);
+  entra($('#s8-copa'), t, 2.2);
+}
+
+window.DURACION = DURACION;
+window.render = render;
+render(0);
+</script>
+</body>
+</html>
