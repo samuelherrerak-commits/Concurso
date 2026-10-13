@@ -2,10 +2,10 @@
  * Cupones de La bolsa de los deseos listos para imprimir (solo administradores).
  * Hoja carta, 24 cupones por hoja (3 × 8), líneas punteadas para recortar.
  * Cada sorteo empieza en una hoja nueva. Los del Gran Sorteo Final llevan una
- * banda roja y los del viaje una banda negra, para no mezclarlos.
+ * banda roja; los tickets Austral (en la misma bolsa del final) una banda negra.
  */
 import { llamar, sesion } from './api.js';
-import { $, h, svgEl } from './dom.js';
+import { $, h } from './dom.js';
 import { fechaCorta, fechaHora } from './formato.js';
 
 const POR_HOJA = 24;
@@ -15,27 +15,22 @@ function cedulaConPuntos(c) {
   return String(c).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function avion() {
-  const svg = svgEl('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', class: 'avion' });
-  svg.append(svgEl('path', { d: 'M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z' }));
-  return svg;
-}
-
-function cabecera(bolsa) {
-  if (bolsa.tipo === 'austral') return h('div', { class: 'boleto__banda' }, avion(), h('span', {}, 'VIAJE TODO INCLUIDO'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
+function cabecera(bolsa, c) {
+  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'GRAN FINAL · TICKET AUSTRAL'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
   if (bolsa.tipo === 'final') return h('div', { class: 'boleto__banda boleto__banda--final' }, h('span', {}, 'GRAN SORTEO FINAL'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
   return h('div', { class: 'boleto__cab' }, h('span', { class: 'boleto__marca' }, 'PROSEIN'), h('span', {}, bolsa.nombre.toUpperCase()));
 }
 
 function pie(c, bolsa) {
+  if (c.origen === 'austral') return `Fact. ${c.factura} · ${fechaCorta(c.dia_venta)} · Austral N° ${c.n}`;
   if (bolsa.tipo === 'final') return `Cupón final ${c.n} de ${c.de} · ${fechaCorta(bolsa.fecha)}`;
   return `Fact. ${c.factura} · ${fechaCorta(c.dia_venta)} · N° ${c.n}`;
 }
 
 function boleto(c, bolsa) {
-  const clase = bolsa.tipo === 'austral' ? ' boleto--viaje' : bolsa.tipo === 'final' ? ' boleto--final' : '';
+  const clase = c.origen === 'austral' ? ' boleto--viaje' : bolsa.tipo === 'final' ? ' boleto--final' : '';
   return h('div', { class: 'boleto' + clase },
-    cabecera(bolsa),
+    cabecera(bolsa, c),
     h('div', { class: 'boleto__codigo' }, c.codigo),
     h('div', { class: 'boleto__nombre' }, c.vendedor),
     h('div', { class: 'boleto__dato' }, `C.I. ${cedulaConPuntos(c.cedula)}${c.sucursal ? ' · ' + c.sucursal : ''}`),

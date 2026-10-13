@@ -9,7 +9,8 @@
  *  - El sello entra con escala + rotación, como un sello de goma.
  *  - prefers-reduced-motion: sin impresión ni rotación, solo un fundido.
  *
- * Hay dos tipos de ticket: el cupón normal (rojo) y el cupón del viaje (Austral, azul).
+ * Hay dos tipos de ticket: el cupón normal (rojo) y el ticket Austral (azul), que es
+ * un ticket adicional para el Gran Sorteo Final.
  */
 import { $, h, icono, svgEl, prepararDialogo, reducirMovimiento, esperar } from './dom.js';
 import { dinero, plural, decimal } from './formato.js';
@@ -65,7 +66,7 @@ export function contenidoTicket(d) {
   const rango = d.hasta && d.hasta > d.n;
   const filas = [
     { t: 'marca', texto: 'PROSEIN' },
-    { t: 'sub', texto: austral ? 'VIAJE TODO INCLUIDO' : 'LA BOLSA DE LOS DESEOS' },
+    { t: 'sub', texto: austral ? 'GRAN SORTEO FINAL' : 'LA BOLSA DE LOS DESEOS' },
     { t: 'corte' },
     { t: 'fila', a: 'FECHA', b: d.fechaHora },
     { t: 'fila', a: 'FACTURA', b: d.factura },
@@ -77,16 +78,16 @@ export function contenidoTicket(d) {
   else if (d.monto !== null && d.monto !== undefined) filas.push({ t: 'fila', a: 'MONTO', b: dinero(d.monto) });
   filas.push(
     { t: 'corte' },
-    { t: 'sello', arriba: austral ? (rango ? 'CUPONES VIAJE' : 'CUPÓN VIAJE') : (rango ? 'CUPONES' : 'CUPÓN'), abajo: rango ? `N° ${d.n} al ${d.hasta}` : `N° ${d.n}` },
+    { t: 'sello', arriba: austral ? (rango ? 'TICKETS AUSTRAL' : 'TICKET AUSTRAL') : (rango ? 'CUPONES' : 'CUPÓN'), abajo: rango ? `N° ${d.n} al ${d.hasta}` : `N° ${d.n}` },
     { t: 'corte' },
   );
   if (austral) {
-    filas.push({ t: 'fila', a: 'M² ACUMULADOS', b: `${decimal(d.m2Acumulado)} m²` }, { t: 'fila', a: 'PRÓXIMO CUPÓN EN', b: `${decimal(d.m2Falta)} m²` });
+    filas.push({ t: 'fila', a: 'M² ACUMULADOS', b: `${decimal(d.m2Acumulado)} m²` }, { t: 'fila', a: 'PRÓXIMO TICKET EN', b: `${decimal(d.m2Falta)} m²` });
   } else {
     filas.push({ t: 'fila', a: 'ACUMULADO', b: dinero(d.acumulado) }, { t: 'fila', a: 'PRÓXIMO CUPÓN EN', b: dinero(d.falta) });
   }
   filas.push(
-    { t: 'barras', semilla: `${d.factura}-${austral ? 'V' : ''}${d.n}`, codigo: `${austral ? 'CV' : 'CP'} ${String(d.n).padStart(4, '0')}` },
+    { t: 'barras', semilla: `${d.factura}-${austral ? 'V' : ''}${d.n}`, codigo: `${austral ? 'TA' : 'CP'} ${String(d.n).padStart(4, '0')}` },
     { t: 'gracias', texto: '¡GRACIAS POR SU VENTA!' },
   );
   return filas;
@@ -108,22 +109,22 @@ export function crearTicket(d) {
     }
   });
   const etiqueta = austral
-    ? (rango ? `Cupones del viaje ${d.n} al ${d.hasta}` : `Cupón del viaje número ${d.n}, factura ${d.factura}`)
+    ? (rango ? `Tickets Austral ${d.n} al ${d.hasta}` : `Ticket Austral número ${d.n}, factura ${d.factura}`)
     : (rango ? `Cupones ${d.n} al ${d.hasta}` : `Cupón número ${d.n}, factura ${d.factura}`);
   return h('div', { class: 'ticket sombra-papel' + (austral ? ' ticket--austral' : ''), role: 'img', 'aria-label': etiqueta }, h('div', { class: 'papel' }, nodos));
 }
 
-/** Mini ticket tocable para "Mis cupones" y "Viaje todo incluido". */
+/** Mini ticket tocable para "Mis cupones" y "Tickets Austral". */
 export function crearMini({ n, titulo, dia, factura, nuevo, tipo, alTocar }) {
   const austral = tipo === 'austral';
   return h('button', {
     type: 'button',
     class: 'mini sombra-papel' + (nuevo ? ' mini--nuevo' : '') + (austral ? ' mini--austral' : ''),
-    'aria-label': `Ver ${austral ? 'cupón del viaje' : 'cupón'} número ${n}, factura ${factura}`,
+    'aria-label': `Ver ${austral ? 'ticket Austral' : 'cupón'} número ${n}, factura ${factura}`,
     onclick: alTocar,
   },
   h('span', { class: 'papel' },
-    h('span', { class: 'mini__titulo' }, austral ? 'VIAJE' : titulo || 'CUPÓN'),
+    h('span', { class: 'mini__titulo' }, austral ? 'AUSTRAL' : titulo || 'CUPÓN'),
     h('span', { class: 'mini__n' }, `N° ${String(n).padStart(2, '0')}`),
     h('span', { class: 'mini__dato' }, dia),
     h('span', { class: 'mini__dato', title: factura }, `Fact. ${factura}`)));
@@ -247,7 +248,7 @@ function preparar() {
  *   tickets: datos de cada ticket (vacío = confirmación sobria)
  *   cuponesAntes, cuponesDespues, progresoAntes, progresoDespues (0..1)
  *   titulo, mensaje (nodos o texto), modo: 'cupon' | 'sobrio' | 'pendiente'
- *   etiqueta: texto del contador ('Tus cupones' por defecto), variante: 'austral' para el viaje
+ *   etiqueta: texto del contador ('Tus cupones' por defecto), variante: 'austral' para los tickets Austral
  */
 export function mostrarImpresora(o) {
   const ctl = preparar();
@@ -358,8 +359,8 @@ export function mensajeMarcador({ nuevos, falta }) {
 
 export function mensajeViaje({ nuevos, falta, participa, porcentaje }) {
   const partes = [];
-  if (nuevos > 0) partes.push(h('strong', {}, nuevos === 1 ? '¡Un cupón más para el viaje! ' : `¡${plural(nuevos, 'cupón', 'cupones')} más para el viaje! `));
+  if (nuevos > 0) partes.push(h('strong', {}, nuevos === 1 ? '¡Un ticket más para el Gran Sorteo Final! ' : `¡${plural(nuevos, 'ticket', 'tickets')} más para el Gran Sorteo Final! `));
   partes.push('Te faltan ', h('strong', {}, `${decimal(falta)} m²`), ' de Austral para el próximo.');
-  if (!participa && porcentaje) partes.push(` Para entrar al sorteo necesitas el ${decimal(porcentaje)} % de tu meta.`);
+  if (!participa && porcentaje) partes.push(` Cuentan si llegas al ${decimal(porcentaje)} % de tu meta.`);
   return partes;
 }

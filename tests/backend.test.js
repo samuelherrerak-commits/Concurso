@@ -421,7 +421,7 @@ test('addSale devuelve lo necesario para imprimir los tickets', () => {
   assert.match(archivo.getName(), /^30111222_2_\d+\.jpg$/);
 });
 
-test('cupones del viaje: 1 por cada 100 m² de Austral, el sobrante se acumula', () => {
+test('tickets Austral: 1 por cada 100 m², el sobrante se acumula', () => {
   const e = entorno();
   const t = e.registrar('31111222');
   const a = e.vender(t, { dia: e.hoy, factura: 'AU-1', monto: 900, m2: 60 });
@@ -436,7 +436,9 @@ test('cupones del viaje: 1 por cada 100 m² de Austral, el sobrante se acumula',
 
   const d = e.api('getDashboard', { token: t }).data;
   assert.equal(d.resumen.austral.cupones, 2);
-  assert.equal(d.resumen.austral.participa, true, 'por defecto todos entran al viaje');
+  assert.equal(d.resumen.austral.participa, true, 'sin meta definida, los tickets entran al final');
+  assert.equal(d.resumen.final.austral, 2);
+  assert.equal(d.resumen.final.total, 2, '0 cupones finales + 2 tickets Austral');
   assert.equal(d.cupones_austral[0].m2_falta, 94.5);
 
   const e2 = entorno({ config: { m2_por_cupon_austral: 50 } });
@@ -615,7 +617,7 @@ test('Gran Sorteo Final: 1 cupón cada 10, solo con el 80 % de la meta de su tie
   let r = e.api('getDashboard', { token: a }).data.resumen;
   assert.equal(r.cupones, 10);
   assert.deepEqual(plano(r.meta), { definida: true, meta: 20000, vendido: 15000, avance: 0.75, porcentaje_requerido: 80, requerido: 16000, falta: 1000, cumple: false });
-  assert.deepEqual(plano(r.final), { cupones: 0, posibles: 1, por_cada: 10, faltan_para_proximo: 10, cumple: false });
+  assert.deepEqual(plano(r.final), { cupones: 0, austral: 0, total: 0, posibles: 1, por_cada: 10, faltan_para_proximo: 10, cumple: false });
 
   // $1.000 más llega al 80 %.
   const v = e.vender(a, { dia: e.hoy, factura: 'GF2', monto: 1000 });
@@ -641,30 +643,30 @@ test('Gran Sorteo Final: 1 cupón cada 10, solo con el 80 % de la meta de su tie
   assert.equal(r.final.posibles, 2);
 });
 
-test('bolsas: cada ronda con sus cupones, La Ñapa sin sorteo, el final y el viaje', () => {
+test('bolsas: cada ronda con sus cupones, La Ñapa sin sorteo y el final con los tickets Austral', () => {
   const e = entorno({ inicioHaceDias: 30 });
   e.canal('Tienda', 'Boleíta', { meta: 10000 });
   const a = e.registrar('20400001', { nombre: 'Ana', apellido: 'Uno' });
   const b = e.registrar('20400002', { nombre: 'Beto', apellido: 'Dos' });
-  e.vender(a, { dia: e.dia(1), factura: 'BA1', monto: 4500, m2: 230 }); // ronda 1: 3 cupones, 2 del viaje
+  e.vender(a, { dia: e.dia(1), factura: 'BA1', monto: 4500, m2: 230 }); // ronda 1: 3 cupones y 2 tickets Austral
   e.vender(a, { dia: e.dia(8), factura: 'BA2', monto: 1500 }); // ronda 2: 1
   e.vender(a, { dia: e.dia(29), factura: 'BA3', monto: 9000 }); // La Ñapa: 6 → 10 en total
-  e.vender(b, { dia: e.dia(15), factura: 'BB1', monto: 3000, m2: 100 }); // ronda 3: 2, no llega a la meta
+  e.vender(b, { dia: e.dia(15), factura: 'BB1', monto: 3000, m2: 100 }); // ronda 3: 2 y 1 ticket, no llega a la meta
 
-  const cfg = e.gas.leerConfig_();
-  const bolsas = plano(e.gas.armarBolsas_(e.stats(), e.gas.leerUsuarios_(), cfg));
+  const bolsas = plano(e.gas.armarBolsas_(e.stats(), e.gas.leerUsuarios_(), e.gas.leerConfig_()));
   assert.deepEqual(bolsas.map((x) => [x.id, x.nombre, x.cupones.length]), [
-    ['r1', 'Ronda 1', 3], ['r2', 'Ronda 2', 1], ['r3', 'Ronda 3', 2], ['final', 'Gran Sorteo Final', 1], ['viaje', 'Viaje todo incluido', 3],
+    ['r1', 'Ronda 1', 3], ['r2', 'Ronda 2', 1], ['r3', 'Ronda 3', 2], ['final', 'Gran Sorteo Final', 3],
   ]);
   assert.equal(bolsas[0].cupones[0].codigo, 'R1-0001');
   assert.equal(bolsas[0].cupones[0].sucursal, 'Boleíta');
-  assert.deepEqual(bolsas[3].cupones.map((c) => [c.codigo, c.cedula]), [['F-0001', '20400001']], 'Beto no llega al 80 % de su meta');
-  assert.equal(bolsas[4].cupones.at(-1).codigo, 'V-0003');
+  assert.deepEqual(bolsas[3].cupones.map((c) => [c.codigo, c.cedula, c.origen]), [
+    ['F-0001', '20400001', 'cupones'], ['F-0002', '20400001', 'austral'], ['F-0003', '20400001', 'austral'],
+  ], '1 cupón final (10 cupones) + 2 tickets Austral; Beto no llega al 80 % de su meta');
   assert.equal(bolsas[0].fecha, e.dia(10), 'cada bolsa trae la fecha de su sorteo');
 
-  e.gas.escribirConfig_('viaje_requiere_meta', 'SI');
-  const viaje = plano(e.gas.armarBolsas_(e.stats(), e.gas.leerUsuarios_(), e.gas.leerConfig_())).at(-1);
-  assert.equal(viaje.cupones.length, 2, 'con viaje_requiere_meta = SI, Beto queda fuera del viaje');
+  e.gas.escribirConfig_('austral_requiere_meta', 'NO');
+  const final = plano(e.gas.armarBolsas_(e.stats(), e.gas.leerUsuarios_(), e.gas.leerConfig_())).at(-1);
+  assert.equal(final.cupones.length, 4, 'con austral_requiere_meta = NO, el ticket de Beto también entra');
 });
 
 test('ranking de la ronda en el portal, sin cédulas', () => {
@@ -705,7 +707,7 @@ test('menús: cupones para sorteo en la hoja Ranking, resultado de una ronda y r
   const resumen = e.servicios.ui.alertas.at(-1).msg;
   assert.match(resumen, /La bolsa de los deseos/);
   assert.match(resumen, /Ronda 2 \([^)]*\): 1 cupones de 1 vendedores/);
-  assert.match(resumen, /Viaje todo incluido[^\n]*: 1 cupones/);
+  assert.match(resumen, /Gran Sorteo Final[^\n]*: 1 cupones/);
 });
 
 // ------------------------------------------------------------
@@ -735,7 +737,7 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   assert.equal(res.data.totales.cumplen_meta, 2, '$15.000 cumple; $3.000 no llega al 80 % de $5.000; Distribuidor sin meta cumple');
   assert.equal(res.data.totales.cupones_final, 1);
   assert.equal(res.data.rondas.length, 4);
-  assert.deepEqual(plano(res.data.bolsas.map((b) => b.id)), ['r1', 'r2', 'r3', 'final', 'viaje']);
+  assert.deepEqual(plano(res.data.bolsas.map((b) => b.id)), ['r1', 'r2', 'r3', 'final']);
   const boleita = res.data.canales.find((c) => c.nombre === 'Boleíta');
   assert.deepEqual([boleita.vendedores, boleita.meta, boleita.cumplen, boleita.monto_por_cupon], [2, 5000, 1, 1500]);
   assert.equal(res.data.canales.find((c) => c.nombre === 'Distribuidores').vendedores, 1);
@@ -759,7 +761,7 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   assert.equal(bolsa.bolsas.length, 1);
   assert.equal(bolsa.bolsas[0].cupones.length, 10);
   assert.equal(bolsa.sorteo, 'La bolsa de los deseos');
-  assert.equal(e.api('adminCupones', { token: admin }).data.bolsas.length, 5, 'sin bolsa: todas');
+  assert.equal(e.api('adminCupones', { token: admin }).data.bolsas.length, 4, 'sin bolsa: todas');
   assert.equal(e.api('adminCupones', { token: admin, bolsa: 'nada' }).code, 'NOT_FOUND');
 
   assert.equal(e.api('getPhoto', { token: admin, id: ventas.ventas[0].id }).ok, true, 'puede ver cualquier foto');

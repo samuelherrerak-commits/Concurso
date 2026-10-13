@@ -1117,7 +1117,7 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .urna__cifra strong { font-size: 32px; font-weight: 600; line-height: 1.15; color: var(--carbon); }
 .urna__sub { font-size: 13px; color: var(--tinta-2); }
 .urna .btn { justify-self: start; margin-top: var(--s2); }
-@media (min-width: 1080px) { .urnas--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1080px) { .urnas--5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .urnas--5 .urna__cab { flex-direction: column; align-items: flex-start; gap: 2px; }
 .urnas--5 .urna__cab span { white-space: normal; }
 .urna--final .urna__cab { margin: calc(var(--s4) * -1) calc(var(--s4) * -1) 0; padding: var(--s4) var(--s4) 10px; background: var(--rojo); }

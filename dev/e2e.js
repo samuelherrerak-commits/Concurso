@@ -145,7 +145,7 @@ async function continuarImpresora(page) {
   await captura(page, '10-sobria');
   await continuarImpresora(page);
 
-  paso('Venta con varios cupones y un cupón del viaje (Austral)');
+  paso('Venta con varios cupones y un ticket Austral');
   await registrarVenta(page, { factura: 'B-2001', monto: 6100, m2: 80 });
   await page.click('#v-enviar');
   await page.waitForSelector('#dlg-impresora[open]');
@@ -153,13 +153,13 @@ async function continuarImpresora(page) {
   await captura(page, '11-varios-a');
   await page.waitForTimeout(2200);
   await captura(page, '11-varios-b');
-  // Al continuar, la misma impresora vuelve a abrirse con el papel azul del viaje.
+  // Al continuar, la misma impresora vuelve a abrirse con el papel azul del ticket Austral.
   await page.waitForSelector('#impresora-continuar:not([disabled])');
   await page.click('#impresora-continuar');
   await page.waitForSelector('#dlg-impresora.impresora--austral[data-abierto]');
   await page.waitForTimeout(2600);
-  comprobar((await page.textContent('#impresora-etiqueta')) === 'Cupones del viaje', 'contador del viaje');
-  await captura(page, '11-viaje');
+  comprobar((await page.textContent('#impresora-etiqueta')) === 'Tickets Austral', 'contador de tickets Austral');
+  await captura(page, '11-austral');
   await continuarImpresora(page);
   await page.waitForTimeout(500);
   await captura(page, '12-panel-final', { fullPage: true });
@@ -181,7 +181,7 @@ async function continuarImpresora(page) {
   await page.locator('#viaje button.mini').first().click();
   await page.waitForSelector('#dlg-cupon[data-abierto]');
   await page.waitForTimeout(400);
-  await captura(page, '13b-ver-cupon-viaje');
+  await captura(page, '13b-ver-ticket-austral');
   const [descargaViaje] = await Promise.all([page.waitForEvent('download'), page.click('#cupon-descargar')]);
   await descargaViaje.saveAs(path.join(OUT, descargaViaje.suggestedFilename()));
   await page.keyboard.press('Escape');
@@ -281,10 +281,10 @@ async function continuarImpresora(page) {
   await pi.waitForTimeout(500);
   await pi.screenshot({ path: path.join(OUT, '25-imprimir.png') });
   const urnas = await pi.$$eval('#urna option', (o) => o.map((x) => x.value));
-  comprobar(urnas.join() === 'todas,r1,r2,r3,final,viaje', 'bolsas ' + urnas.join());
-  await pi.selectOption('#urna', 'viaje');
+  comprobar(urnas.join() === 'todas,r1,r2,r3,final', 'bolsas ' + urnas.join());
+  await pi.selectOption('#urna', 'final');
   await pi.waitForTimeout(200);
-  await pi.screenshot({ path: path.join(OUT, '25b-imprimir-viaje.png') });
+  await pi.screenshot({ path: path.join(OUT, '25b-imprimir-final.png') });
   await pi.selectOption('#urna', 'todas');
   await pi.emulateMedia({ media: 'print' });
   await pi.pdf({ path: path.join(OUT, 'cupones.pdf'), format: 'Letter', printBackground: true, preferCSSPageSize: true });

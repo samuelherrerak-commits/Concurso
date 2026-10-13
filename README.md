@@ -4,9 +4,9 @@ Portal web para el concurso interno de ventas de Prosein (fin de año 2026). Cad
 
 - se registra con su **cédula**, una contraseña y su **canal de ventas** (Tiendas, Distribuidores o Corporativo; en Tiendas también elige su tienda),
 - carga sus ventas (día, número de factura, monto, **foto de la factura** y, si vendió Austral, los **m²**),
-- ve sus **cupones** de cada ronda, el avance de su **meta**, sus cupones para el **Gran Sorteo Final**, sus **cupones del viaje** (Austral) y el ranking.
+- ve sus **cupones** de cada ronda, el avance de su **meta**, sus cupones para el **Gran Sorteo Final**, sus **tickets Austral** y el ranking.
 
-Cuando una venta completa un cupón, el portal **imprime un ticket de supermercado** con el número del cupón (rojo; los del viaje salen en tinta azul). Después, tocando cualquier cupón en "Mis cupones", el vendedor lo vuelve a ver sin animación y lo **descarga como imagen**.
+Cuando una venta completa un cupón, el portal **imprime un ticket de supermercado** con el número del cupón (rojo; los tickets Austral salen en tinta azul). Después, tocando cualquier cupón en "Mis cupones", el vendedor lo vuelve a ver sin animación y lo **descarga como imagen**.
 
 Hay además una cuenta de **administrador** (la agregas a mano en la hoja Usuarios) para **auditar todo** desde el portal e **imprimir los cupones** de cada sorteo para meterlos en la bolsa.
 
@@ -43,7 +43,7 @@ Los números se cambian en la hoja **Configuracion**, las fechas en **Rondas** y
 | **Corte** | Cada ronda cierra el día siguiente a su último día a las **3:00 p. m.** (por ejemplo, la Ronda 1 el viernes 6/11). Después del corte no se cargan ventas con fecha de esa ronda. |
 | **Sorteo de cada ronda** | A la bolsa entran **solo los cupones completados en esa ronda**: `piso(acumulado al cierre ÷ M) − piso(acumulado al cierre de la ronda anterior ÷ M)`. El sobrante en $ pasa a la siguiente ronda. La ronda la define el **día de la venta**. |
 | **Gran Sorteo Final** | **Lun 21/12**. Cada **10 cupones** acumulados en toda la campaña (incluida La Ñapa) = **1 cupón final**, solo si el vendedor vendió al menos el **80 % de la meta** de su tienda o canal. Sin meta en Canales = no hay requisito. |
-| **Viaje todo incluido** | Cada **100 m² de Austral** = 1 cupón del viaje (el sobrante se acumula). Se sortea en el Gran Sorteo Final. Por defecto entran todos (`viaje_requiere_meta = NO`). |
+| **Tickets Austral** | Cada **100 m² de Austral** = **1 ticket adicional para el Gran Sorteo Final** (el sobrante se acumula). Entran con la misma condición del 80 % de la meta (`austral_requiere_meta = SI`). |
 
 Todo se recalcula desde la hoja **Registros** en cada consulta. No hay contadores guardados: si apruebas, rechazas o corriges una factura, los cupones de cada ronda y del final se ajustan solos.
 
@@ -78,13 +78,12 @@ Cada fila tiene su explicación en la columna **descripción**:
 | `nombre_sorteo` | La bolsa de los deseos | Nombre de los sorteos en el portal. |
 | `hora_corte` | 15:00 | Hora del corte (el día siguiente al fin de cada ronda) cuando la hoja Rondas no trae otra. |
 | `bloquear_rondas_cerradas` | SI | Después del corte ya no se cargan ventas con fecha de esa ronda. |
-| `fecha_sorteo_final` | 21/12/2026 | Gran Sorteo Final (y sorteo del viaje). |
+| `fecha_sorteo_final` | 21/12/2026 | Gran Sorteo Final. |
 | `porcentaje_meta_final` | 80 | % de la meta que hay que vender para entrar al Gran Sorteo Final. |
 | `cupones_por_cupon_final` | 10 | Cada N cupones = 1 cupón final. |
 | `monto_por_cupon` | 1500 | Valor de respaldo, si una tienda o canal no tiene valor en Canales. |
-| `m2_por_cupon_austral` | 100 | m² de Austral por cupón del viaje. |
-| `premios_viaje` | 1 | Viajes que se sortean. |
-| `viaje_requiere_meta` | NO | SI = el viaje también exige el % de la meta. |
+| `m2_por_cupon_austral` | 100 | m² de Austral por ticket adicional para el Gran Sorteo Final. |
+| `austral_requiere_meta` | SI | SI = los tickets Austral entran solo si el vendedor cumple el % de su meta. NO = entran siempre. |
 | `concurso_abierto` | SI | Con NO nadie puede cargar ventas. |
 | `contar_solo_aprobadas` | NO | NO = las facturas suman al cargarlas (puedes rechazarlas después). SI = solo suman al aprobarlas. |
 | `mostrar_ranking_publico` | SI | Los vendedores ven el top 10, sin cédulas. |
@@ -163,19 +162,19 @@ Es de **solo lectura**: sirve para auditar sin tocar el Sheet.
 
 | Pestaña | Qué muestra |
 |---|---|
-| **Resumen** | Ronda en juego, corte y sorteo; vendedores, facturas, monto, cupones, cuántos cumplen el 80 % de la meta, cupones del Gran Sorteo Final, m² Austral y cupones del viaje; una fila por tienda y canal con su valor de cupón, meta y avance. |
-| **Vendedores** | Cada vendedor con su tienda o canal, cupones, cupones de la ronda, vendido, % de la meta, cupones finales y del viaje. Filtros y **CSV**. |
+| **Resumen** | Ronda en juego, corte y sorteo; vendedores, facturas, monto, cupones, cuántos cumplen el 80 % de la meta, tickets del Gran Sorteo Final (por cupones y por Austral), m² Austral y tickets Austral; una fila por tienda y canal con su valor de cupón, meta y avance. |
+| **Vendedores** | Cada vendedor con su tienda o canal, cupones, cupones de la ronda, vendido, % de la meta, tickets del Gran Sorteo Final y tickets Austral. Filtros y **CSV**. |
 | **Ventas** | Todas las facturas con su estado, ronda y foto. Filtros y **CSV**. |
 | **Rondas** | Las 4 rondas con su corte, sorteo y estado; quién completó cupones en cada una. |
-| **Sorteos** | Las bolsas: Ronda 1, 2, 3, Gran Sorteo Final y Viaje, con sus cupones y el botón para **imprimirlos**. |
+| **Sorteos** | Las bolsas: Ronda 1, 2, 3 y Gran Sorteo Final (que incluye los tickets Austral), con sus cupones y el botón para **imprimirlos**. |
 
 ### Imprimir los cupones para la bolsa
 
 En **Sorteos → Imprimir** se abre `cupones.html`:
 
 - Papel **carta**, **24 cupones por hoja** (3 × 8) con líneas punteadas para recortar. Cada sorteo empieza en una hoja nueva.
-- Cada cupón lleva su código único (`R1-0001` Ronda 1, `R2-…`, `R3-…`, `F-0001` Gran Sorteo Final, `V-0001` viaje), el nombre, la cédula, la tienda o canal y la factura.
-- Los del **Gran Sorteo Final** llevan una **banda roja** y los del **viaje** una **banda negra**. En el diálogo de impresión activa **"Gráficos de fondo"** y usa **escala 100 %**.
+- Cada cupón lleva su código único (`R1-0001` Ronda 1, `R2-…`, `R3-…`, `F-0001` Gran Sorteo Final, incluidos los tickets Austral), el nombre, la cédula, la tienda o canal y la factura.
+- Los del **Gran Sorteo Final** llevan una **banda roja**; los **tickets Austral** van en la misma bolsa con una **banda negra**. En el diálogo de impresión activa **"Gráficos de fondo"** y usa **escala 100 %**.
 - Antes del corte de su ronda las hojas salen marcadas **PROVISIONAL**. Imprime cada bolsa después de su corte (Ronda 1: después del viernes 6/11 a las 3:00 p. m.).
 
 ### Revisar facturas
@@ -204,8 +203,8 @@ Otros casos en **Usuarios**:
 |---|---|
 | **Inicializar hojas** | Corre `setup()` (no borra ventas ni usuarios). |
 | **Restaurar rondas (cronograma original)** | Vuelve a escribir la hoja Rondas con las fechas de fin de año. |
-| **Recalcular rankings** | Reescribe la hoja Ranking: general (con meta y cupones finales), ronda, viaje y sorteos. |
-| **Generar cupones para sorteo** | Lista de cada bolsa con su código (`R1-0001`, `F-0001`, `V-0001`…), cédula, vendedor y factura. |
+| **Recalcular rankings** | Reescribe la hoja Ranking: general (con meta y cupones finales), ronda, tickets Austral y sorteos. |
+| **Generar cupones para sorteo** | Lista de cada bolsa con su código (`R1-0001`, `F-0001`…), cédula, vendedor y factura. |
 | **Resultado de una ronda** | Pide la ronda y muestra quién completó cupones y cuántos van a su sorteo. |
 | **Resumen de los sorteos** | Cuántos cupones y vendedores hay en cada bolsa y cuántos cumplen la meta. |
 | **Cargar / Borrar datos de prueba** | 8 vendedores de prueba (cédulas 90000001–90000008, contraseña `prueba123`). Bórralos antes de empezar. |
@@ -215,7 +214,7 @@ Otros casos en **Usuarios**:
 1. Espera el corte de la ronda (por ejemplo, viernes 6/11 a las 3:00 p. m. para la Ronda 1) y revisa las facturas pendientes.
 2. En el panel: **Sorteos → Ronda N → Imprimir cupones**. Recorta, dobla y mete los cupones en la bolsa.
 3. Verifica el código del cupón que salga en la hoja Ranking (menú **Generar cupones para sorteo**) o en el panel.
-4. Para el **Gran Sorteo Final** (21/12), después del corte de La Ñapa (domingo 20/12, 3:00 p. m.) pon `concurso_abierto = NO` e imprime **Gran Sorteo Final** y **Viaje todo incluido**.
+4. Para el **Gran Sorteo Final** (21/12), después del corte de La Ñapa (domingo 20/12, 3:00 p. m.) pon `concurso_abierto = NO` e imprime **Gran Sorteo Final** (ya trae los tickets Austral).
 
 ---
 
@@ -267,4 +266,4 @@ npm run dev       # portal en http://localhost:5173 con datos de prueba y un adm
 
 `npm run dev` corre el mismo `Code.gs` sobre un simulador de Google Sheets, así que puedes probar todo el flujo sin desplegar. El administrador de prueba es la cédula `11111111` con contraseña `admin123`. Las fechas se corren para que hoy sea el día 25 de la campaña (Ronda 2). Opciones: `--real` (fechas reales), `--dia=5`, `--metas`, `--solo-aprobadas`, `--sin-ranking`, `--sin-bloqueo`, `--latencia=800`.
 
-Con [Playwright](https://playwright.dev) instalado, `node dev/e2e.js capturas/` recorre el portal (registro con canal y tienda, ventas, tickets normales y del viaje, ver y descargar cupones, tienda faltante, panel del administrador, cupones para imprimir en PDF y movimiento reducido) y guarda capturas.
+Con [Playwright](https://playwright.dev) instalado, `node dev/e2e.js capturas/` recorre el portal (registro con canal y tienda, ventas, tickets normales y Austral, ver y descargar cupones, tienda faltante, panel del administrador, cupones para imprimir en PDF y movimiento reducido) y guarda capturas.

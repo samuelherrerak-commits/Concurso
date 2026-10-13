@@ -132,8 +132,8 @@ async function revisarCuponesNuevos(vistos, vistosViaje) {
     const nuevos = d.cupones_austral.slice(vistosViaje);
     await mostrarImpresora({
       variante: 'austral',
-      etiqueta: 'Cupones del viaje',
-      titulo: nuevos.length === 1 ? 'Tienes un cupón nuevo para el viaje' : `Tienes ${nuevos.length} cupones nuevos para el viaje`,
+      etiqueta: 'Tickets Austral',
+      titulo: nuevos.length === 1 ? 'Tienes un ticket Austral nuevo' : `Tienes ${nuevos.length} tickets Austral nuevos`,
       tickets: nuevos.map((c) => datosTicketViaje(c, d)),
       cuponesAntes: vistosViaje,
       cuponesDespues: totalViaje,
@@ -191,14 +191,14 @@ async function alRegistrar(res) {
         mensaje: mensajeMarcador({ nuevos: 0, falta: res.falta_para_proximo }),
       });
     }
-    // Segunda pasada: los cupones del viaje (Austral) salen en papel azul.
+    // Segunda pasada: los tickets Austral (para el Gran Sorteo Final) salen en papel azul.
     if (res.austral_nuevos > 0) {
-      const mensaje = mensajeViaje({ nuevos: res.austral_nuevos, falta: res.m2_falta, participa: d.resumen.austral.participa, porcentaje: d.resumen.meta.porcentaje_requerido });
+      const mensaje = mensajeViaje({ nuevos: res.austral_nuevos, falta: res.m2_falta, participa: res.meta.cumple || !d.concurso.austral_requiere_meta, porcentaje: res.meta.porcentaje_requerido });
       if (!(res.cupones_nuevos > 0)) mensaje.push(h('br'), 'Y te faltan ', h('strong', {}, dinero(res.falta_para_proximo, { compacto: true })), ' en ventas para tu próximo cupón.');
       await mostrarImpresora({
         variante: 'austral',
-        etiqueta: 'Cupones del viaje',
-        titulo: res.austral_nuevos === 1 ? 'Cupón nuevo para el viaje' : `${res.austral_nuevos} cupones nuevos para el viaje`,
+        etiqueta: 'Tickets Austral',
+        titulo: res.austral_nuevos === 1 ? 'Ticket Austral nuevo' : `${res.austral_nuevos} tickets Austral nuevos`,
         tickets: res.nuevos_cupones_austral.map((c) => datosTicketViaje(c, d)),
         cuponesAntes: res.austral_antes,
         cuponesDespues: res.austral_despues,

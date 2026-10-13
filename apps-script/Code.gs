@@ -23,7 +23,8 @@
  *      esa ronda. La Ñapa no tiene sorteo: solo suma para el final.
  *    - Gran Sorteo Final: 1 cupón final por cada cupones_por_cupon_final cupones,
  *      solo si el vendedor vendió al menos porcentaje_meta_final % de su meta.
- *    - Viaje todo incluido: 1 cupón por cada m2_por_cupon_austral de Austral.
+ *    - Tickets Austral: 1 ticket adicional para el Gran Sorteo Final por cada
+ *      m2_por_cupon_austral de Austral (con la misma condición de la meta).
  */
 
 // ------------------------------------------------------------
@@ -104,13 +105,12 @@ function configuracionPorDefecto_() {
     ['nombre_sorteo', 'La bolsa de los deseos', 'Nombre de los sorteos.'],
     ['hora_corte', "'15:00", 'Hora del corte cuando la hoja Rondas no trae una: el día siguiente al último día de la ronda (formato 24 h).'],
     ['bloquear_rondas_cerradas', 'SI', 'SI = después del corte de una ronda ya no se cargan ventas con fecha de esa ronda.'],
-    ['fecha_sorteo_final', fechaDesdeISO_('2026-12-21'), 'Fecha del Gran Sorteo Final (y del sorteo del viaje).'],
+    ['fecha_sorteo_final', fechaDesdeISO_('2026-12-21'), 'Fecha del Gran Sorteo Final.'],
     ['monto_por_cupon', 1500, 'Valor del cupón para quien no tenga valor en la hoja Canales (respaldo).'],
     ['porcentaje_meta_final', 80, '% de la meta de su tienda o canal (hoja Canales) que debe vender un vendedor para entrar al Gran Sorteo Final.'],
     ['cupones_por_cupon_final', 10, 'Cada N cupones acumulados en toda la campaña = 1 cupón para el Gran Sorteo Final.'],
-    ['m2_por_cupon_austral', 100, 'm² de Austral que completan 1 cupón para el sorteo del viaje.'],
-    ['premios_viaje', 1, 'Viajes todo incluido que se sortean con los cupones Austral.'],
-    ['viaje_requiere_meta', 'NO', 'SI = para el sorteo del viaje también hay que cumplir el % de la meta.'],
+    ['m2_por_cupon_austral', 100, 'm² de Austral que dan 1 ticket adicional para el Gran Sorteo Final.'],
+    ['austral_requiere_meta', 'SI', 'SI = los tickets Austral entran al Gran Sorteo Final solo si el vendedor cumple el % de su meta. NO = entran siempre.'],
     ['moneda', 'USD', 'Moneda de los montos.'],
     ['concurso_abierto', 'SI', 'SI = los vendedores pueden cargar ventas.'],
     ['contar_solo_aprobadas', 'NO', 'SI = solo cuentan facturas Aprobadas. NO = cuentan todas menos las Rechazadas.'],
@@ -129,7 +129,7 @@ const CLAVES_OBSOLETAS = [
   'fecha_sorteo', 'premios_semanales', 'sucursales', 'categorias_modo', 'categoria_1_nombre', 'categoria_2_nombre',
   'categoria_3_nombre', 'categoria_1_porcentaje', 'categoria_2_porcentaje', 'categoria_1_min_cupones',
   'categoria_2_min_cupones', 'premios_categoria_1', 'premios_categoria_2', 'premios_categoria_3',
-  'viaje_hasta_categoria', 'semana_ranking',
+  'viaje_hasta_categoria', 'semana_ranking', 'premios_viaje', 'viaje_requiere_meta',
 ];
 
 // ------------------------------------------------------------
@@ -386,6 +386,8 @@ function finalPublico_(v, cfg) {
   const N = cfg.cupones_por_cupon_final;
   return {
     cupones: v.cuponesFinal,
+    austral: v.ticketsAustralFinal,
+    total: v.cuponesFinal + v.ticketsAustralFinal,
     posibles: v.cuponesFinalPosibles,
     por_cada: N,
     faltan_para_proximo: N - (v.cupones % N),
@@ -438,7 +440,7 @@ function apiDashboard_(req) {
       sobrante: yo.sobranteM2Centesimas / 100,
       falta: (MA - yo.sobranteM2Centesimas) / 100,
       progreso: MA ? yo.sobranteM2Centesimas / MA : 0,
-      participa: yo.participaViaje,
+      participa: yo.australEnFinal,
     },
   };
 
@@ -627,6 +629,7 @@ function apiAdminResumen_(req) {
     cupones: suma(vendedores, function (v) { return v.cupones; }),
     cumplen_meta: vendedores.filter(function (v) { return v.cumpleMeta && v.totalCentavos > 0; }).length,
     cupones_final: suma(vendedores, function (v) { return v.cuponesFinal; }),
+    tickets_austral_final: suma(vendedores, function (v) { return v.ticketsAustralFinal; }),
     m2: suma(vendedores, function (v) { return v.m2Centesimas; }) / 100,
     cupones_austral: suma(vendedores, function (v) { return v.cuponesAustral; }),
   };
@@ -731,7 +734,8 @@ function apiAdminVendedores_(req) {
       cupones_final: v.cuponesFinal,
       m2: v.m2Centesimas / 100,
       cupones_austral: v.cuponesAustral,
-      participa_viaje: v.participaViaje && v.cuponesAustral > 0,
+      austral_en_final: v.australEnFinal && v.cuponesAustral > 0,
+      tickets_final: v.cuponesFinal + v.ticketsAustralFinal,
     };
   });
   lista.sort(function (a, b) { return (b.cupones - a.cupones) || (b.total - a.total) || compararTexto_(a.nombre, b.nombre); });
@@ -822,7 +826,8 @@ function registroCuenta_(r, cfg) {
  *    La ronda sale de dia_venta (no de fecha_carga) y de la hoja Rondas.
  *  - Gran Sorteo Final: floor(cupones / cupones_por_cupon_final), solo si vendió
  *    al menos porcentaje_meta_final % de su meta.
- *  - Cupones del viaje = floor(m² Austral acumulados / m2_por_cupon_austral).
+ *  - Tickets Austral = floor(m² Austral acumulados / m2_por_cupon_austral): tickets
+ *    adicionales para el Gran Sorteo Final.
  *  - Cada cupón queda ligado a la factura que lo completó.
  * Todo en centavos (y centésimas de m²) para evitar errores de redondeo.
  */
@@ -891,7 +896,8 @@ function completarFinal_(v, cfg) {
   v.cumpleMeta = v.metaCentavos > 0 ? v.totalCentavos * 100 >= v.metaCentavos * cfg.porcentaje_meta_final : true;
   v.cuponesFinalPosibles = Math.floor(v.cupones / cfg.cupones_por_cupon_final);
   v.cuponesFinal = v.cumpleMeta ? v.cuponesFinalPosibles : 0;
-  v.participaViaje = cfg.viaje_requiere_meta ? v.cumpleMeta : true;
+  v.australEnFinal = cfg.austral_requiere_meta ? v.cumpleMeta : true;
+  v.ticketsAustralFinal = v.australEnFinal ? v.cuponesAustral : 0;
 }
 
 function vendedorVacio_(cedula, regla, cfg) {
@@ -920,7 +926,7 @@ function rankingGeneral_(stats) {
     });
 }
 
-/** Austral: m² ↓ (más m² = más cupones del viaje). Desempate: monto total. */
+/** Austral: m² ↓ (más m² = más tickets Austral). Desempate: monto total. */
 function rankingAustral_(stats) {
   return valores_(stats.vendedores)
     .filter(function (v) { return v.m2Centesimas > 0; })
@@ -941,8 +947,8 @@ function rankingRonda_(stats, ronda) {
 
 /**
  * Bolsas de La bolsa de los deseos: una por cada ronda con sorteo (cupones completados
- * en esa ronda), el Gran Sorteo Final (1 cupón cada N, si cumple la meta) y el viaje
- * (cupones Austral). Cada cupón lleva un código único dentro de su bolsa (R1-0001, F-0001, V-0001).
+ * en esa ronda) y el Gran Sorteo Final: 1 cupón cada N, si cumple la meta, más los
+ * tickets Austral. Cada cupón lleva un código único dentro de su bolsa (R1-0001, F-0001).
  */
 function armarBolsas_(stats, usuarios, cfg) {
   const porCedula = {};
@@ -954,7 +960,6 @@ function armarBolsas_(stats, usuarios, cfg) {
   const porRonda = {};
   bolsas.forEach(function (b) { porRonda[b.ronda] = b; });
   const final = { id: 'final', tipo: 'final', ronda: 0, nombre: 'Gran Sorteo Final', prefijo: 'F', fecha: cfg.fecha_sorteo_final, corte: ultima.corte, cupones: [] };
-  const viaje = { id: 'viaje', tipo: 'austral', ronda: 0, nombre: 'Viaje todo incluido', prefijo: 'V', fecha: cfg.fecha_sorteo_final, corte: ultima.corte, cupones: [] };
 
   valores_(stats.vendedores).forEach(function (v) {
     const u = porCedula[v.cedula];
@@ -968,16 +973,16 @@ function armarBolsas_(stats, usuarios, cfg) {
       if (b) b.cupones.push(Object.assign({ n: c.n, factura: c.factura, dia_venta: c.diaVenta, _orden: c.fechaCarga }, base));
     });
     for (let n = 1; n <= v.cuponesFinal; n++) {
-      final.cupones.push(Object.assign({ n: n, factura: '', dia_venta: '', de: v.cuponesFinal, _orden: 0 }, base));
+      final.cupones.push(Object.assign({ origen: 'cupones', n: n, factura: '', dia_venta: '', de: v.cuponesFinal, _orden: 0 }, base));
     }
-    if (v.participaViaje) {
+    if (v.australEnFinal) {
       v.detalleAustral.forEach(function (c) {
-        viaje.cupones.push(Object.assign({ n: c.n, factura: c.factura, dia_venta: c.diaVenta, _orden: c.fechaCarga }, base));
+        final.cupones.push(Object.assign({ origen: 'austral', n: c.n, factura: c.factura, dia_venta: c.diaVenta, _orden: c.fechaCarga }, base));
       });
     }
   });
 
-  const todas = bolsas.concat([final, viaje]);
+  const todas = bolsas.concat([final]);
   todas.forEach(function (b) {
     b.cupones.sort(function (a, c) {
       if (a.dia_venta !== c.dia_venta) return a.dia_venta < c.dia_venta ? -1 : 1;
@@ -1311,8 +1316,7 @@ function leerConfig_() {
     porcentaje_meta_final: entre_(numeroO_(crudo.porcentaje_meta_final, 80), 0, 1000),
     cupones_por_cupon_final: Math.max(1, Math.floor(numeroO_(crudo.cupones_por_cupon_final, 10))),
     m2_por_cupon_austral: numeroO_(crudo.m2_por_cupon_austral, 100),
-    premios_viaje: Math.max(0, Math.floor(numeroO_(crudo.premios_viaje, 1))),
-    viaje_requiere_meta: siONo('viaje_requiere_meta', false),
+    austral_requiere_meta: siONo('austral_requiere_meta', true),
     moneda: texto('moneda', '') || 'USD',
     concurso_abierto: esSi_(crudo.concurso_abierto),
     contar_solo_aprobadas: esSi_(crudo.contar_solo_aprobadas),
@@ -1465,8 +1469,7 @@ function configPublica_(cfg) {
     porcentaje_meta_final: cfg.porcentaje_meta_final,
     cupones_por_cupon_final: cfg.cupones_por_cupon_final,
     m2_por_cupon_austral: cfg.m2_por_cupon_austral,
-    premios_viaje: cfg.premios_viaje,
-    viaje_requiere_meta: cfg.viaje_requiere_meta,
+    austral_requiere_meta: cfg.austral_requiere_meta,
   };
 }
 
@@ -2102,7 +2105,7 @@ function setup() {
   filasComoObjetos_(shCfg).forEach(function (f) {
     const clave = String(f.clave || '').trim();
     const celda = shCfg.getRange(f._fila, 2);
-    if (['concurso_abierto', 'contar_solo_aprobadas', 'mostrar_ranking_publico', 'bloquear_rondas_cerradas', 'viaje_requiere_meta'].indexOf(clave) > -1) celda.setDataValidation(lista(['SI', 'NO']));
+    if (['concurso_abierto', 'contar_solo_aprobadas', 'mostrar_ranking_publico', 'bloquear_rondas_cerradas', 'austral_requiere_meta'].indexOf(clave) > -1) celda.setDataValidation(lista(['SI', 'NO']));
     else celda.clearDataValidations();
     if (clave.indexOf('fecha_') === 0) celda.setNumberFormat('dd/mm/yyyy');
     if (textoCfg.indexOf(clave) > -1) celda.setNumberFormat('@');
@@ -2360,7 +2363,7 @@ function menuResumenSorteo() {
   SpreadsheetApp.getUi().alert('Sorteos', mensaje, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-/** Escribe la hoja Ranking: general (con meta), ronda seleccionada, viaje, sorteos y cupones para sorteo. */
+/** Escribe la hoja Ranking: general (con meta), ronda seleccionada, tickets Austral, sorteos y cupones para sorteo. */
 function recalcularRankings_() {
   const cfg = leerConfig_();
   const usuarios = leerUsuarios_();
@@ -2379,7 +2382,7 @@ function recalcularRankings_() {
   const bloques = [];
   bloques.push({
     titulo: 'Ranking general · Gran Sorteo Final (1 cupón final cada ' + cfg.cupones_por_cupon_final + ' cupones, con ' + cfg.porcentaje_meta_final + ' % de la meta)',
-    encabezados: ['Pos', 'Cédula', 'Vendedor', 'Tienda o canal', 'Valor cupón', 'Total vendido', 'Cupones', 'Meta', '% de la meta', 'Cumple', 'Cupones final', 'm² Austral', 'Cupones viaje'],
+    encabezados: ['Pos', 'Cédula', 'Vendedor', 'Tienda o canal', 'Valor cupón', 'Total vendido', 'Cupones', 'Meta', '% de la meta', 'Cumple', 'Cupones final', 'm² Austral', 'Tickets Austral'],
     filas: rankingGeneral_(stats).map(function (v, i) {
       return [i + 1, v.cedula, nombre(v.cedula), grupo(v.cedula), v.montoPorCuponCentavos / 100, v.totalCentavos / 100, v.cupones,
         v.metaCentavos ? v.metaCentavos / 100 : 'sin meta', v.metaCentavos ? v.totalCentavos / v.metaCentavos : '', v.cumpleMeta ? 'SI' : 'NO',
@@ -2398,10 +2401,10 @@ function recalcularRankings_() {
     formatos: { 5: '#,##0.00' },
   });
   bloques.push({
-    titulo: 'Viaje · cupones Austral (1 cada ' + cfg.m2_por_cupon_austral + ' m²)',
-    encabezados: ['Pos', 'Cédula', 'Vendedor', 'm² Austral', 'Cupones viaje', 'Participa'],
+    titulo: 'Tickets Austral para el Gran Sorteo Final (1 cada ' + cfg.m2_por_cupon_austral + ' m²)',
+    encabezados: ['Pos', 'Cédula', 'Vendedor', 'm² Austral', 'Tickets Austral', 'Entran al final'],
     filas: rankingAustral_(stats).map(function (v, i) {
-      return [i + 1, v.cedula, nombre(v.cedula), v.m2Centesimas / 100, v.cuponesAustral, v.participaViaje && v.cuponesAustral > 0 ? 'SI' : 'NO'];
+      return [i + 1, v.cedula, nombre(v.cedula), v.m2Centesimas / 100, v.cuponesAustral, v.australEnFinal && v.cuponesAustral > 0 ? 'SI' : 'NO'];
     }),
     texto: [1],
     formatos: { 3: '#,##0.00' },
