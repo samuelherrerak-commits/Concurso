@@ -42,7 +42,7 @@ export function mostrarAdmin({ verFoto }) {
   $('#avatar-iniciales').textContent = iniciales(u.nombre, u.apellido).toUpperCase() || 'AD';
   $('#menu-nombre').textContent = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'Administrador';
   $('#menu-cedula').textContent = 'Administrador · solo lectura';
-  document.title = 'Copa Prosein · Administración';
+  document.title = 'La bolsa de los deseos · Administración';
   irA(VISTAS.includes(vista) ? vista : 'resumen');
 }
 

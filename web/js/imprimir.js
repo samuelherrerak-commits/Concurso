@@ -75,7 +75,7 @@ function pintar() {
   aviso.textContent = provisionales.length
     ? `Provisional: ${provisionales.join(', ')} todavía no ${provisionales.length === 1 ? 'llega a su corte' : 'llegan a su corte'}, así que los cupones pueden cambiar. Las hojas impresas dirán PROVISIONAL.`
     : '';
-  document.title = `Cupones ${elegida === 'todas' ? 'de los sorteos' : bolsas[0] ? bolsas[0].nombre : ''} · Copa Prosein`;
+  document.title = `Cupones ${elegida === 'todas' ? 'de los sorteos' : bolsas[0] ? bolsas[0].nombre : ''} · La bolsa de los deseos`;
 }
 
 function mostrarAviso(texto, conEnlace) {

@@ -87,7 +87,7 @@ async function cargarPanel({ silencioso = false } = {}) {
   }
   if (r.data.usuario.rol === 'admin') { entrarAdmin(); return; }
   datos = r.data;
-  document.title = `${datos.concurso.nombre} · ${datos.usuario.nombre.split(' ')[0]}`;
+  document.title = `${datos.concurso.nombre_sorteo} · ${datos.usuario.nombre.split(' ')[0]}`;
   const vistos = recuerdo.leer(claveVistos());
   const vistosViaje = recuerdo.leer(claveVistosViaje());
   pintarTodo({

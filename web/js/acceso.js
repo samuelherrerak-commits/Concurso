@@ -57,7 +57,7 @@ export function mostrarAcceso(mensaje) {
   $('#vista-panel').hidden = true;
   $('#vista-acceso').hidden = false;
   window.scrollTo(0, 0);
-  document.title = 'Copa Prosein · Ingresar';
+  document.title = 'La bolsa de los deseos · Ingresar';
   if (mensaje) mostrarErrores($('#form-ingresar'), {}, mensaje);
 }
 

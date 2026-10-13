@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#DF1630">
-  <meta name="description" content="Portal de la Copa Prosein: registra tus ventas, suma cupones y gana premios.">
-  <title>Copa Prosein</title>
+  <meta name="description" content="La bolsa de los deseos · Prosein: registra tus ventas, suma cupones y participa en los sorteos.">
+  <title>La bolsa de los deseos</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/logo-prosein.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Chivo+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@115,800&text=CopaPrseinPROSEIN&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@115,800&text=LabolsdeCpPrinROSEIN%20&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
 </head>
@@ -44,19 +44,12 @@
   <div id="vista-acceso" class="acceso" hidden>
     <header class="acceso__marca">
       <div class="acceso__interior">
-        <span class="wordmark">PROSEIN</span>
-        <h1 class="acceso__titulo">Copa<br>Prosein</h1>
-        <p class="acceso__lema">Registra tus ventas y llena la bolsa de los deseos: cada ronda tiene su sorteo y en diciembre viene el Gran Sorteo Final. Con Austral, participa por un viaje todo incluido.</p>
+        <span class="marca-bolsa">Copa Prosein</span>
+        <h1 class="acceso__titulo">La bolsa<br>de los deseos</h1>
+        <p class="acceso__lema">Registra tus ventas y llena tu bolsa de cupones: cada ronda tiene su sorteo y en diciembre viene el Gran Sorteo Final. Con Austral, participa por un viaje todo incluido.</p>
         <p class="acceso__fechas" id="acceso-fechas"></p>
       </div>
-      <div class="acceso__ticket sombra-papel" aria-hidden="true">
-        <div class="papel" style="--diente:9px;padding:16px 12px 18px;text-align:center">
-          <div class="mini__titulo">CUPÓN</div>
-          <div class="mini__n">N° 01</div>
-          <div class="mini__dato">COPA PROSEIN</div>
-          <div class="mini__dato">RONDA 1</div>
-        </div>
-      </div>
+      <img class="acceso__bolsa" src="assets/bolsa.svg" alt="" width="150" height="150" aria-hidden="true">
     </header>
 
     <main class="acceso__panel">
@@ -206,7 +199,7 @@
     <header class="barra">
       <div class="barra__interior">
         <div class="barra__fila">
-          <div class="barra__marca"><span class="wordmark">PROSEIN</span><span class="barra__copa">Copa</span><span class="barra__rol" id="barra-rol" hidden>Administración</span></div>
+          <div class="barra__marca"><img class="barra__logo" src="assets/bolsa.svg" alt="" width="34" height="34"><span class="barra__nombre">La bolsa de los deseos</span><span class="barra__rol" id="barra-rol" hidden>Administración</span></div>
           <div class="menu-usuario">
             <button type="button" class="avatar" id="btn-avatar" aria-haspopup="true" aria-expanded="false" aria-controls="menu-usuario"><span id="avatar-iniciales"></span><span class="sr-only">Mi cuenta</span></button>
             <div class="menu-usuario__caja" id="menu-usuario" data-cerrado>
