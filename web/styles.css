@@ -578,6 +578,17 @@ input[type='date'].entrada::-webkit-date-and-time-value { text-align: left; }
   transform: scaleX(var(--p, 0));
 }
 .progreso__pie { margin-top: 6px; font-size: 13px; color: var(--papel-tinta-2); }
+/* Meta: la raya marca el % que hay que alcanzar para el Gran Sorteo Final. */
+.progreso--meta { margin: var(--s2) 0 0; }
+.progreso--meta .progreso__barra { overflow: visible; }
+.progreso--meta .progreso__relleno { background: var(--carbon); overflow: hidden; }
+.progreso__marca {
+  position: absolute; top: -4px; bottom: -4px;
+  width: 2px; margin-left: -1px;
+  border-radius: 2px;
+  background: var(--rojo);
+}
+.renglon--final dd, .renglon--ronda dd { color: var(--rojo-hondo); }
 .progreso__pie strong { color: var(--papel-tinta); }
 
 /* Mini tickets: "Mis cupones" */
@@ -1035,7 +1046,7 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .cifra dd strong { font-size: 22px; font-weight: 600; line-height: 1.25; color: var(--carbon); overflow-wrap: anywhere; }
 .cifra dd span { font-size: 12px; color: var(--tinta-2); }
 @media (min-width: 720px) { .cifras { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 1080px) { .cifras { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 1080px) { .cifras { grid-template-columns: repeat(6, minmax(0, 1fr)); } .cifras--8 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 .categorias { display: grid; gap: var(--s3); }
 @media (min-width: 720px) { .categorias { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -1104,6 +1115,13 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .urna__cifra strong { font-size: 32px; font-weight: 600; line-height: 1.15; color: var(--carbon); }
 .urna__sub { font-size: 13px; color: var(--tinta-2); }
 .urna .btn { justify-self: start; margin-top: var(--s2); }
+@media (min-width: 1080px) { .urnas--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.urnas--5 .urna__cab { flex-direction: column; align-items: flex-start; gap: 2px; }
+.urnas--5 .urna__cab span { white-space: normal; }
+.urna--final .urna__cab { margin: calc(var(--s4) * -1) calc(var(--s4) * -1) 0; padding: var(--s4) var(--s4) 10px; background: var(--rojo); }
+.urna--final .urna__cab strong, .urna--final .urna__cab span { color: #fff; }
+.urna__provisional { color: var(--espera); }
+.tabla--canales { min-width: 860px; }
 
 /* ---------- Avisos flotantes ---------- */
 

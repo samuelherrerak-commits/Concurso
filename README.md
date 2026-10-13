@@ -1,14 +1,14 @@
-# Copa Prosein · Portal de vendedores
+# Copa Prosein · La bolsa de los deseos
 
-Portal web para el concurso interno de ventas de Prosein. Cada vendedor:
+Portal web para el concurso interno de ventas de Prosein (fin de año 2026). Cada vendedor:
 
-- se registra con su **cédula**, una contraseña y su **tienda Prosein** (obligatoria),
+- se registra con su **cédula**, una contraseña y su **canal de ventas** (Tiendas, Distribuidores o Corporativo; en Tiendas también elige su tienda),
 - carga sus ventas (día, número de factura, monto, **foto de la factura** y, si vendió Austral, los **m²**),
-- ve su récord, su **categoría**, sus **cupones** para el sorteo final, sus **cupones del viaje** (Austral) y el ranking.
+- ve sus **cupones** de cada ronda, el avance de su **meta**, sus cupones para el **Gran Sorteo Final**, sus **cupones del viaje** (Austral) y el ranking.
 
 Cuando una venta completa un cupón, el portal **imprime un ticket de supermercado** con el número del cupón (rojo; los del viaje salen en tinta azul). Después, tocando cualquier cupón en "Mis cupones", el vendedor lo vuelve a ver sin animación y lo **descarga como imagen**.
 
-Hay además una cuenta de **administrador** (la agregas a mano en la hoja Usuarios) para **auditar todo** desde el portal y **imprimir los cupones** de cada urna para el sorteo.
+Hay además una cuenta de **administrador** (la agregas a mano en la hoja Usuarios) para **auditar todo** desde el portal e **imprimir los cupones** de cada sorteo para meterlos en la bolsa.
 
 El sitio es **estático** (HTML, CSS y JavaScript sin frameworks) y el backend es **Google Apps Script** con **Google Sheets** como base de datos.
 
@@ -33,21 +33,19 @@ tests/               ← pruebas del backend
 
 ## Reglas del concurso (cómo calcula el sistema)
 
-Todos los números de esta tabla se cambian en la hoja **Configuracion** (y las fechas en **Periodos**).
+Los números se cambian en la hoja **Configuracion**, las fechas en **Rondas** y el valor del cupón y las metas en **Canales**.
 
 | Regla | Cómo se calcula |
 |---|---|
-| **Cupones** | `cupones = piso(total vendido acumulado ÷ monto_por_cupon)`. Con $1.500: $4.600 = 3 cupones. El sobrante nunca se pierde. |
-| **Semanas y cortes** | 10 semanas desde el **jueves 15/10/2026**. Cada semana va de **jueves a miércoles**; el **corte** es el jueves siguiente a las **3:00 p. m.** y los premios se entregan el **viernes en la mañana**. El corte final es el jueves 24/12/2026 a las 3:00 p. m. |
-| **Semana de una venta** | La define el **día de la venta** (no el día en que se cargó). Hasta el corte del jueves se pueden cargar las ventas del miércoles. Después del corte, esa semana queda cerrada (`bloquear_semanas_cerradas = SI`). |
-| **Cupones de la semana** | Los cupones que el vendedor **completó** esa semana: `piso(acumulado al cierre ÷ M) − piso(acumulado al cierre de la semana anterior ÷ M)`. Lo que sobra pasa a la semana siguiente. |
-| **Ejemplo** | Semana 1 vende $4.000 → 2 cupones, sobran $1.000. Semana 2 vende $600 → $1.000 + $600 completan 1 cupón; sobran $100. |
-| **Premios semanales** | Los `premios_semanales` (6) vendedores con más cupones completados en la semana. Desempate: mayor venta de la semana → mayor acumulado al cierre → quien llegó primero. Con 0 cupones esa semana no se califica. |
-| **Categorías** | Al corte final, quienes tienen cupones quedan en 3 categorías. Por defecto: **Oro** = el 20 % con más cupones, **Plata** = el 30 % siguiente, **Bronce** = el resto. Si hay empate en el límite, se sube a la categoría mayor. También se puede usar por cupones mínimos (`categorias_modo = cupones`). Durante el concurso la categoría es **provisional** ("Plata · hoy"). |
-| **Sorteo final por categoría** | Cada categoría sortea sus premios **solo entre sus cupones**: 2 premios en Oro (los buenos), 1 en Plata y 1 en Bronce. |
-| **Viaje todo incluido** | Cada **100 m² de Austral** = **1 cupón del viaje** (el sobrante de m² también se acumula). Solo entran a la urna del viaje los cupones de los vendedores de **Oro** (`viaje_hasta_categoria = 1`). |
+| **Canales** | Cada vendedor es de **Tiendas** (con su tienda), **Distribuidores** o **Corporativo**. Cada tienda y cada canal tiene su **valor de cupón** y su **meta** (hoja Canales). |
+| **Cupones** | `cupones = piso(total vendido acumulado ÷ valor del cupón de su tienda o canal)`. Con $1.500: $4.600 = 3 cupones. El sobrante nunca se pierde. |
+| **Rondas** | Ronda 1: 15/10 al 5/11, sorteo **lun 9/11**. Ronda 2: 6/11 al 26/11, sorteo **lun 30/11**. Ronda 3: 27/11 al 10/12, sorteo **lun 14/12**. **La Ñapa**: 11/12 al 19/12, **sin sorteo** (solo suma para el final). |
+| **Corte** | Cada ronda cierra el día siguiente a su último día a las **3:00 p. m.** (por ejemplo, la Ronda 1 el viernes 6/11). Después del corte no se cargan ventas con fecha de esa ronda. |
+| **Sorteo de cada ronda** | A la bolsa entran **solo los cupones completados en esa ronda**: `piso(acumulado al cierre ÷ M) − piso(acumulado al cierre de la ronda anterior ÷ M)`. El sobrante en $ pasa a la siguiente ronda. La ronda la define el **día de la venta**. |
+| **Gran Sorteo Final** | **Lun 21/12**. Cada **10 cupones** acumulados en toda la campaña (incluida La Ñapa) = **1 cupón final**, solo si el vendedor vendió al menos el **80 % de la meta** de su tienda o canal. Sin meta en Canales = no hay requisito. |
+| **Viaje todo incluido** | Cada **100 m² de Austral** = 1 cupón del viaje (el sobrante se acumula). Se sortea en el Gran Sorteo Final. Por defecto entran todos (`viaje_requiere_meta = NO`). |
 
-Todo se recalcula desde la hoja **Registros** en cada consulta. No hay contadores guardados: si apruebas, rechazas o corriges una factura, los cupones, las categorías y las urnas se ajustan solos.
+Todo se recalcula desde la hoja **Registros** en cada consulta. No hay contadores guardados: si apruebas, rechazas o corriges una factura, los cupones de cada ronda y del final se ajustan solos.
 
 ---
 
@@ -68,49 +66,52 @@ Crea un Google Sheet nuevo (por ejemplo "Copa Prosein 2026") en la cuenta de Goo
 
 1. En el selector de funciones (arriba), elige **`setup`** y pulsa **Ejecutar**.
 2. Google pedirá permisos. Si aparece "Google no ha verificado esta app": **Configuración avanzada → Ir a … (no seguro)**. Es normal en scripts propios.
-3. `setup()` crea las hojas **Configuracion**, **Periodos**, **Registros**, **Usuarios** y **Ranking**, con sus formatos y listas desplegables. También crea en tu Drive la carpeta **"Copa Prosein · Fotos de facturas"**. Puedes correrlo otra vez sin perder datos.
+3. `setup()` crea las hojas **Configuracion**, **Rondas**, **Canales**, **Registros**, **Usuarios** y **Ranking**, con sus formatos y listas desplegables. También crea en tu Drive la carpeta **"Copa Prosein · Fotos de facturas"**. Puedes correrlo otra vez sin perder datos.
 4. Recarga el Sheet: aparecerá el menú **Copa Prosein**.
 
 ### 4. Revisar la hoja Configuracion
 
-Cada fila tiene su explicación en la columna **descripción**. Las más importantes:
+Cada fila tiene su explicación en la columna **descripción**:
 
 | clave | valor inicial | qué es |
 |---|---|---|
-| `fecha_inicio` | 15/10/2026 | Primer día del concurso (jueves). |
-| `num_semanas` | 10 | Cantidad de semanas (cortes). |
-| `dias_por_semana` | 7 | De jueves a miércoles. |
-| `hora_corte` | 15:00 | Hora del corte, el día siguiente al último día de la semana. |
-| `texto_entrega` | en la mañana | Se muestra junto a la fecha de entrega de premios. |
-| `bloquear_semanas_cerradas` | SI | Después del corte ya no se cargan ventas con fecha de esa semana. |
-| `fecha_sorteo` | (vacío) | Fecha del sorteo final, informativa. |
-| `monto_por_cupon` | 1500 | Monto que completa 1 cupón. |
-| `premios_semanales` | 6 | Ganadores por semana. |
-| `m2_por_cupon_austral` | 100 | m² de Austral que completan 1 cupón del viaje. |
-| `sucursales` | Boleíta, La Castellana, Los Naranjos, El Bosque, Las Mercedes, San Martín, Maracaibo, Acarigua, Barquisimeto | Tiendas para elegir al registrarse, separadas por coma. |
-| `categorias_modo` | porcentaje | `porcentaje` o `cupones`. |
-| `categoria_1_nombre` … `categoria_3_nombre` | Oro, Plata, Bronce | Nombres visibles. |
-| `categoria_1_porcentaje` / `categoria_2_porcentaje` | 20 / 30 | Modo porcentaje (el resto queda en la 3). |
-| `categoria_1_min_cupones` / `categoria_2_min_cupones` | 30 / 10 | Modo cupones. |
-| `premios_categoria_1` … `premios_categoria_3` | 2 / 1 / 1 | Premios que sortea cada categoría. |
-| `premios_viaje` | 1 | Viajes que se sortean con los cupones Austral. |
-| `viaje_hasta_categoria` | 1 | 1 = solo Oro entra al viaje; 2 = Oro y Plata. |
+| `nombre_sorteo` | La bolsa de los deseos | Nombre de los sorteos en el portal. |
+| `hora_corte` | 15:00 | Hora del corte (el día siguiente al fin de cada ronda) cuando la hoja Rondas no trae otra. |
+| `bloquear_rondas_cerradas` | SI | Después del corte ya no se cargan ventas con fecha de esa ronda. |
+| `fecha_sorteo_final` | 21/12/2026 | Gran Sorteo Final (y sorteo del viaje). |
+| `porcentaje_meta_final` | 80 | % de la meta que hay que vender para entrar al Gran Sorteo Final. |
+| `cupones_por_cupon_final` | 10 | Cada N cupones = 1 cupón final. |
+| `monto_por_cupon` | 1500 | Valor de respaldo, si una tienda o canal no tiene valor en Canales. |
+| `m2_por_cupon_austral` | 100 | m² de Austral por cupón del viaje. |
+| `premios_viaje` | 1 | Viajes que se sortean. |
+| `viaje_requiere_meta` | NO | SI = el viaje también exige el % de la meta. |
 | `concurso_abierto` | SI | Con NO nadie puede cargar ventas. |
 | `contar_solo_aprobadas` | NO | NO = las facturas suman al cargarlas (puedes rechazarlas después). SI = solo suman al aprobarlas. |
 | `mostrar_ranking_publico` | SI | Los vendedores ven el top 10, sin cédulas. |
 | `token_api` | copaprosein | Igual que `API_TOKEN` en `web/config.js`. |
 
-Otras claves: `nombre_concurso`, `moneda`, `carpeta_fotos_id` (la crea `setup()`), `semana_ranking`, `dias_sesion`, `monto_maximo_venta`.
+Otras claves: `nombre_concurso`, `moneda`, `carpeta_fotos_id` (la crea `setup()`), `ronda_ranking`, `dias_sesion`, `monto_maximo_venta`.
 
-### 4b. Revisar la hoja Periodos (semanas y cortes)
+### 4b. Revisar la hoja Rondas
 
-`setup()` llena **Periodos** con una fila por semana: `semana`, `inicio`, `fin`, `corte` (fecha y hora) y `entrega`. La semana 1 queda del jueves 15/10 al miércoles 21/10, corte el jueves 22/10 a las 3:00 p. m. y entrega el viernes 23/10.
+Una fila por ronda: `ronda`, `nombre`, `inicio`, `fin`, `corte` (fecha y hora) y `sorteo`. Ya viene con el cronograma de fin de año. Puedes editar cualquier celda (por ejemplo, mover un corte); el portal usa lo que diga esta hoja. Una ronda con `sorteo` vacío no tiene sorteo (como La Ñapa). Si algo se daña: menú **Copa Prosein → Restaurar rondas**.
 
-- Puedes **editar cualquier fila a mano** (por ejemplo, mover un corte por un feriado). El portal usa lo que diga esta hoja.
-- Si cambias `fecha_inicio`, `num_semanas`, `dias_por_semana` u `hora_corte`, usa el menú **Copa Prosein → Generar periodos** para recalcular todas las filas (borra los cambios hechos a mano).
-- La semana 10 entrega premios el **viernes 25/12**. Si ese día no se entrega, cambia la celda `entrega` de la semana 10.
+### 4c. Poner el valor del cupón y la meta en la hoja Canales
 
-### 4c. Crear el usuario administrador
+Una fila por tienda (canal `Tienda`) y una para `Distribuidor` y otra para `Corporativo`:
+
+| canal | tienda | monto_por_cupon | meta |
+|---|---|---|---|
+| Tienda | Boleíta | 1500 | 20000 |
+| Tienda | Maracaibo | 1000 | 12000 |
+| Distribuidor | | 3000 | 50000 |
+| Corporativo | | 2500 | 40000 |
+
+- `monto_por_cupon`: cuánto hay que vender para 1 cupón.
+- `meta`: lo que debe vender un vendedor de esa tienda o canal en toda la campaña. Para el Gran Sorteo Final necesita el `porcentaje_meta_final` (80 %). **Vacía = sin requisito.**
+- Para agregar una tienda, agrega una fila con canal `Tienda`: aparece en el registro.
+
+### 4d. Crear el usuario administrador
 
 En la hoja **Usuarios**, agrega una fila a mano con: `cedula`, `nombre`, `apellido`, `telefono` y **`rol` = `admin`**. Deja `password_hash` vacío.
 
@@ -162,22 +163,20 @@ Es de **solo lectura**: sirve para auditar sin tocar el Sheet.
 
 | Pestaña | Qué muestra |
 |---|---|
-| **Resumen** | Semana en juego, corte y entrega; vendedores, facturas (pendientes y rechazadas), monto, cupones, m² Austral y cupones del viaje; las 3 categorías con su rango de cupones; totales por tienda. |
-| **Vendedores** | Todos los vendedores con tienda, categoría, cupones, vendido, m² y cupones del viaje (y si entran o no al viaje). Búsqueda, filtros y descarga **CSV**. |
-| **Ventas** | Todas las facturas con su estado, semana y foto. Filtros por estado, semana y tienda; descarga **CSV**. |
-| **Semanas** | Las 10 semanas con su corte y estado; los ganadores de cada semana, con aviso si hay empate exacto en el último puesto. |
-| **Sorteo** | Las 4 urnas (Oro, Plata, Bronce y Viaje) con sus cupones, y los botones para **imprimirlos**. |
+| **Resumen** | Ronda en juego, corte y sorteo; vendedores, facturas, monto, cupones, cuántos cumplen el 80 % de la meta, cupones del Gran Sorteo Final, m² Austral y cupones del viaje; una fila por tienda y canal con su valor de cupón, meta y avance. |
+| **Vendedores** | Cada vendedor con su tienda o canal, cupones, cupones de la ronda, vendido, % de la meta, cupones finales y del viaje. Filtros y **CSV**. |
+| **Ventas** | Todas las facturas con su estado, ronda y foto. Filtros y **CSV**. |
+| **Rondas** | Las 4 rondas con su corte, sorteo y estado; quién completó cupones en cada una. |
+| **Sorteos** | Las bolsas: Ronda 1, 2, 3, Gran Sorteo Final y Viaje, con sus cupones y el botón para **imprimirlos**. |
 
-### Imprimir los cupones para las urnas
+### Imprimir los cupones para la bolsa
 
-En **Sorteo → Imprimir** se abre `cupones.html`:
+En **Sorteos → Imprimir** se abre `cupones.html`:
 
-- Papel **carta**, **24 cupones por hoja** (3 × 8) con líneas punteadas para recortar. Cada urna empieza en una hoja nueva.
-- Cada cupón lleva su código único dentro de la urna (`C1-0001` para Oro, `C2-…` Plata, `C3-…` Bronce, `V-0001` viaje), el nombre, la cédula, la tienda y la factura que lo completó.
-- Los cupones del **viaje** llevan una **banda negra** para no mezclarlos. En el diálogo de impresión activa **"Gráficos de fondo"** y usa **escala 100 %**.
-- Antes del corte final las hojas salen marcadas **PROVISIONAL** (las categorías todavía pueden cambiar). Imprime después del corte del jueves 24/12.
-
-La misma lista queda en la hoja **Ranking** con el menú **Generar cupones para sorteo**, para verificar un código cuando salga.
+- Papel **carta**, **24 cupones por hoja** (3 × 8) con líneas punteadas para recortar. Cada sorteo empieza en una hoja nueva.
+- Cada cupón lleva su código único (`R1-0001` Ronda 1, `R2-…`, `R3-…`, `F-0001` Gran Sorteo Final, `V-0001` viaje), el nombre, la cédula, la tienda o canal y la factura.
+- Los del **Gran Sorteo Final** llevan una **banda roja** y los del **viaje** una **banda negra**. En el diálogo de impresión activa **"Gráficos de fondo"** y usa **escala 100 %**.
+- Antes del corte de su ronda las hojas salen marcadas **PROVISIONAL**. Imprime cada bolsa después de su corte (Ronda 1: después del viernes 6/11 a las 3:00 p. m.).
 
 ### Revisar facturas
 
@@ -197,28 +196,26 @@ Otros casos en **Usuarios**:
 
 - **Bloqueo temporal:** tras 5 intentos fallidos la cuenta queda en pausa 15 minutos (`bloqueado_hasta`). Para desbloquear antes, borra esa celda.
 - **Bloquear a alguien:** cambia `estado` a `bloqueado`. Pierde la sesión de inmediato.
-- **Cambio de tienda:** edita `sucursal_o_zona` (usa un nombre de la lista `sucursales`). Las cuentas creadas sin tienda la eligen la próxima vez que entran.
+- **Cambio de tienda o canal:** edita `canal` (Tienda, Distribuidor o Corporativo) y `sucursal_o_zona` (una tienda de la hoja Canales). Las cuentas sin canal válido lo eligen la próxima vez que entran.
 
 ### Menú "Copa Prosein"
 
 | Opción | Qué hace |
 |---|---|
-| **Inicializar hojas** | Corre `setup()` (no borra datos). |
-| **Generar periodos (semanas y cortes)** | Recalcula la hoja Periodos desde Configuracion. |
-| **Recalcular rankings** | Reescribe la hoja Ranking: general (con categoría), viaje Austral, semana y urnas. |
-| **Generar cupones para sorteo** | Lista de cada urna con su código (`C1-0001`, `V-0001`…), cédula, vendedor y factura. |
-| **Ganadores semanales (elegir semana)** | Pide el número de semana y muestra los ganadores. Avisa si hay empate exacto en el último puesto premiado. |
-| **Resumen del sorteo final** | Cuántos vendedores y cupones hay en cada categoría y en la urna del viaje. |
-| **Cargar / Borrar datos de prueba** | 8 vendedores de prueba (cédulas 90000001–90000008, contraseña `prueba123`) con ventas. Bórralos antes de empezar. |
+| **Inicializar hojas** | Corre `setup()` (no borra ventas ni usuarios). |
+| **Restaurar rondas (cronograma original)** | Vuelve a escribir la hoja Rondas con las fechas de fin de año. |
+| **Recalcular rankings** | Reescribe la hoja Ranking: general (con meta y cupones finales), ronda, viaje y sorteos. |
+| **Generar cupones para sorteo** | Lista de cada bolsa con su código (`R1-0001`, `F-0001`, `V-0001`…), cédula, vendedor y factura. |
+| **Resultado de una ronda** | Pide la ronda y muestra quién completó cupones y cuántos van a su sorteo. |
+| **Resumen de los sorteos** | Cuántos cupones y vendedores hay en cada bolsa y cuántos cumplen la meta. |
+| **Cargar / Borrar datos de prueba** | 8 vendedores de prueba (cédulas 90000001–90000008, contraseña `prueba123`). Bórralos antes de empezar. |
 
-> **Premios semanales:** después del corte del jueves a las 3:00 p. m. corre "Ganadores semanales" (o mira la pestaña Semanas del panel) y guarda el resultado para la entrega del viernes.
+### Cada sorteo
 
-### Sorteo final
-
-1. Después del corte final (jueves 24/12, 3:00 p. m.) pon `concurso_abierto = NO` y revisa las facturas pendientes.
-2. En el panel: **Sorteo → Imprimir todos**. Recorta y pon cada grupo en su urna: Oro, Plata, Bronce y Viaje.
-3. Saca los premios de cada urna (2 en Oro, 1 en Plata, 1 en Bronce) y el viaje de la urna del viaje.
-4. Verifica cada código en la hoja Ranking (menú **Generar cupones para sorteo**) o en el panel.
+1. Espera el corte de la ronda (por ejemplo, viernes 6/11 a las 3:00 p. m. para la Ronda 1) y revisa las facturas pendientes.
+2. En el panel: **Sorteos → Ronda N → Imprimir cupones**. Recorta, dobla y mete los cupones en la bolsa.
+3. Verifica el código del cupón que salga en la hoja Ranking (menú **Generar cupones para sorteo**) o en el panel.
+4. Para el **Gran Sorteo Final** (21/12), después del corte de La Ñapa (domingo 20/12, 3:00 p. m.) pon `concurso_abierto = NO` e imprime **Gran Sorteo Final** y **Viaje todo incluido**.
 
 ---
 
@@ -229,7 +226,7 @@ Otros casos en **Usuarios**:
 - La sesión de cada vendedor es un token aleatorio que **vence** (7 días). En el servidor se guarda solo un hash del token.
 - Cada acción usa **la cédula del token**, nunca una cédula enviada por el navegador.
 - 5 intentos fallidos → bloqueo de 15 minutos.
-- Todo se valida en el servidor: fechas dentro del concurso y no futuras, montos, m² obligatorios si vendió Austral, y que la foto sea realmente una imagen.
+- Todo se valida en el servidor: fechas dentro de la campaña y de rondas abiertas, no futuras, montos, m² obligatorios si vendió Austral, y que la foto sea realmente una imagen.
 - Los textos que empiezan con `=`, `+`, `-` o `@` se guardan como texto (evita fórmulas maliciosas en el Sheet).
 - Las escrituras usan `LockService` para que dos ventas simultáneas no se pisen.
 - Las fotos quedan **privadas** en tu Drive. El vendedor ve solo las suyas a través del portal; el administrador puede ver todas desde el panel. También las abres desde la columna `url_foto`.
@@ -240,23 +237,22 @@ Otros casos en **Usuarios**:
 ## Personalizar
 
 - **Colores:** bloque `:root` al inicio de [`web/styles.css`](web/styles.css). Ya tiene los de prosein.com.ve: rojo `#DF1630`, carbón `#303133`, tipografía Poppins.
-- **Textos de las reglas:** se arman con los valores de Configuracion (monto por cupón, premios semanales, fecha del sorteo).
+- **Textos de las reglas:** se arman con Configuracion, Rondas y Canales (valor del cupón, fechas de cada sorteo, % de la meta).
 - **Compresión de fotos:** `FOTO_LADO_MAX` y `FOTO_CALIDAD` en `web/config.js`.
 
 ---
 
-## Actualizar desde la primera versión
-
-Si ya tenías el Sheet de la versión anterior (con `fecha_inicio` 08/10/2026):
+## Actualizar desde la versión anterior (semanas y categorías)
 
 1. Pega el nuevo [`apps-script/Code.gs`](apps-script/Code.gs) y guarda.
-2. Ejecuta **`setup()`**: agrega las claves nuevas de Configuracion, la hoja **Periodos** y la columna **`rol`** en Usuarios, sin borrar datos. La fila `fecha_fin` queda marcada como "YA NO SE USA".
-3. En Configuracion pon **`fecha_inicio` = 15/10/2026**.
-4. Menú **Copa Prosein → Generar periodos**.
-5. **Implementar → Administrar implementaciones → Editar → Versión: Nueva versión → Implementar** (la URL no cambia).
-6. Agrega tu fila de administrador en Usuarios (paso 4c).
-
-Los vendedores que se registraron sin tienda la eligen la próxima vez que entran.
+2. Ejecuta **`setup()`**. Sin borrar ventas ni usuarios:
+   - crea las hojas **Rondas** (con el cronograma de fin de año) y **Canales** (con tus tiendas y el `monto_por_cupon` que tenías),
+   - **borra** la hoja Periodos y las claves viejas de Configuracion (semanas, categorías, `sucursales`…),
+   - agrega la columna **`canal`** en Usuarios. Quien ya tenía una tienda válida queda en el canal Tienda; los demás eligen su canal al entrar.
+3. Llena el **valor del cupón** y la **meta** de cada tienda y canal en la hoja **Canales**.
+4. **Implementar → Administrar implementaciones → Editar → Versión: Nueva versión → Implementar** (la URL no cambia).
+5. Si no lo has hecho, agrega tu fila de administrador en Usuarios (paso 4d).
+6. Publica el sitio nuevo (paso 7).
 
 ---
 
@@ -265,10 +261,10 @@ Los vendedores que se registraron sin tienda la eligen la próxima vez que entra
 Requiere [Node.js](https://nodejs.org) 18 o superior. No hace falta instalar nada más.
 
 ```bash
-npm test          # 37 pruebas del backend (cupones, cortes, categorías, urnas, admin, sesiones…)
+npm test          # 36 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
 npm run dev       # portal en http://localhost:5173 con datos de prueba y un administrador
 ```
 
-`npm run dev` corre el mismo `Code.gs` sobre un simulador de Google Sheets, así que puedes probar todo el flujo sin desplegar. El administrador de prueba es la cédula `11111111` con contraseña `admin123`. Opciones: `--solo-aprobadas`, `--sin-ranking`, `--sin-bloqueo`, `--dia=-3` (el concurso empieza en 3 días), `--latencia=800`.
+`npm run dev` corre el mismo `Code.gs` sobre un simulador de Google Sheets, así que puedes probar todo el flujo sin desplegar. El administrador de prueba es la cédula `11111111` con contraseña `admin123`. Las fechas se corren para que hoy sea el día 25 de la campaña (Ronda 2). Opciones: `--real` (fechas reales), `--dia=5`, `--metas`, `--solo-aprobadas`, `--sin-ranking`, `--sin-bloqueo`, `--latencia=800`.
 
-Con [Playwright](https://playwright.dev) instalado, `node dev/e2e.js capturas/` recorre el portal (registro con tienda, ventas, tickets normales y del viaje, ver y descargar cupones, tienda faltante, panel del administrador, cupones para imprimir en PDF y movimiento reducido) y guarda capturas.
+Con [Playwright](https://playwright.dev) instalado, `node dev/e2e.js capturas/` recorre el portal (registro con canal y tienda, ventas, tickets normales y del viaje, ver y descargar cupones, tienda faltante, panel del administrador, cupones para imprimir en PDF y movimiento reducido) y guarda capturas.

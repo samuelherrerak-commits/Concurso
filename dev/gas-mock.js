@@ -112,6 +112,10 @@ class MockRange {
     for (let r = 0; r < this.filas; r++) for (let c = 0; c < this.cols; c++) this.sheet.validaciones.set(`${this.fila + r},${this.col + c}`, regla);
     return this;
   }
+  clearDataValidations() {
+    for (let r = 0; r < this.filas; r++) for (let c = 0; c < this.cols; c++) this.sheet.validaciones.delete(`${this.fila + r},${this.col + c}`);
+    return this;
+  }
   clearContent() { return this.setValue(''); }
   setFontWeight() { return this; }
   setFontColor() { return this; }
@@ -231,6 +235,10 @@ class MockSpreadsheet {
     const h = new MockSheet(this, n);
     this.hojas.push(h);
     return h;
+  }
+  deleteSheet(h) {
+    this.hojas = this.hojas.filter((x) => x !== h);
+    if (this.activa === h) this.activa = null;
   }
   setSpreadsheetTimeZone(z) { this.zona = z; }
   getSpreadsheetTimeZone() { return this.zona; }

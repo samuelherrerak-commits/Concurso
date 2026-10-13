@@ -1,7 +1,8 @@
 /**
- * Cupones del sorteo listos para imprimir (solo administradores).
+ * Cupones de La bolsa de los deseos listos para imprimir (solo administradores).
  * Hoja carta, 24 cupones por hoja (3 × 8), líneas punteadas para recortar.
- * Cada urna empieza en una hoja nueva; los del viaje llevan una banda negra.
+ * Cada sorteo empieza en una hoja nueva. Los del Gran Sorteo Final llevan una
+ * banda roja y los del viaje una banda negra, para no mezclarlos.
  */
 import { llamar, sesion } from './api.js';
 import { $, h, svgEl } from './dom.js';
@@ -20,48 +21,61 @@ function avion() {
   return svg;
 }
 
-function boleto(c, urna) {
-  const viaje = urna.tipo === 'austral';
-  return h('div', { class: 'boleto' + (viaje ? ' boleto--viaje' : '') },
-    viaje
-      ? h('div', { class: 'boleto__banda' }, avion(), h('span', {}, 'VIAJE TODO INCLUIDO'), h('span', { class: 'boleto__marca' }, 'PROSEIN'))
-      : h('div', { class: 'boleto__cab' }, h('span', { class: 'boleto__marca' }, 'PROSEIN'), h('span', {}, `COPA · URNA ${urna.nombre.toUpperCase()}`)),
+function cabecera(bolsa) {
+  if (bolsa.tipo === 'austral') return h('div', { class: 'boleto__banda' }, avion(), h('span', {}, 'VIAJE TODO INCLUIDO'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
+  if (bolsa.tipo === 'final') return h('div', { class: 'boleto__banda boleto__banda--final' }, h('span', {}, 'GRAN SORTEO FINAL'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
+  return h('div', { class: 'boleto__cab' }, h('span', { class: 'boleto__marca' }, 'PROSEIN'), h('span', {}, bolsa.nombre.toUpperCase()));
+}
+
+function pie(c, bolsa) {
+  if (bolsa.tipo === 'final') return `Cupón final ${c.n} de ${c.de} · ${fechaCorta(bolsa.fecha)}`;
+  return `Fact. ${c.factura} · ${fechaCorta(c.dia_venta)} · N° ${c.n}`;
+}
+
+function boleto(c, bolsa) {
+  const clase = bolsa.tipo === 'austral' ? ' boleto--viaje' : bolsa.tipo === 'final' ? ' boleto--final' : '';
+  return h('div', { class: 'boleto' + clase },
+    cabecera(bolsa),
     h('div', { class: 'boleto__codigo' }, c.codigo),
     h('div', { class: 'boleto__nombre' }, c.vendedor),
     h('div', { class: 'boleto__dato' }, `C.I. ${cedulaConPuntos(c.cedula)}${c.sucursal ? ' · ' + c.sucursal : ''}`),
-    h('div', { class: 'boleto__dato boleto__dato--pie' }, `Fact. ${c.factura} · ${fechaCorta(c.dia_venta)} · N° ${c.n}`));
+    h('div', { class: 'boleto__dato boleto__dato--pie' }, pie(c, bolsa)));
 }
 
-function hojasDeUrna(urna, provisional) {
-  const paginas = Math.max(1, Math.ceil(urna.cupones.length / POR_HOJA));
+function hojasDeBolsa(bolsa) {
+  const paginas = Math.max(1, Math.ceil(bolsa.cupones.length / POR_HOJA));
   const hojas = [];
   for (let p = 0; p < paginas; p++) {
-    const lote = urna.cupones.slice(p * POR_HOJA, (p + 1) * POR_HOJA);
-    const desde = lote[0];
-    const hasta = lote[lote.length - 1];
-    hojas.push(h('section', { class: 'hoja' + (urna.tipo === 'austral' ? ' hoja--viaje' : ''), 'aria-label': `${urna.nombre}, hoja ${p + 1} de ${paginas}` },
+    const lote = bolsa.cupones.slice(p * POR_HOJA, (p + 1) * POR_HOJA);
+    hojas.push(h('section', { class: 'hoja', 'aria-label': `${bolsa.nombre}, hoja ${p + 1} de ${paginas}` },
       h('div', { class: 'hoja__cab' },
-        h('strong', {}, `Urna ${urna.nombre}`),
-        h('span', {}, lote.length ? `${desde.codigo} a ${hasta.codigo}` : 'sin cupones'),
+        h('strong', {}, `${datos.sorteo} · ${bolsa.nombre}${bolsa.fecha ? ' · sorteo ' + fechaCorta(bolsa.fecha) : ''}`),
+        h('span', {}, lote.length ? `${lote[0].codigo} a ${lote[lote.length - 1].codigo}` : 'sin cupones'),
         h('span', {}, `Hoja ${p + 1} de ${paginas}`),
-        provisional ? h('span', { class: 'hoja__provisional' }, 'PROVISIONAL') : null),
-      h('div', { class: 'rejilla' }, lote.map((c) => boleto(c, urna)))));
+        bolsa.provisional ? h('span', { class: 'hoja__provisional' }, 'PROVISIONAL') : null),
+      h('div', { class: 'rejilla' }, lote.map((c) => boleto(c, bolsa)))));
   }
   return hojas;
 }
 
 function pintar() {
   const elegida = $('#urna').value;
-  const urnas = datos.urnas.filter((u) => elegida === 'todas' || u.id === elegida);
-  const conCupones = urnas.filter((u) => u.cupones.length);
-  const total = conCupones.reduce((t, u) => t + u.cupones.length, 0);
-  const hojas = conCupones.reduce((t, u) => t + Math.ceil(u.cupones.length / POR_HOJA), 0);
+  const bolsas = datos.bolsas.filter((b) => elegida === 'todas' || b.id === elegida);
+  const conCupones = bolsas.filter((b) => b.cupones.length);
+  const total = conCupones.reduce((t, b) => t + b.cupones.length, 0);
+  const hojas = conCupones.reduce((t, b) => t + Math.ceil(b.cupones.length / POR_HOJA), 0);
   $('#resumen').textContent = total
     ? `${total} cupones en ${hojas} ${hojas === 1 ? 'hoja' : 'hojas'} · generados el ${fechaHora(datos.generado)}`
-    : 'No hay cupones en esta urna todavía.';
+    : 'No hay cupones en este sorteo todavía.';
   $('#imprimir').disabled = !total;
-  $('#hojas').replaceChildren(...conCupones.flatMap((u) => hojasDeUrna(u, datos.provisional)));
-  document.title = `Cupones ${elegida === 'todas' ? 'del sorteo' : urnas[0] ? urnas[0].nombre : ''} · Copa Prosein`;
+  $('#hojas').replaceChildren(...conCupones.flatMap(hojasDeBolsa));
+  const provisionales = bolsas.filter((b) => b.provisional && b.cupones.length).map((b) => b.nombre);
+  const aviso = $('#aviso');
+  aviso.hidden = !provisionales.length;
+  aviso.textContent = provisionales.length
+    ? `Provisional: ${provisionales.join(', ')} todavía no ${provisionales.length === 1 ? 'llega a su corte' : 'llegan a su corte'}, así que los cupones pueden cambiar. Las hojas impresas dirán PROVISIONAL.`
+    : '';
+  document.title = `Cupones ${elegida === 'todas' ? 'de los sorteos' : bolsas[0] ? bolsas[0].nombre : ''} · Copa Prosein`;
 }
 
 function mostrarAviso(texto, conEnlace) {
@@ -71,13 +85,12 @@ function mostrarAviso(texto, conEnlace) {
 }
 
 async function iniciar() {
-  const s = sesion.leer();
-  if (!s) {
+  if (!sesion.leer()) {
     $('#resumen').textContent = '';
     mostrarAviso('Ingresa al portal con tu cuenta de administrador y vuelve a abrir esta página.', true);
     return;
   }
-  const r = await llamar('adminCupones', { urna: 'todas' }, { timeout: 60000 });
+  const r = await llamar('adminCupones', { bolsa: 'todas' }, { timeout: 60000 });
   if (!r.ok) {
     $('#resumen').textContent = '';
     mostrarAviso(r.message || 'No pudimos cargar los cupones.', r.code === 'AUTH' || r.code === 'FORBIDDEN');
@@ -86,19 +99,16 @@ async function iniciar() {
   datos = r.data;
   const select = $('#urna');
   select.replaceChildren(
-    h('option', { value: 'todas' }, 'Todas las urnas'),
-    ...datos.urnas.map((u) => h('option', { value: u.id }, `${u.tipo === 'austral' ? u.nombre : 'Urna ' + u.nombre} (${u.cupones.length})`)));
-  const pedida = new URLSearchParams(location.search).get('urna');
-  if (pedida && datos.urnas.some((u) => u.id === pedida)) select.value = pedida;
+    h('option', { value: 'todas' }, 'Todos los sorteos'),
+    ...datos.bolsas.map((b) => h('option', { value: b.id }, `${b.nombre} (${b.cupones.length})`)));
+  const pedida = new URLSearchParams(location.search).get('bolsa');
+  if (pedida && datos.bolsas.some((b) => b.id === pedida)) select.value = pedida;
   select.addEventListener('change', () => {
     const url = new URL(location.href);
-    url.searchParams.set('urna', select.value);
+    url.searchParams.set('bolsa', select.value);
     history.replaceState(null, '', url);
     pintar();
   });
-  if (datos.provisional) {
-    mostrarAviso('Provisional: el concurso no ha llegado al corte final, así que las categorías todavía pueden cambiar. Las hojas impresas dirán PROVISIONAL.');
-  }
   $('#imprimir').addEventListener('click', () => window.print());
   pintar();
 }

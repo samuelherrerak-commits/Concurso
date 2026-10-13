@@ -83,7 +83,7 @@ function actualizarAyudaMonto() {
   const ayuda = $('#v-monto-ayuda');
   const monto = parsearDecimal($('#form-venta').elements.monto.value);
   if (!contexto || !(monto > 0)) { ayuda.textContent = ''; return; }
-  const M = contexto.concurso.monto_por_cupon;
+  const M = contexto.resumen.monto_por_cupon;
   const sobrante = contexto.resumen.sobrante;
   const completa = Math.floor((sobrante + monto) / M);
   const falta = M - ((sobrante + monto) % M);
@@ -171,7 +171,7 @@ async function enviar(ev) {
 
   if (!r.ok) {
     if (r.code === 'AUTH') { dialogo.cerrar(); return; }
-    if (r.code === 'NEED_SUCURSAL' && alNecesitarSucursalCb) {
+    if (r.code === 'NEED_CANAL' && alNecesitarSucursalCb) {
       // Los datos de la venta se quedan en el formulario para enviarla después.
       dialogo.cerrar('ok');
       alNecesitarSucursalCb();

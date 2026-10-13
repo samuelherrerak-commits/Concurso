@@ -250,7 +250,9 @@ export function verCupon(d) {
   $('#cupon-titulo').textContent = d.tipo === 'austral' ? `Cupón del viaje N° ${d.n}` : `Cupón N° ${d.n}`;
   $('#cupon-ticket').replaceChildren(crearTicket(d));
   $('#cupon-nota').replaceChildren(d.tipo === 'austral'
-    ? h('span', {}, icono('ticket'), 'Este cupón entra a la urna del viaje si estás en la categoría que participa al cierre.')
-    : h('span', {}, icono('ticket'), 'Cada cupón es una participación en el sorteo final de tu categoría.'));
+    ? h('span', {}, icono('ticket'), 'Entra a la bolsa del sorteo del viaje todo incluido.')
+    : h('span', {}, icono('ticket'), d.conSorteo === false
+      ? 'Es de La Ñapa: no tiene sorteo propio y suma para el Gran Sorteo Final.'
+      : 'Entra a la bolsa del sorteo de su ronda y suma para el Gran Sorteo Final.'));
   ctl.abrir();
 }

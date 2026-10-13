@@ -149,6 +149,22 @@ main { overflow-x: auto; padding: 24px 16px 48px; }
 .boleto--viaje .avion { width: 3.4mm; height: 3.4mm; flex: none; }
 .boleto--viaje .boleto__codigo { color: var(--carbon); }
 
+/* Cupón del Gran Sorteo Final: banda roja. */
+.boleto--final .boleto__banda {
+  display: flex; align-items: center; gap: 1.6mm;
+  margin: -2.6mm -3.4mm 0;
+  padding: 1.5mm 3.4mm;
+  background: var(--rojo);
+  color: #fff;
+  font: 700 7pt/1 var(--f-ui);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.boleto--final .boleto__banda .boleto__marca { margin-left: auto; color: #fff; font-size: 8pt; }
+.boleto--final .boleto__codigo { color: var(--carbon); }
+
 /* ---------- Impresión ---------- */
 
 @page { size: letter; margin: 8mm; }

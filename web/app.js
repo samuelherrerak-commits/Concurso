@@ -5,14 +5,14 @@
 import { llamar, sesion, recuerdo } from './js/api.js';
 import { $, h, avisar, prepararDialogo, mostrarErrores, cargando } from './js/dom.js';
 import { dinero, fechaHora } from './js/formato.js';
-import { iniciarAcceso, mostrarAcceso, llenarSucursales } from './js/acceso.js';
+import { iniciarAcceso, mostrarAcceso, llenarSucursales, validarCanal } from './js/acceso.js';
 import { iniciarVenta, abrirVenta } from './js/venta.js';
 import { mostrarImpresora, mensajeMarcador, mensajeViaje } from './js/ticket.js';
 import { verCupon } from './js/cupon.js';
 import { iniciarAdmin, mostrarAdmin, salirAdmin } from './js/admin.js';
 import {
   pintarCabecera, pintarResumen, pintarEsqueleto, pintarErrorCarga, pintarAccion,
-  pintarCupones, pintarViaje, pintarVentas, pintarRanking, pintarReglas, categoriasViaje,
+  pintarCupones, pintarViaje, pintarVentas, pintarRanking, pintarReglas,
 } from './js/panel.js';
 
 let datos = null;
@@ -31,8 +31,11 @@ function nombreTicket(usuario) {
 
 /** Datos del ticket de un cupón (los mismos al imprimirlo, al verlo y al descargarlo). */
 function datosTicket(c, d) {
+  const ronda = d.concurso.rondas[c.ronda - 1];
   return {
     n: c.n,
+    ronda: ronda ? ronda.nombre : '',
+    conSorteo: ronda ? ronda.con_sorteo : true,
     factura: c.factura,
     fechaHora: fechaHora(c.fecha_carga),
     vendedor: nombreTicket(d.usuario),
@@ -91,7 +94,7 @@ async function cargarPanel({ silencioso = false } = {}) {
     nuevosDesde: typeof vistos === 'number' ? vistos : Infinity,
     nuevosViajeDesde: typeof vistosViaje === 'number' ? vistosViaje : Infinity,
   });
-  if (datos.usuario.necesita_sucursal && !sucursalPedida) {
+  if (datos.usuario.necesita_canal && !sucursalPedida) {
     sucursalPedida = true;
     pedirSucursal();
     return;
@@ -136,7 +139,7 @@ async function revisarCuponesNuevos(vistos, vistosViaje) {
       cuponesDespues: totalViaje,
       progresoAntes: 0,
       progresoDespues: r.austral.progreso,
-      mensaje: mensajeViaje({ nuevos: nuevos.length, falta: r.austral.falta, participa: r.austral.participa, categoria: categoriasViaje(d.concurso) }),
+      mensaje: mensajeViaje({ nuevos: nuevos.length, falta: r.austral.falta, participa: r.austral.participa, porcentaje: r.meta.porcentaje_requerido }),
     });
   }
   if ((hayNuevos || hayNuevosViaje) && datos === d) {
@@ -190,7 +193,7 @@ async function alRegistrar(res) {
     }
     // Segunda pasada: los cupones del viaje (Austral) salen en papel azul.
     if (res.austral_nuevos > 0) {
-      const mensaje = mensajeViaje({ nuevos: res.austral_nuevos, falta: res.m2_falta, participa: d.resumen.austral.participa, categoria: categoriasViaje(d.concurso) });
+      const mensaje = mensajeViaje({ nuevos: res.austral_nuevos, falta: res.m2_falta, participa: d.resumen.austral.participa, porcentaje: d.resumen.meta.porcentaje_requerido });
       if (!(res.cupones_nuevos > 0)) mensaje.push(h('br'), 'Y te faltan ', h('strong', {}, dinero(res.falta_para_proximo, { compacto: true })), ' en ventas para tu próximo cupón.');
       await mostrarImpresora({
         variante: 'austral',
@@ -214,7 +217,7 @@ async function alRegistrar(res) {
   }
 }
 
-// ---------- Tienda obligatoria ----------
+// ---------- Canal (y tienda) obligatorio ----------
 
 function pedirSucursal(luego) {
   despuesDeSucursal = luego || null;
@@ -227,18 +230,18 @@ function pedirSucursal(luego) {
   if (datos) llenarSucursales(datos.concurso.sucursales);
   mostrarErrores(form, {});
   dlgSucursal.abrir();
-  setTimeout(() => form.elements.sucursal.focus({ preventScroll: true }), 80);
+  setTimeout(() => form.elements.canal.focus({ preventScroll: true }), 80);
 }
 
 async function guardarSucursal(ev) {
   ev.preventDefault();
   const form = ev.currentTarget;
-  const sucursal = form.elements.sucursal.value;
-  if (!sucursal) { mostrarErrores(form, { sucursal: 'Elige la tienda Prosein donde trabajas.' }); return; }
+  const { errores, canal, sucursal } = validarCanal(form);
+  if (Object.keys(errores).length) { mostrarErrores(form, errores); return; }
   const boton = form.querySelector('[type="submit"]');
   cargando(boton, true, 'Guardando…');
-  const r = await llamar('setSucursal', { sucursal });
-  cargando(boton, false, 'Guardar tienda');
+  const r = await llamar('setCanal', { canal, sucursal });
+  cargando(boton, false, 'Guardar');
   if (!r.ok) {
     if (r.code === 'AUTH') return;
     if (r.campo) mostrarErrores(form, { [r.campo]: r.message });
@@ -252,7 +255,8 @@ async function guardarSucursal(ev) {
     pintarCabecera(datos);
   }
   dlgSucursal.cerrar('ok');
-  avisar(`Listo: tu tienda es ${r.data.usuario.sucursal}.`);
+  const u = r.data.usuario;
+  avisar(u.canal === 'Tienda' ? `Listo: tu tienda es ${u.sucursal}.` : `Listo: tu canal es ${u.canal_etiqueta}.`);
   const luego = despuesDeSucursal;
   despuesDeSucursal = null;
   if (luego) setTimeout(luego, 320);
@@ -260,7 +264,7 @@ async function guardarSucursal(ev) {
 
 function registrarVenta() {
   if (!datos) return;
-  if (datos.usuario.necesita_sucursal) { pedirSucursal(() => abrirVenta(datos)); return; }
+  if (datos.usuario.necesita_canal) { pedirSucursal(() => abrirVenta(datos)); return; }
   abrirVenta(datos);
 }
 

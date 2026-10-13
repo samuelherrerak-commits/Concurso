@@ -5,18 +5,18 @@
 import { llamar, sesion } from './api.js';
 import { $, $$, h, icono, avisar } from './dom.js';
 import { dinero, decimal, fechaCorta, fechaHora, rango, plural, iniciales, momento, fechaConDia, enCaracas, conPunto } from './formato.js';
-import { textoSemana, textoCorte } from './panel.js';
+import { textoRonda, textoCorte } from './panel.js';
 
-const VISTAS = ['resumen', 'vendedores', 'ventas', 'semanas', 'sorteo'];
+const VISTAS = ['resumen', 'vendedores', 'ventas', 'rondas', 'sorteo'];
 const POR_PAGINA = 150;
 
 let vista = 'resumen';
 let cache = {};
 let verFotoCb = null;
 let turno = 0;
-let semanaElegida = 0;
-const filtrosVendedores = { q: '', sucursal: '', categoria: '' };
-const filtrosVentas = { q: '', estado: '', semana: '', sucursal: '', limite: POR_PAGINA };
+let rondaElegida = 0;
+const filtrosVendedores = { q: '', grupo: '', meta: '' };
+const filtrosVentas = { q: '', estado: '', ronda: '', grupo: '', limite: POR_PAGINA };
 
 export function iniciarAdmin() {
   const botones = $$('#admin-pestanas [data-vista]');
@@ -37,7 +37,7 @@ export function mostrarAdmin({ verFoto }) {
   const s = sesion.leer();
   const u = (s && s.usuario) || { nombre: '', apellido: '' };
   $('#saludo-titulo').textContent = u.nombre ? `Hola, ${u.nombre.split(' ')[0]}` : 'Administración';
-  $('#saludo-semana').textContent = 'Auditoría de la Copa';
+  $('#saludo-semana').textContent = 'Auditoría de La bolsa de los deseos';
   $('#saludo-corte').textContent = '';
   $('#avatar-iniciales').textContent = iniciales(u.nombre, u.apellido).toUpperCase() || 'AD';
   $('#menu-nombre').textContent = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'Administrador';
@@ -50,7 +50,7 @@ export function salirAdmin() {
   cache = {};
   turno++;
   vista = 'resumen';
-  semanaElegida = 0;
+  rondaElegida = 0;
   $('#admin-vista').replaceChildren();
 }
 
@@ -66,7 +66,7 @@ async function obtener(clave, accion, params = {}) {
 }
 
 function pintarCabecera(c) {
-  $('#saludo-semana').textContent = textoSemana(c);
+  $('#saludo-semana').textContent = textoRonda(c);
   $('#saludo-corte').textContent = textoCorte(c);
 }
 
@@ -81,8 +81,8 @@ async function irA(nombre, { recargar = false } = {}) {
   const caja = $('#admin-vista');
   const mio = ++turno;
   if (recargar) {
-    if (nombre === 'semanas') Object.keys(cache).filter((k) => k.startsWith('semana:')).forEach((k) => delete cache[k]);
-    delete cache[nombre === 'semanas' || nombre === 'sorteo' ? 'resumen' : nombre];
+    if (nombre === 'rondas') Object.keys(cache).filter((k) => k.startsWith('ronda:')).forEach((k) => delete cache[k]);
+    delete cache[nombre === 'rondas' || nombre === 'sorteo' ? 'resumen' : nombre];
   }
   caja.replaceChildren(h('div', { class: 'admin__cargando' }, h('span', { class: 'girador', 'aria-hidden': 'true' }), 'Cargando…'));
   try {
@@ -101,7 +101,7 @@ async function irA(nombre, { recargar = false } = {}) {
 async function construir(nombre) {
   if (nombre === 'vendedores') return vistaVendedores(await obtener('vendedores', 'adminVendedores'), await obtener('resumen', 'adminResumen'));
   if (nombre === 'ventas') return vistaVentas(await obtener('ventas', 'adminVentas'));
-  if (nombre === 'semanas') return vistaSemanas(await obtener('resumen', 'adminResumen'));
+  if (nombre === 'rondas') return vistaRondas(await obtener('resumen', 'adminResumen'));
   if (nombre === 'sorteo') return vistaSorteo(await obtener('resumen', 'adminResumen'));
   return vistaResumen(await obtener('resumen', 'adminResumen'));
 }
@@ -132,9 +132,9 @@ function chipEstado(estado) {
   return h('span', { class: `chip chip--${estado}` }, estado);
 }
 
-function chipCategoria(id, nombre) {
-  if (!id) return h('span', { class: 'texto-tenue' }, '—');
-  return h('span', { class: `chip chip--cat chip--cat${id}` }, nombre);
+function chipMeta(v) {
+  if (!v.meta) return h('span', { class: 'texto-tenue' }, 'sin meta');
+  return h('span', { class: 'chip ' + (v.cumple ? 'chip--Aprobada' : 'chip--Pendiente') }, `${Math.floor(v.avance * 100)} %`);
 }
 
 function opciones(lista, elegida, todos) {
@@ -186,55 +186,47 @@ const botonCsv = (alTocar) => h('button', { type: 'button', class: 'btn btn--sec
 
 // ---------- Resumen ----------
 
-function textoReglaCategorias(c) {
-  const [a, b, d] = c.categorias.map((x) => x.nombre);
-  if (c.categorias_modo === 'cupones') return `${a}: ${c.categoria_1_min_cupones}+ cupones · ${b}: ${c.categoria_2_min_cupones}+ · ${d}: el resto con al menos 1.`;
-  return `${a}: el ${decimal(c.categoria_1_porcentaje)} % con más cupones · ${b}: el ${decimal(c.categoria_2_porcentaje)} % siguiente · ${d}: el resto. Los empates en el límite suben.`;
-}
+// ---------- Resumen ----------
 
 function vistaResumen(d) {
   const t = d.totales;
   const c = d.concurso;
-  const s = c.semana_actual;
+  const s = c.ronda_actual;
   const enJuego = s.estado === 'en_curso' || s.estado === 'en_corte' || s.estado === 'proxima';
-  const semana = h('div', { class: 'superficie admin__semana' },
-    h('div', {}, h('strong', {}, textoSemana(c)), enJuego ? h('span', {}, `Corte: ${momento(s.corte)} · Premios: ${fechaConDia(s.entrega)}${c.texto_entrega ? ' ' + c.texto_entrega : ''}`) : null),
+  const ronda = h('div', { class: 'superficie admin__semana' },
+    h('div', {}, h('strong', {}, textoRonda(c)), enJuego ? h('span', {}, textoCorte(c)) : null),
     h('span', { class: 'chip ' + (c.concurso_abierto ? 'chip--Aprobada' : 'chip--Rechazada') }, c.concurso_abierto ? 'Carga abierta' : 'Carga cerrada'));
 
-  const cifras = h('dl', { class: 'superficie cifras' },
+  const cifras = h('dl', { class: 'superficie cifras cifras--8' },
     dato('Vendedores', String(t.vendedores_registrados), `${t.vendedores_con_ventas} con ventas`),
     dato('Facturas', String(t.ventas), `${t.pendientes} pend. · ${t.rechazadas} rech.`),
     dato('Vendido', dinero(t.monto, { compacto: true }), c.contar_solo_aprobadas ? 'solo aprobadas' : 'sin rechazadas'),
-    dato('Cupones', String(t.cupones), `1 cada ${dinero(c.monto_por_cupon, { compacto: true })}`),
+    dato('Cupones', String(t.cupones), 'acumulados'),
+    dato(`Cumplen ${decimal(c.porcentaje_meta_final)} % de la meta`, String(t.cumplen_meta), `de ${t.vendedores_con_ventas} con ventas`),
+    dato('Cupones Gran Final', String(t.cupones_final), `1 cada ${c.cupones_por_cupon_final} cupones`),
     dato('Austral', `${decimal(t.m2)} m²`, 'vendidos'),
     dato('Cupones del viaje', String(t.cupones_austral), `1 cada ${decimal(c.m2_por_cupon_austral)} m²`));
 
-  const categorias = h('section', { class: 'admin__bloque' },
-    h('h3', {}, 'Categorías', s.estado !== 'terminado' ? h('span', { class: 'chip chip--Pendiente' }, 'provisional') : null),
-    h('p', { class: 'admin__nota' }, textoReglaCategorias(c)),
-    h('div', { class: 'categorias' }, d.categorias.map((x) => h('article', { class: `superficie categoria categoria--${x.id}` },
-      h('div', { class: 'categoria__cab' }, h('strong', {}, x.nombre), x.viaje ? h('span', { class: 'chip chip--austral' }, icono('avion'), 'viaje') : null),
-      h('dl', {},
-        dato('Vendedores', String(x.vendedores)),
-        dato('Cupones', String(x.cupones)),
-        dato('Rango', x.vendedores ? (x.desde === x.hasta ? plural(x.hasta, 'cupón', 'cupones') : `${x.desde} a ${x.hasta} cupones`) : '—'),
-        dato('Premios', String(x.premios)))))));
-
-  const tiendas = h('section', { class: 'admin__bloque' },
-    h('h3', {}, 'Por tienda'),
+  const canales = h('section', { class: 'admin__bloque' },
+    h('h3', {}, 'Tiendas y canales'),
+    h('p', { class: 'admin__nota' }, 'El valor del cupón y la meta de cada tienda y canal se cambian en la hoja Canales. Sin meta, el vendedor entra al Gran Sorteo Final con cada ', String(c.cupones_por_cupon_final), ' cupones.'),
     tabla(
-      [{ t: 'Tienda' }, { t: 'Vendedores', num: true }, { t: 'Facturas', num: true }, { t: 'Vendido', num: true }, { t: 'Cupones', num: true }, { t: 'Austral', num: true }],
-      d.sucursales.map((x) => h('tr', {},
-        celda(x.nombre), celda(String(x.vendedores), true), celda(String(x.ventas), true),
-        celda(dinero(x.monto, { compacto: true }), true), celda(String(x.cupones), true), celda(`${decimal(x.m2)} m²`, true)))));
+      [{ t: 'Tienda o canal' }, { t: 'Valor cupón', num: true }, { t: 'Meta', num: true }, { t: 'Vendedores', num: true }, { t: 'Facturas', num: true }, { t: 'Vendido', num: true }, { t: 'Cupones', num: true }, { t: `Cumplen ${decimal(c.porcentaje_meta_final)} %`, num: true }, { t: 'Cupones final', num: true }],
+      d.canales.map((x) => h('tr', {},
+        celda([h('strong', {}, x.nombre), x.canal && x.canal !== 'Tienda' ? null : h('small', {}, x.canal ? 'Tienda' : 'sin canal')]),
+        celda(x.monto_por_cupon ? dinero(x.monto_por_cupon, { compacto: true }) : '—', true),
+        celda(x.meta ? dinero(x.meta, { compacto: true }) : h('span', { class: 'texto-tenue' }, 'sin meta'), true),
+        celda(String(x.vendedores), true), celda(String(x.ventas), true),
+        celda(dinero(x.monto, { compacto: true }), true), celda(String(x.cupones), true),
+        celda(`${x.cumplen} de ${x.con_ventas}`, true), celda(String(x.cupones_final), true))),
+      { clase: 'tabla--canales' }));
 
   return [
     cabeza('Resumen'),
-    semana,
+    ronda,
     cifras,
-    categorias,
-    tiendas,
-    h('p', { class: 'admin__nota admin__nota--pie' }, 'Este panel es de solo lectura. Para aprobar o rechazar facturas, cambia la columna estado en la hoja Registros; las reglas y fechas se cambian en Configuracion y Periodos.'),
+    canales,
+    h('p', { class: 'admin__nota admin__nota--pie' }, 'Este panel es de solo lectura. Para aprobar o rechazar facturas, cambia la columna estado en la hoja Registros; las reglas se cambian en Configuracion, las fechas en Rondas y los valores y metas en Canales.'),
   ];
 }
 
@@ -242,41 +234,42 @@ function vistaResumen(d) {
 
 function vistaVendedores(d, resumen) {
   const f = filtrosVendedores;
+  const c = resumen.concurso;
   const contenedor = h('div', {});
-  const sucursales = [...new Set([...resumen.concurso.sucursales, ...d.vendedores.map((v) => v.sucursal).filter(Boolean)])];
+  const grupos = [...new Set([...d.grupos, ...d.vendedores.map((v) => v.grupo)])];
 
   const filtrar = () => d.vendedores.filter((v) => {
-    if (f.sucursal && (v.sucursal || 'Sin tienda') !== f.sucursal) return false;
-    if (f.categoria && String(v.categoria_id) !== f.categoria) return false;
-    if (f.q) {
-      const q = normal(f.q);
-      if (!normal(`${v.nombre} ${v.cedula} ${v.telefono}`).includes(q)) return false;
-    }
+    if (f.grupo && v.grupo !== f.grupo) return false;
+    if (f.meta === 'si' && !v.cumple) return false;
+    if (f.meta === 'no' && v.cumple) return false;
+    if (f.q && !normal(`${v.nombre} ${v.cedula} ${v.telefono}`).includes(normal(f.q))) return false;
     return true;
   });
 
   const pintar = () => {
     const lista = filtrar();
     contenedor.replaceChildren(
-      h('p', { class: 'admin__conteo' }, `${plural(lista.length, 'vendedor', 'vendedores')} · ${plural(lista.reduce((t, v) => t + v.cupones, 0), 'cupón', 'cupones')}`),
+      h('p', { class: 'admin__conteo' }, `${plural(lista.length, 'vendedor', 'vendedores')} · ${plural(lista.reduce((t, v) => t + v.cupones, 0), 'cupón', 'cupones')} · ${lista.reduce((t, v) => t + v.cupones_final, 0)} para el Gran Sorteo Final`),
       lista.length ? tabla(
-        [{ t: 'Vendedor' }, { t: 'Tienda' }, { t: 'Categoría' }, { t: 'Cupones', num: true }, { t: 'Vendido', num: true }, { t: 'Austral', num: true }, { t: 'Viaje', num: true }, { t: 'Facturas', num: true }],
+        [{ t: 'Vendedor' }, { t: 'Tienda o canal' }, { t: 'Cupones', num: true }, { t: 'En la ronda', num: true }, { t: 'Vendido', num: true }, { t: 'Meta' }, { t: 'Gran Final', num: true }, { t: 'Austral', num: true }, { t: 'Viaje', num: true }, { t: 'Facturas', num: true }],
         lista.map((v) => h('tr', {},
           celda([h('strong', {}, v.nombre), h('small', {}, `C.I. ${v.cedula}${v.telefono ? ' · ' + v.telefono : ''}`), v.estado !== 'activo' ? h('small', { class: 'texto-error' }, v.estado) : null]),
-          celda(v.sucursal || h('span', { class: 'texto-error' }, 'Sin tienda')),
-          celda(chipCategoria(v.categoria_id, v.categoria)),
+          celda([v.grupo === 'Sin canal' ? h('span', { class: 'texto-error' }, 'Sin canal') : v.grupo, h('small', {}, `cupón de ${dinero(v.monto_por_cupon, { compacto: true })}`)]),
           celda(String(v.cupones), true),
+          celda(String(v.cupones_ronda), true),
           celda(dinero(v.total, { compacto: true }), true),
+          celda([chipMeta(v), v.meta ? h('small', {}, `de ${dinero(v.meta, { compacto: true })}`) : null]),
+          celda(String(v.cupones_final), true),
           celda(v.m2 ? `${decimal(v.m2)} m²` : '—', true),
           celda(v.cupones_austral ? [String(v.cupones_austral), v.participa_viaje ? null : h('small', {}, 'no entra')] : '—', true),
           celda([String(v.ventas), v.pendientes || v.rechazadas ? h('small', {}, [v.pendientes ? `${v.pendientes} pend.` : '', v.rechazadas ? `${v.rechazadas} rech.` : ''].filter(Boolean).join(' · ')) : null], true))),
         { clase: 'tabla--vendedores' })
-        : h('div', { class: 'superficie vacio' }, h('strong', {}, 'Nadie coincide con el filtro'), 'Cambia la búsqueda o la tienda.'));
+        : h('div', { class: 'superficie vacio' }, h('strong', {}, 'Nadie coincide con el filtro'), 'Cambia la búsqueda, la tienda o la meta.'));
   };
 
   const exportar = () => descargarCsv('vendedores-copa-prosein.csv', [
-    ['Cédula', 'Nombre', 'Teléfono', 'Tienda', 'Estado', 'Categoría', 'Cupones', 'Total vendido', 'm² Austral', 'Cupones viaje', 'Entra al viaje', 'Facturas', 'Pendientes', 'Rechazadas'],
-    ...filtrar().map((v) => [v.cedula, v.nombre, v.telefono, v.sucursal, v.estado, v.categoria, v.cupones, v.total, v.m2, v.cupones_austral, v.participa_viaje ? 'SI' : 'NO', v.ventas, v.pendientes, v.rechazadas]),
+    ['Cédula', 'Nombre', 'Teléfono', 'Canal', 'Tienda o canal', 'Estado', 'Valor cupón', 'Cupones', 'Cupones ronda actual', 'Total vendido', 'Meta', '% de la meta', 'Cumple', 'Cupones Gran Final', 'm² Austral', 'Cupones viaje', 'Entra al viaje', 'Facturas', 'Pendientes', 'Rechazadas'],
+    ...filtrar().map((v) => [v.cedula, v.nombre, v.telefono, v.canal, v.grupo, v.estado, v.monto_por_cupon, v.cupones, v.cupones_ronda, v.total, v.meta || '', v.meta ? Math.round(v.avance * 1000) / 10 : '', v.cumple ? 'SI' : 'NO', v.cupones_final, v.m2, v.cupones_austral, v.participa_viaje ? 'SI' : 'NO', v.ventas, v.pendientes, v.rechazadas]),
   ]);
 
   pintar();
@@ -284,8 +277,8 @@ function vistaVendedores(d, resumen) {
     cabeza('Vendedores', [botonCsv(exportar)]),
     h('div', { class: 'filtros' },
       buscador('Buscar nombre, cédula o teléfono', f.q, (v) => { f.q = v; pintar(); }),
-      selector('Tienda', [...sucursales, 'Sin tienda'], f.sucursal, 'Todas las tiendas', (v) => { f.sucursal = v; pintar(); }),
-      selector('Categoría', d.categorias.map((c) => [c.id, c.nombre]), f.categoria, 'Todas las categorías', (v) => { f.categoria = v; pintar(); })),
+      selector('Tienda o canal', grupos, f.grupo, 'Todas las tiendas y canales', (v) => { f.grupo = v; pintar(); }),
+      selector('Meta', [['si', `Cumplen el ${decimal(c.porcentaje_meta_final)} %`], ['no', 'No cumplen todavía']], f.meta, 'Meta: todos', (v) => { f.meta = v; pintar(); })),
     contenedor,
   ];
 }
@@ -295,16 +288,14 @@ function vistaVendedores(d, resumen) {
 function vistaVentas(d) {
   const f = filtrosVentas;
   const contenedor = h('div', {});
-  const semanas = Array.from({ length: d.total_semanas }, (_, i) => [i + 1, `Semana ${i + 1}`]);
+  const rondas = d.rondas.map((r) => [r.numero, r.nombre]);
+  const nombreRonda = (n) => (d.rondas[n - 1] || {}).nombre || '—';
 
   const filtrar = () => d.ventas.filter((v) => {
     if (f.estado && v.estado !== f.estado) return false;
-    if (f.semana && String(v.semana) !== f.semana) return false;
-    if (f.sucursal && (v.sucursal || 'Sin tienda') !== f.sucursal) return false;
-    if (f.q) {
-      const q = normal(f.q);
-      if (!normal(`${v.numero_factura} ${v.vendedor} ${v.cedula}`).includes(q)) return false;
-    }
+    if (f.ronda && String(v.ronda) !== f.ronda) return false;
+    if (f.grupo && v.grupo !== f.grupo) return false;
+    if (f.q && !normal(`${v.numero_factura} ${v.vendedor} ${v.cedula}`).includes(normal(f.q))) return false;
     return true;
   });
 
@@ -315,18 +306,18 @@ function vistaVentas(d) {
     contenedor.replaceChildren(
       h('p', { class: 'admin__conteo' }, `${plural(lista.length, 'factura', 'facturas')} · ${dinero(suma, { compacto: true })} cuentan para cupones`),
       lista.length ? tabla(
-        [{ t: 'Venta' }, { t: 'Factura' }, { t: 'Vendedor' }, { t: 'Semana', num: true }, { t: 'Monto', num: true }, { t: 'Austral', num: true }, { t: 'Estado' }, { t: '' }],
+        [{ t: 'Venta' }, { t: 'Factura' }, { t: 'Vendedor' }, { t: 'Ronda' }, { t: 'Monto', num: true }, { t: 'Austral', num: true }, { t: 'Estado' }, { t: '' }],
         visibles.map((v) => h('tr', { class: v.cuenta ? '' : 'fila--no-cuenta' },
           celda([fechaCorta(v.dia_venta), h('small', {}, `cargada ${fechaHora(v.fecha_carga)}`)]),
           celda([h('strong', {}, v.numero_factura), v.nota_admin ? h('small', { class: 'texto-error' }, v.nota_admin) : null]),
-          celda([v.vendedor, h('small', {}, `C.I. ${v.cedula}${v.sucursal ? ' · ' + v.sucursal : ''}`)]),
-          celda(v.semana ? String(v.semana) : '—', true),
+          celda([v.vendedor, h('small', {}, `C.I. ${v.cedula} · ${v.grupo}`)]),
+          celda(nombreRonda(v.ronda)),
           celda(dinero(v.monto), true),
           celda(v.vendio_austral ? `${decimal(v.m2_austral)} m²` : '—', true),
           celda(chipEstado(v.estado)),
           celda(v.tiene_foto ? h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: () => verFotoCb && verFotoCb(v) }, 'Foto') : null, true))),
         { clase: 'tabla--ventas' })
-        : h('div', { class: 'superficie vacio' }, h('strong', {}, 'No hay facturas con ese filtro'), 'Cambia la búsqueda, el estado o la semana.'),
+        : h('div', { class: 'superficie vacio' }, h('strong', {}, 'No hay facturas con ese filtro'), 'Cambia la búsqueda, el estado o la ronda.'),
       lista.length > visibles.length
         ? h('button', { type: 'button', class: 'btn btn--secundario btn--bloque admin__mas', onclick: () => { f.limite += POR_PAGINA; pintar(); } }, `Mostrar ${Math.min(POR_PAGINA, lista.length - visibles.length)} más (de ${lista.length - visibles.length})`)
         : null);
@@ -334,8 +325,8 @@ function vistaVentas(d) {
 
   const cambiar = (clave) => (v) => { f[clave] = v; f.limite = POR_PAGINA; pintar(); };
   const exportar = () => descargarCsv('ventas-copa-prosein.csv', [
-    ['ID', 'Día de venta', 'Cargada', 'Factura', 'Cédula', 'Vendedor', 'Tienda', 'Semana', 'Monto', 'Austral', 'm² Austral', 'Estado', 'Cuenta', 'Nota'],
-    ...filtrar().map((v) => [v.id, fechaCorta(v.dia_venta), fechaHora(v.fecha_carga), v.numero_factura, v.cedula, v.vendedor, v.sucursal, v.semana || '', v.monto, v.vendio_austral ? 'SI' : 'NO', v.m2_austral, v.estado, v.cuenta ? 'SI' : 'NO', v.nota_admin || '']),
+    ['ID', 'Día de venta', 'Cargada', 'Factura', 'Cédula', 'Vendedor', 'Tienda o canal', 'Ronda', 'Monto', 'Austral', 'm² Austral', 'Estado', 'Cuenta', 'Nota'],
+    ...filtrar().map((v) => [v.id, fechaCorta(v.dia_venta), fechaHora(v.fecha_carga), v.numero_factura, v.cedula, v.vendedor, v.grupo, nombreRonda(v.ronda), v.monto, v.vendio_austral ? 'SI' : 'NO', v.m2_austral, v.estado, v.cuenta ? 'SI' : 'NO', v.nota_admin || '']),
   ]);
 
   pintar();
@@ -344,122 +335,120 @@ function vistaVentas(d) {
     h('div', { class: 'filtros' },
       buscador('Buscar factura, vendedor o cédula', f.q, cambiar('q')),
       selector('Estado', ['Pendiente', 'Aprobada', 'Rechazada'], f.estado, 'Todos los estados', cambiar('estado')),
-      selector('Semana', semanas, f.semana, 'Todas las semanas', cambiar('semana')),
-      selector('Tienda', [...d.sucursales, 'Sin tienda'], f.sucursal, 'Todas las tiendas', cambiar('sucursal'))),
+      selector('Ronda', rondas, f.ronda, 'Todas las rondas', cambiar('ronda')),
+      selector('Tienda o canal', [...d.grupos, 'Sin canal'], f.grupo, 'Todas las tiendas y canales', cambiar('grupo'))),
     contenedor,
   ];
 }
 
-// ---------- Semanas ----------
+// ---------- Rondas ----------
 
-const ESTADO_SEMANA = { cerrada: ['Cerrada', 'chip--Aprobada'], en_juego: ['En juego', 'chip--Pendiente'], pendiente: ['Por empezar', 'chip--neutro'] };
+const ESTADO_RONDA = { cerrada: ['Cerrada', 'chip--Aprobada'], en_juego: ['En juego', 'chip--Pendiente'], pendiente: ['Por empezar', 'chip--neutro'] };
 
 function horaCorta(ms) {
   const c = enCaracas(ms);
   return `${fechaCorta(c.iso).slice(0, 5)} ${c.hora}`;
 }
 
-function vistaSemanas(resumen) {
-  const periodos = resumen.periodos;
-  if (!semanaElegida) {
-    const cerradas = periodos.filter((p) => p.estado === 'cerrada');
-    const enJuego = periodos.find((p) => p.estado === 'en_juego');
-    semanaElegida = (enJuego && enJuego.numero) || (cerradas.length ? cerradas[cerradas.length - 1].numero : 1);
+function vistaRondas(resumen) {
+  const rondas = resumen.rondas;
+  if (!rondaElegida) {
+    const enJuego = rondas.find((p) => p.estado === 'en_juego');
+    const cerradas = rondas.filter((p) => p.estado === 'cerrada');
+    rondaElegida = (enJuego && enJuego.numero) || (cerradas.length ? cerradas[cerradas.length - 1].numero : 1);
   }
-  const detalle = h('section', { class: 'admin__bloque', id: 'admin-semana' });
+  const detalle = h('section', { class: 'admin__bloque', id: 'admin-ronda' });
 
   const elegir = async (n) => {
-    semanaElegida = n;
-    $$('.tabla--semanas tbody tr').forEach((tr) => tr.toggleAttribute('data-elegida', Number(tr.dataset.semana) === n));
-    detalle.replaceChildren(h('div', { class: 'admin__cargando' }, h('span', { class: 'girador', 'aria-hidden': 'true' }), `Cargando semana ${n}…`));
+    rondaElegida = n;
+    $$('.tabla--semanas tbody tr').forEach((tr) => tr.toggleAttribute('data-elegida', Number(tr.dataset.ronda) === n));
+    detalle.replaceChildren(h('div', { class: 'admin__cargando' }, h('span', { class: 'girador', 'aria-hidden': 'true' }), 'Cargando…'));
     try {
-      const d = await obtener('semana:' + n, 'adminSemana', { semana: n });
-      if (semanaElegida === n) detalle.replaceChildren(...detalleSemana(d, resumen.concurso).filter(Boolean));
+      const d = await obtener('ronda:' + n, 'adminRonda', { ronda: n });
+      if (rondaElegida === n) detalle.replaceChildren(...detalleRonda(d).filter(Boolean));
     } catch (err) {
-      if (semanaElegida === n) detalle.replaceChildren(h('p', { class: 'superficie vacio' }, (err && err.message) || 'No pudimos cargar la semana.'));
+      if (rondaElegida === n) detalle.replaceChildren(h('p', { class: 'superficie vacio' }, (err && err.message) || 'No pudimos cargar la ronda.'));
     }
   };
 
-  const filas = periodos.map((p) => {
-    const [texto, clase] = ESTADO_SEMANA[p.estado] || ESTADO_SEMANA.pendiente;
-    return h('tr', { dataset: { semana: String(p.numero) }, 'data-elegida': p.numero === semanaElegida },
-      celda(h('strong', {}, `Semana ${p.numero}`)),
+  const filas = rondas.map((p) => {
+    const [texto, clase] = ESTADO_RONDA[p.estado] || ESTADO_RONDA.pendiente;
+    return h('tr', { dataset: { ronda: String(p.numero) }, 'data-elegida': p.numero === rondaElegida },
+      celda(h('strong', {}, p.nombre)),
       celda(rango(p.inicio, p.fin)),
       celda(horaCorta(p.corte)),
-      celda(fechaConDia(p.entrega)),
+      celda(p.con_sorteo ? fechaConDia(p.sorteo) : h('span', { class: 'texto-tenue' }, 'sin sorteo')),
       celda(h('span', { class: 'chip ' + clase }, texto)),
       celda(String(p.participantes), true),
       celda(String(p.cupones), true),
-      celda(h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: () => elegir(p.numero) }, 'Ganadores'), true));
+      celda(h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: () => elegir(p.numero) }, 'Ver'), true));
   });
 
-  setTimeout(() => elegir(semanaElegida), 0);
+  setTimeout(() => elegir(rondaElegida), 0);
   return [
-    cabeza('Semanas'),
-    h('p', { class: 'admin__nota' }, 'Las fechas salen de la hoja Periodos. Cada semana cierra en su corte; los cupones que sobran pasan a la siguiente.'),
-    tabla([{ t: 'Semana' }, { t: 'Ventas del' }, { t: 'Corte' }, { t: 'Premios' }, { t: 'Estado' }, { t: 'Vendedores', num: true }, { t: 'Cupones', num: true }, { t: '' }], filas, { clase: 'tabla--semanas' }),
+    cabeza('Rondas'),
+    h('p', { class: 'admin__nota' }, 'Las fechas salen de la hoja Rondas. A cada sorteo entran los cupones completados en su ronda; lo que sobra en $ pasa a la siguiente. La Ñapa no tiene sorteo.'),
+    tabla([{ t: 'Ronda' }, { t: 'Ventas del' }, { t: 'Corte' }, { t: 'Sorteo' }, { t: 'Estado' }, { t: 'Vendedores', num: true }, { t: 'Cupones', num: true }, { t: '' }], filas, { clase: 'tabla--semanas' }),
     detalle,
   ];
 }
 
-function detalleSemana(d, c) {
-  const exportar = () => descargarCsv(`ganadores-semana-${d.numero}.csv`, [
-    ['Puesto', 'Cédula', 'Vendedor', 'Tienda', 'Cupones de la semana', 'Vendido en la semana', 'Premio'],
-    ...d.lista.map((x) => [x.pos, x.cedula, x.nombre, x.sucursal, x.cupones, x.monto, x.premio ? 'SI' : '']),
+function detalleRonda(d) {
+  const exportar = () => descargarCsv(`${d.nombre.toLowerCase().replace(/\s+/g, '-')}.csv`, [
+    ['Puesto', 'Cédula', 'Vendedor', 'Tienda o canal', 'Cupones de la ronda', 'Vendido en la ronda'],
+    ...d.lista.map((x) => [x.pos, x.cedula, x.nombre, x.grupo, x.cupones, x.monto]),
   ]);
-  const filas = [];
-  d.lista.forEach((x, i) => {
-    filas.push(h('tr', { class: x.premio ? 'fila--premio' : '' },
-      celda(h('span', { class: 'puesto__pos' }, String(x.pos))),
-      celda([h('strong', {}, x.nombre), h('small', {}, `C.I. ${x.cedula}`)]),
-      celda(x.sucursal || '—'),
-      celda(String(x.cupones), true),
-      celda(dinero(x.monto, { compacto: true }), true),
-      celda(x.premio ? h('span', { class: 'chip chip--premio' }, 'Premio') : null)));
-    if (i === d.premios - 1 && d.lista.length > d.premios) filas.push(h('tr', { class: 'fila--corte', 'aria-hidden': 'true' }, h('td', { colspan: '6' }, 'zona de premio')));
-  });
+  const cupones = d.lista.reduce((t, x) => t + x.cupones, 0);
   return [
     h('div', { class: 'admin__cabeza admin__cabeza--sub' },
-      h('h3', {}, `Semana ${d.numero} · ${rango(d.inicio, d.fin)}`),
+      h('h3', {}, `${d.nombre} · ${rango(d.inicio, d.fin)}`),
       h('div', { class: 'admin__acciones' }, d.lista.length ? botonCsv(exportar) : null)),
-    h('p', { class: 'admin__nota' }, d.cerrada
-      ? `Cerró el ${momento(d.corte)} · premios el ${conPunto(fechaConDia(d.entrega) + (c.texto_entrega ? ' ' + c.texto_entrega : ''))} Ganan los ${d.premios} que más cupones completaron en la semana.`
-      : `Provisional hasta el corte (${momento(d.corte)}). Ganan los ${d.premios} que más cupones completen en la semana.`),
-    d.empate_en_corte ? h('p', { class: 'aviso' }, icono('alerta'), `Hay un empate exacto en el puesto ${d.premios}: revísalo antes de anunciar los ganadores.`) : null,
+    h('p', { class: 'admin__nota' }, [
+      d.cerrada ? conPunto(`Cerró el ${momento(d.corte)}`) : `Provisional hasta el corte (${momento(d.corte)}).`,
+      d.con_sorteo ? ` ${plural(cupones, 'cupón', 'cupones')} de ${plural(d.lista.length, 'vendedor', 'vendedores')} para el sorteo del ${conPunto(fechaConDia(d.sorteo))}` : ' Sin sorteo: estos cupones suman para el Gran Sorteo Final.',
+    ].join('')),
     d.lista.length
-      ? tabla([{ t: '#' }, { t: 'Vendedor' }, { t: 'Tienda' }, { t: 'Cupones', num: true }, { t: 'Vendido', num: true }, { t: '' }], filas, { clase: 'tabla--ganadores' })
-      : h('div', { class: 'superficie vacio' }, h('strong', {}, 'Nadie completó cupones esta semana'), 'Cuando alguien complete uno, aparece aquí.'),
+      ? tabla([{ t: '#' }, { t: 'Vendedor' }, { t: 'Tienda o canal' }, { t: 'Cupones', num: true }, { t: 'Vendido', num: true }],
+        d.lista.map((x) => h('tr', {},
+          celda(h('span', { class: 'puesto__pos' }, String(x.pos))),
+          celda([h('strong', {}, x.nombre), h('small', {}, `C.I. ${x.cedula}`)]),
+          celda(x.grupo),
+          celda(String(x.cupones), true),
+          celda(dinero(x.monto, { compacto: true }), true))),
+        { clase: 'tabla--ganadores' })
+      : h('div', { class: 'superficie vacio' }, h('strong', {}, 'Nadie completó cupones en esta ronda'), 'Cuando alguien complete uno, aparece aquí.'),
   ];
 }
 
-// ---------- Sorteo ----------
+// ---------- Sorteos ----------
 
 function vistaSorteo(resumen) {
   const c = resumen.concurso;
-  const s = c.semana_actual;
-  const ultimo = c.periodos[c.periodos.length - 1];
-  const provisional = s.estado !== 'terminado';
-  const total = resumen.urnas.reduce((t, u) => t + u.cupones, 0);
-  const enlace = (urna, texto, clase) => h('a', { class: 'btn ' + clase, href: `cupones.html?urna=${urna}`, target: '_blank', rel: 'noopener' }, icono('imprimir'), texto);
+  const ahora = Date.now();
+  const total = resumen.bolsas.reduce((t, b) => t + b.cupones, 0);
+  const enlace = (bolsa, texto, clase) => h('a', { class: 'btn ' + clase, href: `cupones.html?bolsa=${bolsa}`, target: '_blank', rel: 'noopener' }, icono('imprimir'), texto);
+  const sub = (b) => {
+    if (b.tipo === 'final') return `1 cupón cada ${c.cupones_por_cupon_final}, con el ${decimal(c.porcentaje_meta_final)} % de la meta`;
+    if (b.tipo === 'austral') return `1 cupón cada ${decimal(c.m2_por_cupon_austral)} m² de Austral`;
+    return 'cupones completados en la ronda';
+  };
 
   return [
-    cabeza('Sorteo final', [enlace('todas', 'Imprimir todos', 'btn--primario btn--chico')]),
-    provisional
-      ? h('p', { class: 'aviso aviso--info' }, icono('alerta'), `Las categorías y las urnas son provisionales hasta el corte final (${momento(ultimo.corte)}). Imprime los cupones después del corte para que no cambien.`)
-      : null,
-    h('div', { class: 'urnas' }, resumen.urnas.map((u) => h('article', { class: 'superficie urna' + (u.tipo === 'austral' ? ' urna--viaje' : '') },
+    cabeza(c.nombre_sorteo, [enlace('todas', 'Imprimir todos', 'btn--primario btn--chico')]),
+    h('div', { class: 'urnas urnas--5' }, resumen.bolsas.map((b) => h('article', { class: 'superficie urna' + (b.tipo === 'austral' ? ' urna--viaje' : b.tipo === 'final' ? ' urna--final' : '') },
       h('div', { class: 'urna__cab' },
-        h('strong', {}, u.tipo === 'austral' ? [icono('avion'), u.nombre] : `Urna ${u.nombre}`),
-        h('span', {}, plural(u.premios, 'premio', 'premios'))),
-      h('p', { class: 'urna__cifra' }, h('strong', {}, String(u.cupones)), u.cupones === 1 ? ' cupón' : ' cupones'),
-      h('p', { class: 'urna__sub' }, `${plural(u.vendedores, 'vendedor', 'vendedores')}${u.tipo === 'austral' ? ` · solo ${c.categorias.slice(0, c.viaje_hasta_categoria).map((x) => x.nombre).join(' y ')}` : ''}`),
-      u.cupones ? enlace(u.id, 'Imprimir cupones', 'btn--secundario btn--chico') : h('p', { class: 'urna__sub' }, 'Sin cupones todavía.')))),
+        h('strong', {}, b.tipo === 'austral' ? [icono('avion'), b.nombre] : b.nombre),
+        h('span', {}, b.fecha ? fechaConDia(b.fecha) : '')),
+      h('p', { class: 'urna__cifra' }, h('strong', {}, String(b.cupones)), b.cupones === 1 ? ' cupón' : ' cupones'),
+      h('p', { class: 'urna__sub' }, `${plural(b.vendedores, 'vendedor', 'vendedores')} · ${sub(b)}`),
+      b.corte > ahora ? h('p', { class: 'urna__sub urna__provisional' }, `Provisional · corte ${horaCorta(b.corte)}`) : null,
+      b.cupones ? enlace(b.id, 'Imprimir cupones', 'btn--secundario btn--chico') : h('p', { class: 'urna__sub' }, 'Sin cupones todavía.')))),
     h('section', { class: 'admin__bloque' },
-      h('h3', {}, 'Cómo armar las urnas'),
+      h('h3', {}, 'Cómo armar cada bolsa'),
       h('ol', { class: 'admin__pasos superficie' },
-        h('li', {}, `Imprime en papel carta, a escala 100 % (${plural(total, 'cupón', 'cupones')}, 24 por hoja). Cada urna empieza en una hoja nueva.`),
-        h('li', {}, 'Recorta por las líneas punteadas y dobla cada cupón por la mitad.'),
-        h('li', {}, 'Cada categoría tiene su propia urna. Los cupones del viaje (banda negra) van en una urna aparte.'),
-        h('li', {}, 'Al sacar un cupón, verifica su código (por ejemplo C1-0007) en la hoja Ranking → “Cupones para sorteo”, o aquí en Vendedores.'))),
+        h('li', {}, `Imprime después del corte de cada ronda, en papel carta y a escala 100 % (${plural(total, 'cupón', 'cupones')} hoy, 24 por hoja). Cada sorteo empieza en una hoja nueva.`),
+        h('li', {}, 'Recorta por las líneas punteadas, dobla cada cupón y ponlo en la bolsa de su sorteo.'),
+        h('li', {}, 'Los cupones del Gran Sorteo Final llevan una banda roja y los del viaje una banda negra, para no mezclarlos.'),
+        h('li', {}, 'Al sacar un cupón, verifica su código (por ejemplo R1-0007) en la hoja Ranking → “Cupones para sorteo”, o en Vendedores.'))),
   ];
 }

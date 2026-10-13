@@ -1,6 +1,6 @@
 /**
  * Recorrido completo en un navegador real (Chromium) contra el servidor local.
- *   1) node dev/server.js --demo --admin      (en otra terminal)
+ *   1) node dev/server.js --demo --admin --metas      (en otra terminal)
  *   2) node dev/e2e.js [carpeta-de-capturas]
  * Requiere Playwright instalado (npm i -D playwright o global).
  */
@@ -76,7 +76,8 @@ async function continuarImpresora(page) {
   await page.click('#tab-registro');
   await page.click('#form-registro [type=submit]');
   await page.waitForTimeout(200);
-  comprobar(await page.locator('[data-error="sucursal"]:not(:empty)').count() === 1, 'pide la tienda');
+  comprobar(await page.locator('[data-error="canal"]:not(:empty)').count() === 1, 'pide el canal');
+  comprobar(await page.locator('#reg-sucursal').isHidden(), 'la tienda se pide solo en el canal Tienda');
   await captura(page, '02-registro-errores', { fullPage: true });
 
   paso('Registro');
@@ -84,6 +85,7 @@ async function continuarImpresora(page) {
   await page.fill('#reg-apellido', 'mendoza');
   await page.fill('#reg-cedula', '18765432');
   await page.fill('#reg-telefono', '0414 765 4321');
+  await page.selectOption('#reg-canal', 'Tienda');
   await page.selectOption('#reg-sucursal', 'Las Mercedes');
   await page.fill('#reg-clave', 'clave123');
   await page.fill('#reg-clave2', 'clave123');
@@ -197,7 +199,7 @@ async function continuarImpresora(page) {
   await page.click('[data-ranking=austral]');
   await page.locator('#seccion-ranking').scrollIntoViewIfNeeded();
   await captura(page, '15-ranking-austral');
-  await page.click('[data-ranking=semana]');
+  await page.click('[data-ranking=ronda]');
   await captura(page, '15b-ranking-semana');
   await page.click('.reglas summary');
   await page.locator('.reglas').scrollIntoViewIfNeeded();
@@ -212,13 +214,16 @@ async function continuarImpresora(page) {
   await captura(page, '16-sesion-vencida');
 
   paso('Cuenta vieja sin tienda: la elige al entrar');
-  await page.evaluate(async () => { await fetch('/__dev/editar', { method: 'POST', body: JSON.stringify({ hoja: 'Usuarios', id: '90000002', columna: 'sucursal_o_zona', valor: '' }) }); });
+  await page.evaluate(async () => {
+    for (const columna of ['sucursal_o_zona', 'canal']) await fetch('/__dev/editar', { method: 'POST', body: JSON.stringify({ hoja: 'Usuarios', id: '90000002', columna, valor: '' }) });
+  });
   await page.fill('#ing-cedula', '90000002');
   await page.fill('#ing-clave', 'prueba123');
   await page.click('#form-ingresar [type=submit]');
   await page.waitForSelector('#dlg-sucursal[data-abierto]');
   await page.waitForTimeout(500);
   await captura(page, '17-elegir-tienda');
+  await page.selectOption('#suc-canal', 'Tienda');
   await page.selectOption('#suc-sucursal', 'Maracaibo');
   await page.click('#form-sucursal [type=submit]');
   await page.waitForSelector('#dlg-sucursal[open]', { state: 'detached' });
@@ -249,7 +254,7 @@ async function continuarImpresora(page) {
   comprobar(await pa.locator('#panel').isHidden(), 'el admin no ve el panel del vendedor');
   await pa.waitForTimeout(300);
   await pa.screenshot({ path: path.join(OUT, '20-admin-resumen.png'), fullPage: true });
-  for (const [vista, espera, n] of [['vendedores', '.tabla--vendedores', '21'], ['ventas', '.tabla--ventas', '22'], ['semanas', '.tabla--ganadores, #admin-semana .vacio', '23'], ['sorteo', '.urnas', '24']]) {
+  for (const [vista, espera, n] of [['vendedores', '.tabla--vendedores', '21'], ['ventas', '.tabla--ventas', '22'], ['rondas', '#admin-ronda .tabla--ganadores, #admin-ronda .vacio', '23'], ['sorteo', '.urnas', '24']]) {
     await pa.click(`#admin-pestanas [data-vista=${vista}]`);
     await pa.waitForSelector(espera);
     await pa.waitForTimeout(250);
@@ -271,12 +276,12 @@ async function continuarImpresora(page) {
   paso('Cupones para imprimir');
   const pi = await admin.newPage();
   vigilar(pi, 'imprimir');
-  await pi.goto(BASE + '/cupones.html?urna=todas');
+  await pi.goto(BASE + '/cupones.html?bolsa=todas');
   await pi.waitForSelector('.hoja .boleto');
   await pi.waitForTimeout(500);
   await pi.screenshot({ path: path.join(OUT, '25-imprimir.png') });
   const urnas = await pi.$$eval('#urna option', (o) => o.map((x) => x.value));
-  comprobar(urnas.join() === 'todas,cat1,cat2,cat3,viaje', 'urnas ' + urnas.join());
+  comprobar(urnas.join() === 'todas,r1,r2,r3,final,viaje', 'bolsas ' + urnas.join());
   await pi.selectOption('#urna', 'viaje');
   await pi.waitForTimeout(200);
   await pi.screenshot({ path: path.join(OUT, '25b-imprimir-viaje.png') });

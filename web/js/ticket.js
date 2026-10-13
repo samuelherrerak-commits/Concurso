@@ -58,20 +58,21 @@ function codigoBarras(semilla) {
 /**
  * Filas de texto de un ticket, en orden. Las comparten el ticket en pantalla
  * y la imagen PNG que se descarga.
- * @param {object} d { tipo?, n, hasta?, fechaHora, factura, vendedor, cedula, monto?, acumulado, falta, m2?, m2Acumulado?, m2Falta? }
+ * @param {object} d { tipo?, n, hasta?, fechaHora, factura, vendedor, cedula, ronda?, monto?, acumulado, falta, m2?, m2Acumulado?, m2Falta? }
  */
 export function contenidoTicket(d) {
   const austral = d.tipo === 'austral';
   const rango = d.hasta && d.hasta > d.n;
   const filas = [
     { t: 'marca', texto: 'PROSEIN' },
-    { t: 'sub', texto: austral ? 'VIAJE TODO INCLUIDO' : 'COPA PROSEIN' },
+    { t: 'sub', texto: austral ? 'VIAJE TODO INCLUIDO' : 'LA BOLSA DE LOS DESEOS' },
     { t: 'corte' },
     { t: 'fila', a: 'FECHA', b: d.fechaHora },
     { t: 'fila', a: 'FACTURA', b: d.factura },
     { t: 'fila', a: 'VENDEDOR', b: String(d.vendedor || '').toUpperCase() },
     { t: 'fila', a: 'C.I.', b: d.cedula },
   ];
+  if (d.ronda) filas.push({ t: 'fila', a: 'RONDA', b: String(d.ronda).toUpperCase() });
   if (austral) filas.push({ t: 'fila', a: 'AUSTRAL', b: `${decimal(d.m2)} m²` });
   else if (d.monto !== null && d.monto !== undefined) filas.push({ t: 'fila', a: 'MONTO', b: dinero(d.monto) });
   filas.push(
@@ -113,7 +114,7 @@ export function crearTicket(d) {
 }
 
 /** Mini ticket tocable para "Mis cupones" y "Viaje todo incluido". */
-export function crearMini({ n, dia, factura, nuevo, tipo, alTocar }) {
+export function crearMini({ n, titulo, dia, factura, nuevo, tipo, alTocar }) {
   const austral = tipo === 'austral';
   return h('button', {
     type: 'button',
@@ -122,7 +123,7 @@ export function crearMini({ n, dia, factura, nuevo, tipo, alTocar }) {
     onclick: alTocar,
   },
   h('span', { class: 'papel' },
-    h('span', { class: 'mini__titulo' }, austral ? 'VIAJE' : 'CUPÓN'),
+    h('span', { class: 'mini__titulo' }, austral ? 'VIAJE' : titulo || 'CUPÓN'),
     h('span', { class: 'mini__n' }, `N° ${String(n).padStart(2, '0')}`),
     h('span', { class: 'mini__dato' }, dia),
     h('span', { class: 'mini__dato', title: factura }, `Fact. ${factura}`)));
@@ -355,10 +356,10 @@ export function mensajeMarcador({ nuevos, falta }) {
   return partes;
 }
 
-export function mensajeViaje({ nuevos, falta, participa, categoria }) {
+export function mensajeViaje({ nuevos, falta, participa, porcentaje }) {
   const partes = [];
   if (nuevos > 0) partes.push(h('strong', {}, nuevos === 1 ? '¡Un cupón más para el viaje! ' : `¡${plural(nuevos, 'cupón', 'cupones')} más para el viaje! `));
   partes.push('Te faltan ', h('strong', {}, `${decimal(falta)} m²`), ' de Austral para el próximo.');
-  if (!participa && categoria) partes.push(` Para entrar al sorteo necesitas estar en ${categoria} al cierre.`);
+  if (!participa && porcentaje) partes.push(` Para entrar al sorteo necesitas el ${decimal(porcentaje)} % de tu meta.`);
   return partes;
 }

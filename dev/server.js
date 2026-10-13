@@ -2,12 +2,14 @@
  * Servidor local para probar el portal SIN desplegar Apps Script.
  * Sirve /web y responde /api con el mismo Code.gs corriendo en el simulador.
  *
- *   node dev/server.js            → concurso vacío (empezó hace 9 días)
+ *   node dev/server.js            → campaña vacía, corrida para que hoy sea el día 25 (Ronda 2)
  *   node dev/server.js --demo     → con 8 vendedores de prueba (contraseña prueba123)
  *   node dev/server.js --admin    → agrega un administrador: cédula 11111111, contraseña admin123
  *   node dev/server.js --solo-aprobadas   → contar_solo_aprobadas = SI
- *   node dev/server.js --sin-bloqueo      → bloquear_semanas_cerradas = NO
- *   node dev/server.js --dia=-3   → el concurso empieza dentro de 3 días
+ *   node dev/server.js --sin-bloqueo      → bloquear_rondas_cerradas = NO
+ *   node dev/server.js --dia=5    → hoy es el día 5 de la campaña (negativo: empieza dentro de N días)
+ *   node dev/server.js --real     → las fechas reales del cronograma (15/10 al 19/12/2026)
+ *   node dev/server.js --metas    → metas de ejemplo en la hoja Canales
  *   PORT=8080 node dev/server.js --latencia=800
  *
  * Los datos viven en memoria: se pierden al cerrar el servidor.
@@ -27,15 +29,29 @@ const WEB = path.join(__dirname, '..', 'web');
 const e = crearEntorno({ silencioso: true, sinUi: true });
 e.gas.setup();
 const hoy = e.gas.hoyISO_();
-const SEMANAS = 10;
-const inicio = e.gas.sumarDias_(hoy, -Number((args.find((a) => a.startsWith('--dia=')) || '--dia=9').split('=')[1]));
-e.gas.escribirConfig_('fecha_inicio', e.gas.fechaDesdeISO_(inicio));
-e.gas.escribirConfig_('num_semanas', SEMANAS);
-e.gas.escribirConfig_('fecha_sorteo', e.gas.fechaDesdeISO_(e.gas.sumarDias_(inicio, SEMANAS * 7 + 3)));
+// El cronograma real se corre en el tiempo para que "hoy" caiga dentro de la campaña.
+const original = e.gas.rondasPorDefecto_('15:00');
+const dia = Number((args.find((a) => a.startsWith('--dia=')) || '--dia=25').split('=')[1]);
+const corrimiento = args.includes('--real') ? 0 : e.gas.diasEntre_(original[0].inicio, e.gas.sumarDias_(hoy, -dia));
+const mover = (iso) => (iso ? e.gas.sumarDias_(iso, corrimiento) : '');
+const rondas = original.map((r) => ({ ...r, inicio: mover(r.inicio), fin: mover(r.fin), sorteo: mover(r.sorteo), corte: r.corte + corrimiento * 86400000 }));
+e.gas.escribirRondas_(rondas);
+e.gas.escribirConfig_('fecha_sorteo_final', e.gas.fechaDesdeISO_(mover('2026-12-21')));
 if (args.includes('--solo-aprobadas')) e.gas.escribirConfig_('contar_solo_aprobadas', 'SI');
 if (args.includes('--sin-ranking')) e.gas.escribirConfig_('mostrar_ranking_publico', 'NO');
-if (args.includes('--sin-bloqueo')) e.gas.escribirConfig_('bloquear_semanas_cerradas', 'NO');
-e.gas.escribirPeriodos_(e.gas.periodosDesdeConfig_());
+if (args.includes('--sin-bloqueo')) e.gas.escribirConfig_('bloquear_rondas_cerradas', 'NO');
+if (args.includes('--metas')) {
+  // Metas de ejemplo: $8.000 en tiendas, $12.000 en Distribuidores, Corporativo sin meta; Maracaibo con cupón de $1.000.
+  const sh = e.servicios.ss.getSheetByName('Canales');
+  const filas = sh.getDataRange().getValues();
+  filas.forEach((f, i) => {
+    if (!i) return;
+    if (f[0] === 'Tienda') sh.getRange(i + 1, 4).setValue(8000);
+    if (f[0] === 'Distribuidor') sh.getRange(i + 1, 4).setValue(12000);
+    if (f[1] === 'Maracaibo') sh.getRange(i + 1, 3).setValue(1000);
+  });
+}
+e.servicios.cache._vaciar();
 if (args.includes('--demo')) e.gas.cargarDatosPrueba_();
 if (args.includes('--admin')) {
   // Igual que agregarlo a mano en la hoja Usuarios, pero ya con contraseña.
@@ -126,7 +142,8 @@ const servidor = http.createServer(async (req, res) => {
 
 servidor.listen(PORT, () => {
   console.log(`Copa Prosein (local) en http://localhost:${PORT}`);
-  console.log(`Concurso: ${inicio} → ${e.gas.sumarDias_(inicio, SEMANAS * 7 - 1)} (${SEMANAS} semanas) · latencia simulada ${latencia} ms`);
+  rondas.forEach((r) => console.log(`  ${r.nombre}: ${r.inicio} → ${r.fin}${r.sorteo ? ' · sorteo ' + r.sorteo : ' · sin sorteo'}`));
+  console.log(`Latencia simulada ${latencia} ms`);
   if (args.includes('--demo')) console.log('Vendedores de prueba: cédulas 90000001 a 90000008, contraseña "prueba123"');
   if (args.includes('--admin')) console.log('Administrador: cédula 11111111, contraseña "admin123"');
 });

@@ -45,6 +45,7 @@ export function iniciarAcceso({ entrar }) {
     if (limpio !== input.value) input.value = limpio;
   }));
 
+  $$('select[name="canal"]').forEach((sel) => sel.addEventListener('change', () => mostrarTienda(sel.form)));
   $('#form-ingresar').addEventListener('submit', ingresar);
   $('#form-registro').addEventListener('submit', registrar);
   $('#form-nueva-clave').addEventListener('submit', nuevaClave);
@@ -76,11 +77,30 @@ async function cargarFechas() {
   const r = await llamar('config', {}, { timeout: 15000 });
   if (!r.ok) return;
   const c = r.data;
-  $('#acceso-fechas').textContent = `Del ${fechaLarga(c.fecha_inicio)} al ${fechaLarga(c.fecha_fin)} · ${c.total_semanas} semanas`;
+  $('#acceso-fechas').textContent = `Del ${fechaLarga(c.fecha_inicio)} al ${fechaLarga(c.fecha_fin)} · ${c.total_sorteos} sorteos y el Gran Sorteo Final el ${fechaLarga(c.fecha_sorteo_final)}`;
   llenarSucursales(c.sucursales);
 }
 
-/** Las tiendas salen de la hoja Configuracion (la lista del HTML es solo el respaldo). */
+/** La tienda solo se pide en el canal Tienda. */
+function mostrarTienda(form) {
+  const enTienda = form.elements.canal.value === 'Tienda';
+  const campo = form.querySelector('[data-campo-tienda]');
+  campo.hidden = !enTienda;
+  form.elements.sucursal.required = enTienda;
+  if (!enTienda) form.elements.sucursal.value = '';
+}
+
+/** Valida canal y tienda de un formulario (registro o "elige tu canal"). */
+export function validarCanal(form) {
+  const canal = form.elements.canal.value;
+  const sucursal = canal === 'Tienda' ? form.elements.sucursal.value : '';
+  const errores = {};
+  if (!canal) errores.canal = 'Elige tu canal de ventas.';
+  else if (canal === 'Tienda' && !sucursal) errores.sucursal = 'Elige la tienda Prosein donde trabajas.';
+  return { errores, canal, sucursal };
+}
+
+/** Las tiendas salen de la hoja Canales (la lista del HTML es solo el respaldo). */
 export function llenarSucursales(lista) {
   if (!Array.isArray(lista) || !lista.length) return;
   $$('select[data-sucursales]').forEach((sel) => {
@@ -143,17 +163,17 @@ async function registrar(ev) {
   if (!/^\d{6,9}$/.test(cedula)) errores.cedula = 'La cédula debe tener entre 6 y 9 dígitos.';
   const telefono = soloDigitos(v('telefono'));
   if (telefono.length < 10 || telefono.length > 13) errores.telefono = 'Escribe tu teléfono con código, por ejemplo 0414 123 4567.';
-  if (!v('sucursal')) errores.sucursal = 'Elige la tienda Prosein donde trabajas.';
+  Object.assign(errores, validarCanal(form).errores);
   validarClaves(form, errores);
   if (Object.keys(errores).length) { mostrarErrores(form, errores); return; }
 
   const boton = form.querySelector('[type="submit"]');
   cargando(boton, true);
   const r = await llamar('register', {
-    cedula, telefono, nombre: v('nombre'), apellido: v('apellido'), sucursal: v('sucursal'), password: form.elements.password.value, token: undefined,
+    cedula, telefono, nombre: v('nombre'), apellido: v('apellido'), ...validarCanal(form), errores: undefined, password: form.elements.password.value, token: undefined,
   });
   cargando(boton, false);
-  if (r.ok) { mostrarErrores(form, {}); form.reset(); guardarYEntrar(r.data, cedula); return; }
+  if (r.ok) { mostrarErrores(form, {}); form.reset(); mostrarTienda(form); guardarYEntrar(r.data, cedula); return; }
   if (r.campo) mostrarErrores(form, { [r.campo]: r.message });
   else mostrarErrores(form, {}, r.message);
 }

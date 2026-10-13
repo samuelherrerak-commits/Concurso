@@ -12,24 +12,23 @@ Static HTML/CSS/vanilla JS (no build step), hosted on GitHub Pages or Netlify. B
 
 ## Users
 
-Prosein sales staff in Venezuela (showrooms and franchises), mostly on their phones between customers, loading invoices right after a sale. Secondary user: the contest coordinator (role `admin`, added by hand in the Usuarios sheet). They approve invoices in the Google Sheet and use a read-only admin view in the portal to audit sellers, sales, weeks and ballot boxes, and to print the raffle coupons.
+Prosein sales staff in Venezuela (showrooms and franchises), mostly on their phones between customers, loading invoices right after a sale. Secondary user: the contest coordinator (role `admin`, added by hand in the Usuarios sheet). They approve invoices in the Google Sheet and use a read-only admin view in the portal to audit sellers, sales, rounds and draw bags, and to print the raffle coupons.
 
 ## Product Purpose
 
-Run "Copa Prosein", an internal sales contest. Sellers register sales (day, invoice number, amount, invoice photo, optional Austral m²) and see their record, category, raffle coupons and trip coupons. They can reopen and download any coupon they won. Goal: sell as much as possible, and push Austral products.
+Run "Copa Prosein", an internal sales contest. Sellers register sales (day, invoice number, amount, invoice photo, optional Austral m²) and see their coupons per round, goal progress, final-draw coupons and trip coupons. They can reopen and download any coupon they won. Goal: sell as much as possible, and push Austral products.
 
 ## Capabilities and Constraints
 
-- 1 coupon per $1,500 accumulated (configurable). Leftover carries over.
-- Weeks are configurable in a Periodos sheet. Default: 10 weeks from Thursday 15/10/2026, Thursday to Wednesday; cut Thursday 3:00 p.m.; prizes Friday morning. Closed weeks no longer accept sales.
-- Weekly prizes: 6 sellers who complete the most coupons that week (leftover carries across weeks; week is set by sale date).
-- Three categories at the final cut (default Oro 20 % / Plata 30 % / Bronce rest by coupon rank, ties move up; or by minimum coupons). Each category raffles its own prizes among its own coupons: 2 / 1 / 1.
-- All-inclusive trip: every 100 m² of Austral is 1 trip coupon. Only the top category's trip coupons go into the trip ballot box.
-- Store (one of the 9 Prosein stores) is required at sign-up; old accounts pick it on next login.
+- Campaign name for the draws: "La bolsa de los deseos" (end of 2026).
+- Sales channels: Tiendas (one of the Prosein stores), Distribuidores, Corporativo. Each store and channel has its own coupon value and sales goal (Canales sheet).
+- 1 coupon per coupon value accumulated. Leftover carries over.
+- Rounds (Rondas sheet): Ronda 1 (15/10–5/11, draw Mon 9/11), Ronda 2 (6/11–26/11, draw 30/11), Ronda 3 (27/11–10/12, draw 14/12), La Ñapa (11/12–19/12, no draw). Each round's draw uses only coupons completed in that round. Cut: the day after the round ends, 3:00 p.m.
+- Gran Sorteo Final (Mon 21/12): 1 final coupon per 10 accumulated coupons, only if the seller reached 80 % of their store/channel goal.
+- All-inclusive trip: every 100 m² of Austral is 1 trip coupon, drawn at the final.
 - Login: cédula + password chosen by the seller. Password reset is done by the admin clearing the hash in the sheet.
 - Invoices are unique across all sellers. Rejected invoices can be re-submitted.
-- Counting mode (immediate vs. approved-only) is configurable; the owner chose immediate.
-- Admin is read-only in the portal; every rule and date lives in the sheet.
+- Admin is read-only in the portal; every rule, date, coupon value and goal lives in the sheet. Admin prints coupons for each draw bag.
 
 ## Brand Commitments
 

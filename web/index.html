@@ -46,7 +46,7 @@
       <div class="acceso__interior">
         <span class="wordmark">PROSEIN</span>
         <h1 class="acceso__titulo">Copa<br>Prosein</h1>
-        <p class="acceso__lema">Registra tus ventas, suma cupones y gana premios cada semana. Con Austral, participa por un viaje todo incluido.</p>
+        <p class="acceso__lema">Registra tus ventas y llena la bolsa de los deseos: cada ronda tiene su sorteo y en diciembre viene el Gran Sorteo Final. Con Austral, participa por un viaje todo incluido.</p>
         <p class="acceso__fechas" id="acceso-fechas"></p>
       </div>
       <div class="acceso__ticket sombra-papel" aria-hidden="true">
@@ -54,7 +54,7 @@
           <div class="mini__titulo">CUPÓN</div>
           <div class="mini__n">N° 01</div>
           <div class="mini__dato">COPA PROSEIN</div>
-          <div class="mini__dato">$1.500,00</div>
+          <div class="mini__dato">RONDA 1</div>
         </div>
       </div>
     </header>
@@ -115,10 +115,23 @@
             <input class="entrada" id="reg-telefono" name="telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="0414 123 4567" required>
             <p class="error-campo" data-error="telefono"></p>
           </div>
-          <div class="campo">
+<div class="campo">
+            <label class="etiqueta" for="reg-canal">Canal de ventas</label>
+            <div class="selector">
+              <select class="entrada" id="reg-canal" name="canal" required>
+                <option value="">Elige tu canal</option>
+                <option value="Tienda">Tiendas</option>
+                <option value="Distribuidor">Distribuidores</option>
+                <option value="Corporativo">Corporativo</option>
+              </select>
+              <svg class="icono" aria-hidden="true"><use href="#i-abajo"/></svg>
+            </div>
+            <p class="error-campo" data-error="canal"></p>
+          </div>
+          <div class="campo" data-campo-tienda hidden>
             <label class="etiqueta" for="reg-sucursal">Tienda Prosein</label>
             <div class="selector">
-              <select class="entrada" id="reg-sucursal" name="sucursal" required data-sucursales>
+              <select class="entrada" id="reg-sucursal" name="sucursal" data-sucursales>
                 <option value="">Elige tu tienda</option>
                 <option>Boleíta</option>
                 <option>La Castellana</option>
@@ -241,7 +254,7 @@
         <section class="seccion" aria-labelledby="ranking-titulo" id="seccion-ranking" hidden>
           <div class="seccion__cabeza"><h2 id="ranking-titulo">Ranking</h2><span id="ranking-actualizado"></span></div>
           <div class="pestanas" role="tablist" aria-label="Tipo de ranking" id="pestanas-ranking">
-            <button type="button" role="tab" aria-selected="true" data-ranking="semana">Esta semana</button>
+            <button type="button" role="tab" aria-selected="true" data-ranking="ronda">Esta ronda</button>
             <button type="button" role="tab" aria-selected="false" data-ranking="general">Cupones</button>
             <button type="button" role="tab" aria-selected="false" data-ranking="austral">Austral</button>
           </div>
@@ -263,8 +276,8 @@
         <button type="button" role="tab" aria-selected="true" data-vista="resumen">Resumen</button>
         <button type="button" role="tab" aria-selected="false" data-vista="vendedores">Vendedores</button>
         <button type="button" role="tab" aria-selected="false" data-vista="ventas">Ventas</button>
-        <button type="button" role="tab" aria-selected="false" data-vista="semanas">Semanas</button>
-        <button type="button" role="tab" aria-selected="false" data-vista="sorteo">Sorteo</button>
+        <button type="button" role="tab" aria-selected="false" data-vista="rondas">Rondas</button>
+        <button type="button" role="tab" aria-selected="false" data-vista="sorteo">Sorteos</button>
       </div>
       <div id="admin-vista" role="tabpanel" aria-live="polite"></div>
     </main>
@@ -388,16 +401,29 @@
     <form class="hoja__caja" id="form-sucursal" novalidate>
       <div class="hoja__asa" aria-hidden="true"></div>
       <div class="hoja__cabeza">
-        <h2 id="sucursal-titulo">¿En qué tienda trabajas?</h2>
+        <h2 id="sucursal-titulo">¿Cuál es tu canal de ventas?</h2>
         <button type="button" class="btn-icono" data-cerrar aria-label="Cerrar"><svg class="icono"><use href="#i-cerrar"/></svg></button>
       </div>
       <div class="hoja__cuerpo">
-        <p class="formulario__texto">Para participar en la Copa tu cuenta debe tener su tienda Prosein. Elígela una sola vez: si luego cambias de tienda, avísale al coordinador.</p>
+        <p class="formulario__texto">El valor de tu cupón y tu meta dependen de tu canal (y de tu tienda, si trabajas en una). Elígelo una sola vez: si luego cambias, avísale al coordinador.</p>
         <div class="aviso" role="alert" data-aviso></div>
         <div class="campo">
+          <label class="etiqueta" for="suc-canal">Canal de ventas</label>
+          <div class="selector">
+            <select class="entrada" id="suc-canal" name="canal" required>
+              <option value="">Elige tu canal</option>
+              <option value="Tienda">Tiendas</option>
+              <option value="Distribuidor">Distribuidores</option>
+              <option value="Corporativo">Corporativo</option>
+            </select>
+            <svg class="icono" aria-hidden="true"><use href="#i-abajo"/></svg>
+          </div>
+          <p class="error-campo" data-error="canal"></p>
+        </div>
+        <div class="campo" data-campo-tienda hidden>
           <label class="etiqueta" for="suc-sucursal">Tienda Prosein</label>
           <div class="selector">
-            <select class="entrada" id="suc-sucursal" name="sucursal" required data-sucursales>
+            <select class="entrada" id="suc-sucursal" name="sucursal" data-sucursales>
               <option value="">Elige tu tienda</option>
             </select>
             <svg class="icono" aria-hidden="true"><use href="#i-abajo"/></svg>
@@ -406,7 +432,7 @@
         </div>
       </div>
       <div class="hoja__pie">
-        <button class="btn btn--primario btn--grande btn--bloque" type="submit"><span class="girador" aria-hidden="true"></span><span data-texto>Guardar tienda</span></button>
+        <button class="btn btn--primario btn--grande btn--bloque" type="submit"><span class="girador" aria-hidden="true"></span><span data-texto>Guardar</span></button>
       </div>
     </form>
   </dialog>
