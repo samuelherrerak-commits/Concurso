@@ -417,6 +417,7 @@ input[type='date'].entrada::-webkit-date-and-time-value { text-align: left; }
   text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
 }
 
+.instalar-acceso { margin-top: var(--s2); }
 .nota-olvido { font-size: 14px; color: var(--tinta-2); background: var(--fondo); border-radius: var(--radio-sm); padding: var(--s4); }
 
 /* ---------- Panel del vendedor ---------- */

@@ -150,7 +150,10 @@ En [`web/config.js`](web/config.js):
 
 Entra a [app.netlify.com/drop](https://app.netlify.com/drop) y arrastra la carpeta `web`. Listo.
 
-Comparte la dirección con los vendedores. Desde el celular pueden usar **"Agregar a la pantalla de inicio"** para tenerla como una app.
+Comparte la dirección con los vendedores. El portal se instala como app (ícono de la bolsa, pantalla completa):
+
+- **Android (Chrome):** botón **"Agregar la app a tu inicio"** en la pantalla de acceso (o en el menú de la cuenta), o menú ⋮ → **Instalar app**.
+- **iPhone (Safari):** botón **Compartir** → **Agregar a inicio**. El portal muestra estos pasos al tocar el botón.
 
 ---
 

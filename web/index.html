@@ -7,7 +7,12 @@
   <meta name="description" content="La bolsa de los deseos · Prosein: registra tus ventas, suma cupones y participa en los sorteos.">
   <title>La bolsa de los deseos</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="assets/logo-prosein.jpg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="La bolsa">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Chivo+Mono:wght@400;700&display=swap">
@@ -79,6 +84,7 @@
           <div class="formulario__pie">
             <button class="btn btn--primario btn--grande btn--bloque" type="submit"><span class="girador" aria-hidden="true"></span><span>Ingresar</span></button>
             <button type="button" class="enlace" id="btn-olvido">Olvidé mi contraseña</button>
+            <button type="button" class="btn btn--secundario btn--bloque instalar-acceso" data-instalar hidden><svg class="icono"><use href="#i-descargar"/></svg>Agregar la app a tu inicio</button>
             <p class="nota-olvido" id="nota-olvido" hidden>Pídele a tu coordinador que reinicie tu contraseña. Después entra con tu cédula y el portal te pedirá crear una nueva.</p>
           </div>
         </form>
@@ -204,6 +210,7 @@
             <button type="button" class="avatar" id="btn-avatar" aria-haspopup="true" aria-expanded="false" aria-controls="menu-usuario"><span id="avatar-iniciales"></span><span class="sr-only">Mi cuenta</span></button>
             <div class="menu-usuario__caja" id="menu-usuario" data-cerrado>
               <div class="menu-usuario__quien"><strong id="menu-nombre"></strong><span id="menu-cedula"></span></div>
+              <button type="button" class="btn btn--fantasma" id="btn-instalar" data-instalar hidden><svg class="icono"><use href="#i-descargar"/></svg>Agregar a inicio</button>
               <button type="button" class="btn btn--fantasma" id="btn-salir"><svg class="icono"><use href="#i-salir"/></svg>Cerrar sesión</button>
             </div>
           </div>

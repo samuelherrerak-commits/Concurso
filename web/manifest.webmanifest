@@ -1,0 +1,17 @@
+{
+  "name": "La bolsa de los deseos · Prosein",
+  "short_name": "La bolsa",
+  "description": "Registra tus ventas, suma cupones y participa en los sorteos de La bolsa de los deseos.",
+  "lang": "es-VE",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#DF1630",
+  "theme_color": "#DF1630",
+  "icons": [
+    { "src": "assets/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -9,6 +9,7 @@ import { iniciarAcceso, mostrarAcceso, llenarSucursales, validarCanal } from './
 import { iniciarVenta, abrirVenta } from './js/venta.js';
 import { mostrarImpresora, mensajeMarcador, mensajeViaje } from './js/ticket.js';
 import { verCupon } from './js/cupon.js';
+import { iniciarInstalacion } from './js/instalar.js';
 import { iniciarAdmin, mostrarAdmin, salirAdmin } from './js/admin.js';
 import {
   pintarCabecera, pintarResumen, pintarEsqueleto, pintarErrorCarga, pintarAccion,
@@ -331,6 +332,7 @@ function iniciarMenuUsuario() {
 }
 
 function iniciar() {
+  iniciarInstalacion();
   iniciarAcceso({ entrar: mostrarPanel });
   iniciarVenta({ alRegistrar, alNecesitarSucursal: () => pedirSucursal(() => abrirVenta(datos)) });
   iniciarAdmin();
