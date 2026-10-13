@@ -1,6 +1,6 @@
 # Copa Prosein · La bolsa de los deseos
 
-Portal web para el concurso interno de ventas de Prosein (fin de año 2026). Cada vendedor:
+Portal web para el concurso interno de ventas de Prosein (fin de año 2026), publicado en **https://bolsa-de-los-deseos-2026.onrender.com/**. Cada vendedor:
 
 - se registra con su **cédula**, una contraseña y su **canal de ventas** (Tiendas, Distribuidores o Corporativo; en Tiendas también elige su tienda),
 - carga sus ventas (día, número de factura, monto, **foto de la factura** y, si vendió Austral, los **m²**),
@@ -138,17 +138,20 @@ En [`web/config.js`](web/config.js):
 
 ### 7. Publicar el sitio
 
-**Opción A: GitHub Pages** (este repo ya trae el flujo `.github/workflows/pages.yml`)
+El portal está publicado en **Render** como *Static Site*: **https://bolsa-de-los-deseos-2026.onrender.com/**
 
-1. En GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. Haz push a `main` (o corre el flujo "Publicar portal" desde la pestaña Actions).
-3. La dirección queda en **Settings → Pages**.
+Configuración en Render (**+ New → Static Site**, repo `samuelherrerak-commits/Concurso`):
 
-> GitHub Pages en repos **privados** requiere un plan pago de GitHub. Si tu repo es privado y gratuito, usa la opción B.
+| Campo | Valor |
+|---|---|
+| Name | `bolsa-de-los-deseos-2026` |
+| Branch | `claude/wonderful-fermat-qy0w17` |
+| Build Command | `echo listo` |
+| Publish Directory | `web` |
 
-**Opción B: Netlify (sin configurar nada)**
+Con **Auto-Deploy** activado, cada push a esa rama se publica solo.
 
-Entra a [app.netlify.com/drop](https://app.netlify.com/drop) y arrastra la carpeta `web`. Listo.
+> Alternativas: GitHub Pages (el repo trae el flujo `.github/workflows/pages.yml`, se corre desde Actions → "Publicar portal") o Netlify ([app.netlify.com/drop](https://app.netlify.com/drop), arrastrando la carpeta `web`).
 
 Comparte la dirección con los vendedores. El portal se instala como app (ícono de la bolsa, pantalla completa):
 

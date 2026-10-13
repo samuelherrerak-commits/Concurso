@@ -32,7 +32,7 @@ Run "Copa Prosein", an internal sales contest. Sellers register sales (day, invo
 
 ## Brand Commitments
 
-- Prosein brand red `#DF1630` and text charcoal `#303133` (from prosein.com.ve), Poppins as the brand UI font, white/`#F7F7F7` grounds. Logo: white "PROSEIN" wordmark on red square.
+- Prosein brand red `#DF1630` and text charcoal `#303133` (from prosein.com.ve), Poppins as the brand UI font, white/`#F7F7F7` grounds. Logo: white "PROSEIN" wordmark on red square. Campaign mark: the red shopping bag from the "Navidad en Grande" artwork (`web/assets/bolsa.svg` in white for red grounds, `bolsa-roja.svg` and the app icon in red on `#F7F7F7`).
 - Minimalist.
 - Signature moment requested by the owner: a coupon printed as a supermarket receipt when a sale completes one. Austral tickets are the same receipt in blue ink.
 - All UI copy in Venezuelan Spanish (tú).
