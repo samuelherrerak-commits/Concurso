@@ -2,7 +2,7 @@
 <html lang="es-VE">
 <head>
 <meta charset="utf-8">
-<title>La bolsa de los deseos · Video explicativo</title>
+<title>Copa Navideña Austral - Prosein · Video explicativo</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Chivo+Mono:wght@400;700&family=Archivo:wdth,wght@115,800&display=swap">
 <style>
   :root {
@@ -71,6 +71,8 @@
   .recorte { position: absolute; left: 60px; right: 60px; top: 150px; height: 900px; overflow: hidden; }
   .ticket { width: 100%; background: var(--papel); color: var(--papel-tinta); font-family: 'Chivo Mono', monospace; padding: 30px 30px 34px; font-size: 21px; line-height: 1.6;
     -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 18px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 18px 51% repeat-x; }
+  .placa { display: inline-block; padding: 0.02em 0.25em 0.08em; border-radius: 0.16em; background: #fff; color: var(--austral); line-height: 1; }
+  .ticket .t1 b { color: var(--austral); }
   .ticket .t1 { font-family: 'Archivo', sans-serif; font-weight: 800; font-stretch: 115%; font-size: 40px; text-align: center; }
   .ticket .t2 { text-align: center; letter-spacing: 0.16em; font-size: 17px; color: var(--papel-tinta-2); }
   .ticket .f { display: flex; justify-content: space-between; } .ticket .f span:first-child { color: var(--papel-tinta-2); }
@@ -85,7 +87,7 @@
   .compartir { position: absolute; left: 0; right: 0; bottom: 0; background: #F2F2F6; border-radius: 34px 34px 0 0; padding: 30px 26px 60px; z-index: 8; }
   .fila-c { background: #fff; border-radius: 18px; padding: 22px 24px; font-size: 26px; display: flex; justify-content: space-between; align-items: center; margin-top: 14px; color: #111; }
   .chrome-bar { position: absolute; left: 0; right: 0; top: 0; height: 150px; background: #fff; padding: 74px 22px 0; display: flex; gap: 14px; align-items: center; z-index: 5; border-bottom: 1px solid #e5e5e5; }
-  .chrome-bar .u { flex: 1; height: 56px; border-radius: 99px; background: #F1F3F4; display: flex; align-items: center; padding: 0 22px; font-size: 20px; color: #444; }
+  .chrome-bar .u { flex: 1; white-space: nowrap; overflow: hidden; height: 56px; border-radius: 99px; background: #F1F3F4; display: flex; align-items: center; padding: 0 22px; font-size: 20px; color: #444; }
   .dialogo { position: absolute; left: 50px; right: 50px; top: 420px; background: #fff; border-radius: 34px; padding: 40px 34px 30px; z-index: 9; box-shadow: 0 20px 60px rgb(0 0 0 / 0.35); color: #111; }
   .inicio { position: absolute; inset: 0; z-index: 10; background: linear-gradient(160deg, #1F3B73, #4C2A7A 55%, #C2185B); }
   .app { position: absolute; width: 112px; text-align: center; font-size: 19px; color: #fff; }
@@ -100,15 +102,15 @@
   <!-- 1. Intro -->
   <section class="escena" id="s1">
     <img class="a" id="s1-bolsa" src="../web/assets/bolsa.svg" style="left:330px;top:420px;width:420px">
-    <div class="a centro marca" id="s1-titulo" style="top:930px;font-size:130px">La bolsa<br>de los deseos</div>
-    <div class="a centro sub" id="s1-sub" style="top:1230px">Copa Prosein · fin de año 2026</div>
+    <div class="a centro marca" id="s1-titulo" style="top:900px;font-size:140px">Copa<br>Navideña</div>
+    <div class="a centro marca" id="s1-sub" style="top:1210px;font-size:72px;color:#fff"><span class="placa">Austral</span> - Prosein</div>
     <div class="a centro" id="s1-chip" style="top:1390px"><span class="chip">Te lo explicamos en un minuto</span></div>
   </section>
 
   <!-- 2. ¿De qué va? -->
   <section class="escena" id="s2">
     <div class="a centro titulo" id="s2-t" style="top:170px">¿De qué va?</div>
-    <div class="a centro sub" id="s2-s" style="top:300px;padding:0 90px">Vende, registra tus facturas<br>y llena tu bolsa de cupones</div>
+    <div class="a centro sub" id="s2-s" style="top:300px;padding:0 90px">Vende, registra tus facturas<br>y suma cupones</div>
     <img class="a" id="s2-bolsa" src="../web/assets/bolsa.svg" style="left:310px;top:820px;width:460px">
     <div class="a mini" id="s2-c1" style="left:465px;top:560px"><small>CUPÓN</small><b>N° 01</b></div>
     <div class="a mini" id="s2-c2" style="left:465px;top:560px"><small>CUPÓN</small><b>N° 02</b></div>
@@ -154,7 +156,7 @@
     <div class="telefono" id="s5-tel"><div class="pantalla">
       <div class="muesca"></div>
       <div class="capa" id="s5-panel">
-        <div class="p-barra"><div class="p-marca"><img src="../web/assets/bolsa.svg" width="40">La bolsa de los deseos</div><div class="p-hola">Hola, Ana</div><div class="p-ronda">Ronda 1 de 3 · 15 oct. al 5 nov.</div></div>
+        <div class="p-barra"><div class="p-marca"><img src="../web/assets/bolsa.svg" width="40">Copa Navideña <span class="placa" style="font-size:22px">Austral</span> - Prosein</div><div class="p-hola">Hola, Ana</div><div class="p-ronda">Ronda 1 de 3 · 15 oct. al 5 nov.</div></div>
         <div class="p-recibo"><div style="font-size:18px;color:var(--papel-tinta-2)">TUS CUPONES</div><div class="n" id="s5-n">4</div><div class="r"><span>RONDA 1</span><b id="s5-nr">4 cupones</b></div><div class="r" style="margin-top:22px"><span>PRÓXIMO CUPÓN</span><span>$900 de $1.500</span></div><div class="barra-prog"><i id="s5-prog" style="transform:scaleX(.6)"></i></div><div class="r"><span>TICKETS GRAN FINAL</span><b>0</b></div></div>
         <div class="p-boton" style="top:960px">＋ Registrar venta</div>
       </div>
@@ -174,7 +176,7 @@
         <div class="oscuro"></div>
         <div class="impresora"></div>
         <div class="recorte"><div class="ticket" id="s5-ticket">
-          <div class="t1">PROSEIN</div><div class="t2">LA BOLSA DE LOS DESEOS</div><hr>
+          <div class="t1" style="font-size:30px;white-space:nowrap"><b>AUSTRAL</b> - PROSEIN</div><div class="t2">COPA NAVIDEÑA</div><hr>
           <div class="f"><span>FACTURA</span><span>000123</span></div><div class="f"><span>VENDEDOR</span><span>ANA PÉREZ</span></div><div class="f"><span>RONDA</span><span>RONDA 1</span></div><div class="f"><span>MONTO</span><span>$2.300,50</span></div><hr>
           <div class="sello" id="s5-sello"><small>CUPONES</small><b>N° 5 al 6</b></div><hr>
           <div class="f"><span>PRÓXIMO CUPÓN EN</span><span>$1.299,50</span></div>
@@ -193,13 +195,13 @@
     <div class="telefono" id="s6-tel"><div class="pantalla">
       <div class="muesca"></div>
       <div class="capa" style="background:var(--rojo)">
-        <div style="padding:120px 40px 0;color:#fff"><img src="../web/assets/bolsa.svg" width="150"><div class="marca" style="font-size:72px;margin-top:30px">La bolsa<br>de los deseos</div><div style="font-size:24px;margin-top:20px;color:#FFE3E7">Registra tus ventas y llena tu bolsa de cupones.</div></div>
+        <div style="padding:120px 40px 0;color:#fff"><img src="../web/assets/bolsa.svg" width="150"><div class="marca" style="font-size:72px;margin-top:30px">Copa<br>Navideña</div><div class="marca" style="font-size:38px;margin-top:14px"><span class="placa">Austral</span> - Prosein</div><div style="font-size:24px;margin-top:20px;color:#FFE3E7">Registra tus ventas y suma cupones.</div></div>
         <div style="position:absolute;left:0;right:0;top:760px;bottom:0;background:#fff;border-radius:40px 40px 0 0"></div>
         <div class="url">🔒 bolsa-de-los-deseos-2026.onrender.com</div>
         <div class="safari-bar"><span style="background:#ccc"></span><span style="background:#ccc"></span><span id="s6-share" style="background:none;font-size:46px;line-height:46px;color:#0A84FF;text-align:center">⇪</span><span style="background:#ccc"></span><span style="background:#ccc"></span></div>
       </div>
       <div class="capa" id="s6-hoja" style="z-index:6;background:rgb(0 0 0 / 0.3)"><div class="compartir" id="s6-comp">
-        <div style="display:flex;gap:16px;align-items:center;background:#fff;border-radius:18px;padding:18px"><img src="../web/assets/icono-192.png" width="70" style="border-radius:16px"><div><b style="font-size:24px;color:#111">La bolsa de los deseos</b><div style="font-size:18px;color:#777">bolsa-de-los-deseos-2026.onrender.com</div></div></div>
+        <div style="display:flex;gap:16px;align-items:center;background:#fff;border-radius:18px;padding:18px"><img src="../web/assets/icono-192.png" width="70" style="border-radius:16px"><div><b style="font-size:24px;color:#111">Copa Navideña Austral - Prosein</b><div style="font-size:18px;color:#777">bolsa-de-los-deseos-2026.onrender.com</div></div></div>
         <div class="fila-c">Copiar <span>⧉</span></div>
         <div class="fila-c">Agregar a favoritos <span>☆</span></div>
         <div class="fila-c" id="s6-agregar"><b>Agregar a inicio</b><span style="border:3px solid #111;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:28px">+</span></div>
@@ -207,7 +209,7 @@
       </div></div>
       <div class="capa" id="s6-conf" style="z-index:7;background:#F2F2F6">
         <div style="display:flex;justify-content:space-between;padding:90px 30px 0;font-size:26px;color:#0A84FF"><span>Cancelar</span><b style="color:#111">Agregar a inicio</b><b id="s6-btnAg">Agregar</b></div>
-        <div style="margin:40px 30px;background:#fff;border-radius:20px;padding:24px;display:flex;gap:20px;align-items:center"><img src="../web/assets/icono-192.png" width="110" style="border-radius:24px"><div style="font-size:28px;color:#111;border-bottom:2px solid #eee;flex:1;padding-bottom:10px">La bolsa</div></div>
+        <div style="margin:40px 30px;background:#fff;border-radius:20px;padding:24px;display:flex;gap:20px;align-items:center"><img src="../web/assets/icono-192.png" width="110" style="border-radius:24px"><div style="font-size:28px;color:#111;border-bottom:2px solid #eee;flex:1;padding-bottom:10px">Copa Navideña</div></div>
       </div>
       <div class="capa inicio" id="s6-inicio"></div>
       <div class="dedo" id="s6-dedo"></div>
@@ -222,7 +224,7 @@
     <div class="telefono" id="s7-tel"><div class="pantalla">
       <div class="capa" style="background:var(--rojo)">
         <div class="chrome-bar"><div class="u">🔒 bolsa-de-los-deseos-2026.onrender.com</div><b id="s7-menu" style="font-size:40px;color:#444">⋮</b></div>
-        <div style="padding:200px 40px 0;color:#fff"><div class="marca" style="font-size:64px">La bolsa<br>de los deseos</div></div>
+        <div style="padding:200px 40px 0;color:#fff"><div class="marca" style="font-size:64px">Copa<br>Navideña</div><div class="marca" style="font-size:34px;margin-top:12px"><span class="placa">Austral</span> - Prosein</div></div>
         <div style="position:absolute;left:0;right:0;top:560px;bottom:0;background:#fff;border-radius:40px 40px 0 0;padding:40px 34px">
           <div style="height:70px;border-radius:18px;background:#EFEFEF;margin-bottom:20px"></div>
           <div style="font-size:20px;color:#333;margin-bottom:8px">Cédula</div><div class="entrada" style="margin-bottom:16px"></div>
@@ -233,7 +235,7 @@
       </div>
       <div class="capa" id="s7-dlgCapa" style="z-index:6;background:rgb(0 0 0 / 0.45)"><div class="dialogo" id="s7-dlg">
         <div style="font-size:32px;font-weight:600">¿Instalar app?</div>
-        <div style="display:flex;gap:20px;align-items:center;margin:30px 0"><img src="../web/assets/icono-192.png" width="96" style="border-radius:22px"><div><b style="font-size:28px">La bolsa</b><div style="font-size:20px;color:#666">bolsa-de-los-deseos-2026.onrender.com</div></div></div>
+        <div style="display:flex;gap:20px;align-items:center;margin:30px 0"><img src="../web/assets/icono-192.png" width="96" style="border-radius:22px"><div><b style="font-size:28px">Copa Navideña</b><div style="font-size:20px;color:#666">bolsa-de-los-deseos-2026.onrender.com</div></div></div>
         <div style="display:flex;justify-content:flex-end;gap:40px;font-size:26px;font-weight:600;color:#1A73E8"><span>Cancelar</span><span id="s7-instalar">Instalar</span></div>
       </div></div>
       <div class="capa inicio" id="s7-inicio" style="background:linear-gradient(160deg,#0F5132,#1E6F5C 50%,#2B8C7E)"></div>
@@ -245,10 +247,10 @@
   <!-- 8. Cierre -->
   <section class="escena" id="s8">
     <img class="a" id="s8-bolsa" src="../web/assets/bolsa.svg" style="left:360px;top:440px;width:360px">
-    <div class="a centro marca" id="s8-t" style="top:880px;font-size:120px">¡Llena tu bolsa!</div>
+    <div class="a centro marca" id="s8-t" style="top:880px;font-size:120px">¡Suma cupones!</div>
     <div class="a centro sub" id="s8-s" style="top:1060px">Cada venta te acerca a un premio</div>
     <div class="a centro" id="s8-url" style="top:1260px"><span class="chip" style="font-size:32px">bolsa-de-los-deseos-2026.onrender.com</span></div>
-    <div class="a centro" id="s8-copa" style="top:1700px;font-size:34px;font-weight:600;color:#FFE3E7">Copa Prosein · La bolsa de los deseos</div>
+    <div class="a centro" id="s8-copa" style="top:1700px;font-size:34px;font-weight:600;color:#fff">Copa Navideña <span class="placa">Austral</span> - Prosein</div>
   </section>
 </div>
 
@@ -330,7 +332,7 @@ function armarInicio(id, img) {
     a.style.top = (130 + Math.floor(i / 4) * 175) + 'px';
     if (i === 14) {
       a.id = id.slice(1) + '-app';
-      a.innerHTML = `<img src="../web/assets/icono-192.png">La bolsa`;
+      a.innerHTML = `<img src="../web/assets/icono-192.png">Copa Navideña`;
     } else a.innerHTML = '<i></i>';
     cont.append(a);
   }
