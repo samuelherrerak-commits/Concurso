@@ -65,7 +65,7 @@ export function contenidoTicket(d) {
   const austral = d.tipo === 'austral';
   const rango = d.hasta && d.hasta > d.n;
   const filas = [
-    { t: 'marca', partes: [{ texto: 'AUSTRAL', azul: true }, { texto: ' - PROSEIN' }] },
+    { t: 'marca', partes: [{ texto: 'AUSTRAL', color: 'azul' }, { texto: ' - ' }, { texto: 'PROSEIN', color: 'rojo' }] },
     { t: 'sub', texto: austral ? 'GRAN SORTEO FINAL' : 'COPA NAVIDEÑA' },
     { t: 'corte' },
     { t: 'fila', a: 'FECHA', b: d.fechaHora },
@@ -98,7 +98,7 @@ export function crearTicket(d) {
   const rango = d.hasta && d.hasta > d.n;
   const nodos = contenidoTicket(d).map((f) => {
     switch (f.t) {
-      case 'marca': return h('div', { class: 'ticket__marca', 'data-l': true }, f.partes.map((x) => (x.azul ? h('span', { class: 'ticket__austral' }, x.texto) : x.texto)));
+      case 'marca': return h('div', { class: 'ticket__marca', 'data-l': true }, f.partes.map((x) => (x.color ? h('span', { class: `ticket__${x.color === 'azul' ? 'austral' : 'prosein'}` }, x.texto) : x.texto)));
       case 'sub': return h('div', { class: 'ticket__sub', 'data-l': true }, f.texto);
       case 'corte': return corte();
       case 'fila': return fila(f.a, f.b);

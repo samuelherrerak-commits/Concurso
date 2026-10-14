@@ -11,15 +11,15 @@ import { fechaCorta, fechaHora } from './formato.js';
 const POR_HOJA = 24;
 let datos = null;
 
-/** "AUSTRAL - PROSEIN", con Austral en azul. */
-const marca = () => h('span', { class: 'boleto__marca' }, h('span', { class: 'boleto__austral' }, 'AUSTRAL'), ' - PROSEIN');
+/** "AUSTRAL - PROSEIN": Austral en azul y Prosein en rojo. */
+const marca = () => h('span', { class: 'boleto__marca' }, h('span', { class: 'boleto__austral' }, 'AUSTRAL'), ' - ', h('span', { class: 'boleto__prosein' }, 'PROSEIN'));
 
 function cedulaConPuntos(c) {
   return String(c).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function cabecera(bolsa, c) {
-  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'GRAN FINAL · TICKET AUSTRAL'), marca());
+  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'TICKET AUSTRAL'), marca());
   if (bolsa.tipo === 'final') return h('div', { class: 'boleto__banda boleto__banda--final' }, h('span', {}, 'GRAN SORTEO FINAL'), marca());
   return h('div', { class: 'boleto__cab' }, marca(), h('span', {}, bolsa.nombre.toUpperCase()));
 }

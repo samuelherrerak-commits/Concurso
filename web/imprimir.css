@@ -115,7 +115,8 @@ main { overflow-x: auto; padding: 24px 16px 48px; }
 }
 .boleto__marca { font: 800 9pt/1 var(--f-marca); font-stretch: 115%; color: var(--carbon); letter-spacing: 0; }
 .boleto__austral { color: #0B5CD5; }
-.boleto__banda .boleto__austral { padding: 0 2px; border-radius: 2px; background: #fff; }
+.boleto__prosein { color: #DF1630; }
+.boleto__banda .boleto__austral, .boleto__banda .boleto__prosein { padding: 0 2px; border-radius: 2px; background: #fff; }
 .boleto__codigo {
   margin-top: 1.6mm;
   font: 700 17pt/1 var(--f-ticket);
@@ -147,7 +148,7 @@ main { overflow-x: auto; padding: 24px 16px 48px; }
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-.boleto--viaje .boleto__banda .boleto__marca { margin-left: auto; color: #fff; font-size: 8pt; }
+.boleto--viaje .boleto__banda .boleto__marca { margin-left: auto; color: #fff; font-size: 7pt; }
 .boleto--viaje .avion { width: 3.4mm; height: 3.4mm; flex: none; }
 .boleto--viaje .boleto__codigo { color: var(--carbon); }
 
@@ -164,7 +165,7 @@ main { overflow-x: auto; padding: 24px 16px 48px; }
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-.boleto--final .boleto__banda .boleto__marca { margin-left: auto; color: #fff; font-size: 8pt; }
+.boleto--final .boleto__banda .boleto__marca { margin-left: auto; color: #fff; font-size: 7pt; }
 .boleto--final .boleto__codigo { color: var(--carbon); }
 
 /* ---------- Impresión ---------- */

@@ -37,7 +37,7 @@ Prosein's own identity (red shell, charcoal ink, Poppins) plus one signature: **
 - Austral tickets section: blue progress toward the next 100 m², blue mini tickets, one line saying whether the seller's Austral tickets enter the draw.
 - Store picker: native `<select>` with a chevron; bottom sheet for old accounts without a store.
 - Receipt summary: total coupons, the current round's coupons, next-coupon progress, and a "Gran Sorteo Final" block with a goal bar (charcoal fill, red tick at the required %).
-- Mini tickets carry their round name (RONDA 1, LA ÑAPA) instead of "CUPÓN"; the ticket header is "AUSTRAL - PROSEIN" (AUSTRAL in blue), the subtitle "COPA NAVIDEÑA", with a RONDA row.
+- Mini tickets carry their round name (RONDA 1, LA ÑAPA) instead of "CUPÓN"; the ticket header is "AUSTRAL - PROSEIN" (AUSTRAL in blue, PROSEIN in red), the subtitle "COPA NAVIDEÑA", with a RONDA row.
 - Admin view: same red shell with an "Administración" pill, a white tab bar (selected tab in charcoal), plain tables in scroll containers, a hairline grid of figures. Draw cards: Ronda 1–3 plain, Gran Sorteo Final with a red band, Austral ticket with a black band, matching their printed slips.
 - Printable coupons (`cupones.html` + `imprimir.css`): Letter, 8 mm margin, 3 × 8 grid of 66 × 31.8 mm slips with dashed cut lines, one draw bag per page run. Regular slips: wordmark + red rule + red code. Final-draw slips: red band "GRAN SORTEO FINAL". Austral tickets (inside the final bag): black band "GRAN FINAL · TICKET AUSTRAL" (print-color-adjust exact) and a black code.
 

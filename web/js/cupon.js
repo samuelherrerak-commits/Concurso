@@ -121,7 +121,7 @@ export async function imagenTicket(d) {
       const anchos = f.partes.map((x) => ctx.measureText(x.texto).width);
       let x = xc - anchos.reduce((a, b) => a + b, 0) / 2;
       f.partes.forEach((p, i) => {
-        ctx.fillStyle = p.azul ? COLORES.azul : COLORES.tinta;
+        ctx.fillStyle = p.color ? COLORES[p.color] : COLORES.tinta;
         ctx.fillText(p.texto, x, medio);
         x += anchos[i];
       });

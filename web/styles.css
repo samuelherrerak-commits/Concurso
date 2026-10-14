@@ -923,6 +923,7 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .ticket__codigo { font-size: 10px; letter-spacing: 0.3em; color: var(--papel-tinta-2); }
 .ticket__gracias { text-align: center; margin-top: 6px; font-weight: 700; letter-spacing: 0.06em; }
 .ticket__austral { color: var(--austral); }
+.ticket__prosein { color: var(--rojo); }
 .ticket--austral .ticket__sub { color: var(--austral); font-weight: 700; }
 .ticket--austral .sello { border-color: var(--austral); color: var(--austral); }
 .impresora--austral .progreso__relleno { background: var(--austral); }
