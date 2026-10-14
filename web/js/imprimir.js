@@ -1,5 +1,5 @@
 /**
- * Cupones de La bolsa de los deseos listos para imprimir (solo administradores).
+ * Cupones de la Copa Navideña listos para imprimir (solo administradores).
  * Hoja carta, 24 cupones por hoja (3 × 8), líneas punteadas para recortar.
  * Cada sorteo empieza en una hoja nueva. Los del Gran Sorteo Final llevan una
  * banda roja; los tickets Austral (en la misma bolsa del final) una banda negra.
@@ -11,14 +11,17 @@ import { fechaCorta, fechaHora } from './formato.js';
 const POR_HOJA = 24;
 let datos = null;
 
+/** "AUSTRAL - PROSEIN", con Austral en azul. */
+const marca = () => h('span', { class: 'boleto__marca' }, h('span', { class: 'boleto__austral' }, 'AUSTRAL'), ' - PROSEIN');
+
 function cedulaConPuntos(c) {
   return String(c).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function cabecera(bolsa, c) {
-  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'GRAN FINAL · TICKET AUSTRAL'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
-  if (bolsa.tipo === 'final') return h('div', { class: 'boleto__banda boleto__banda--final' }, h('span', {}, 'GRAN SORTEO FINAL'), h('span', { class: 'boleto__marca' }, 'PROSEIN'));
-  return h('div', { class: 'boleto__cab' }, h('span', { class: 'boleto__marca' }, 'PROSEIN'), h('span', {}, bolsa.nombre.toUpperCase()));
+  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'GRAN FINAL · TICKET AUSTRAL'), marca());
+  if (bolsa.tipo === 'final') return h('div', { class: 'boleto__banda boleto__banda--final' }, h('span', {}, 'GRAN SORTEO FINAL'), marca());
+  return h('div', { class: 'boleto__cab' }, marca(), h('span', {}, bolsa.nombre.toUpperCase()));
 }
 
 function pie(c, bolsa) {
@@ -44,7 +47,7 @@ function hojasDeBolsa(bolsa) {
     const lote = bolsa.cupones.slice(p * POR_HOJA, (p + 1) * POR_HOJA);
     hojas.push(h('section', { class: 'hoja', 'aria-label': `${bolsa.nombre}, hoja ${p + 1} de ${paginas}` },
       h('div', { class: 'hoja__cab' },
-        h('strong', {}, `${datos.sorteo} · ${bolsa.nombre}${bolsa.fecha ? ' · sorteo ' + fechaCorta(bolsa.fecha) : ''}`),
+        h('strong', {}, `Copa Navideña · ${bolsa.nombre}${bolsa.fecha ? ' · sorteo ' + fechaCorta(bolsa.fecha) : ''}`),
         h('span', {}, lote.length ? `${lote[0].codigo} a ${lote[lote.length - 1].codigo}` : 'sin cupones'),
         h('span', {}, `Hoja ${p + 1} de ${paginas}`),
         bolsa.provisional ? h('span', { class: 'hoja__provisional' }, 'PROVISIONAL') : null),
@@ -70,7 +73,7 @@ function pintar() {
   aviso.textContent = provisionales.length
     ? `Provisional: ${provisionales.join(', ')} todavía no ${provisionales.length === 1 ? 'llega a su corte' : 'llegan a su corte'}, así que los cupones pueden cambiar. Las hojas impresas dirán PROVISIONAL.`
     : '';
-  document.title = `Cupones ${elegida === 'todas' ? 'de los sorteos' : bolsas[0] ? bolsas[0].nombre : ''} · La bolsa de los deseos`;
+  document.title = `Cupones ${elegida === 'todas' ? 'de los sorteos' : bolsas[0] ? bolsas[0].nombre : ''} · Copa Navideña`;
 }
 
 function mostrarAviso(texto, conEnlace) {

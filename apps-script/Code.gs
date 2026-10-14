@@ -1,6 +1,6 @@
 /**
  * ============================================================
- *  COPA PROSEIN · La bolsa de los deseos
+ *  COPA NAVIDEÑA AUSTRAL - PROSEIN
  *  Backend (Google Apps Script + Google Sheets)
  * ============================================================
  *
@@ -101,8 +101,8 @@ const CANTIDAD_PRUEBA = 8;
 /** Filas por defecto de la hoja Configuracion: [clave, valor, descripción]. */
 function configuracionPorDefecto_() {
   return [
-    ['nombre_concurso', 'Copa Prosein', 'Nombre visible en el portal.'],
-    ['nombre_sorteo', 'La bolsa de los deseos', 'Nombre de los sorteos.'],
+    ['nombre_concurso', 'Copa Navideña Austral - Prosein', 'Nombre visible en el portal.'],
+    ['nombre_sorteo', 'Copa Navideña', 'Nombre de los sorteos.'],
     ['hora_corte', "'15:00", 'Hora del corte cuando la hoja Rondas no trae una: el día siguiente al último día de la ronda (formato 24 h).'],
     ['bloquear_rondas_cerradas', 'SI', 'SI = después del corte de una ronda ya no se cargan ventas con fecha de esa ronda.'],
     ['fecha_sorteo_final', fechaDesdeISO_('2026-12-21'), 'Fecha del Gran Sorteo Final.'],
@@ -140,7 +140,7 @@ const CLAVES_OBSOLETAS = [
 function doGet(e) {
   const accion = e && e.parameter && e.parameter.action;
   if (accion === 'config') return salidaJson_(enrutar_({ action: 'config', api_token: e.parameter.api_token }));
-  return salidaJson_(ok_({ servicio: 'Copa Prosein API', estado: 'activo' }));
+  return salidaJson_(ok_({ servicio: 'Copa Navideña Austral - Prosein API', estado: 'activo' }));
 }
 
 /**
@@ -946,7 +946,7 @@ function rankingRonda_(stats, ronda) {
 }
 
 /**
- * Bolsas de La bolsa de los deseos: una por cada ronda con sorteo (cupones completados
+ * Bolsas de los sorteos: una por cada ronda con sorteo (cupones completados
  * en esa ronda) y el Gran Sorteo Final: 1 cupón cada N, si cumple la meta, más los
  * tickets Austral. Cada cupón lleva un código único dentro de su bolsa (R1-0001, F-0001).
  */
@@ -1244,6 +1244,14 @@ function mapaColumnas_(sh) {
   return mapa;
 }
 
+
+/** Nombres anteriores del concurso: si la hoja aún los tiene, se usa el nombre nuevo. */
+const NOMBRES_ANTERIORES = ['copa prosein', 'la bolsa de los deseos'];
+
+function nombreVigente_(valor, porDefecto) {
+  return !valor || NOMBRES_ANTERIORES.indexOf(valor.toLowerCase()) >= 0 ? porDefecto : valor;
+}
+
 /** Filas como objetos { columna: valor }, con el número de fila en _fila. */
 function filasComoObjetos_(sh) {
   const valores = sh.getDataRange().getValues();
@@ -1307,8 +1315,8 @@ function leerConfig_() {
   const hora = texto('hora_corte', '15:00').match(/^(\d{1,2}):(\d{2})$/);
 
   const cfg = {
-    nombre_concurso: texto('nombre_concurso', '') || 'Copa Prosein',
-    nombre_sorteo: texto('nombre_sorteo', '') || 'La bolsa de los deseos',
+    nombre_concurso: nombreVigente_(texto('nombre_concurso', ''), 'Copa Navideña Austral - Prosein'),
+    nombre_sorteo: nombreVigente_(texto('nombre_sorteo', ''), 'Copa Navideña'),
     hora_corte: hora && Number(hora[1]) < 24 ? dos_(Number(hora[1])) + ':' + hora[2] : '15:00',
     bloquear_rondas_cerradas: siONo('bloquear_rondas_cerradas', true),
     fecha_sorteo_final: aISO_(crudo.fecha_sorteo_final) || '2026-12-21',
@@ -1963,7 +1971,7 @@ function carpetaFotos_(cfg) {
     if (actual.carpeta_fotos_id && actual.carpeta_fotos_id !== cfg.carpeta_fotos_id) {
       return DriveApp.getFolderById(actual.carpeta_fotos_id);
     }
-    const carpeta = DriveApp.createFolder('Copa Prosein · Fotos de facturas');
+    const carpeta = DriveApp.createFolder('Copa Navideña · Fotos de facturas');
     escribirConfig_('carpeta_fotos_id', carpeta.getId());
     return carpeta;
   });
@@ -2175,7 +2183,7 @@ function setup() {
   carpetaFotos_(leerConfig_());
   invalidarTabla_(HOJA.CONFIG);
   recalcularRankings_();
-  avisar_('Copa Prosein lista', 'Hojas listas. Revisa Configuracion, las fechas de la hoja Rondas y el valor del cupón y la meta de cada tienda y canal en la hoja Canales. Luego despliega la aplicación web.');
+  avisar_('Copa Navideña lista', 'Hojas listas. Revisa Configuracion, las fechas de la hoja Rondas y el valor del cupón y la meta de cada tienda y canal en la hoja Canales. Luego despliega la aplicación web.');
 }
 
 /** Cronograma por defecto con el corte calculado (día siguiente al fin, a la hora_corte). */
@@ -2259,12 +2267,12 @@ function avisar_(titulo, mensaje) {
 }
 
 // ------------------------------------------------------------
-// Menú "Copa Prosein" en el Sheet
+// Menú "Copa Navideña" en el Sheet
 // ------------------------------------------------------------
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('Copa Prosein')
+    .createMenu('Copa Navideña')
     .addItem('Inicializar hojas', 'setup')
     .addItem('Restaurar rondas (cronograma original)', 'menuRestaurarRondas')
     .addItem('Recalcular rankings', 'menuRecalcularRankings')
@@ -2428,7 +2436,7 @@ function recalcularRankings_() {
 
   const sh = hoja_(HOJA.RANKING);
   sh.clear();
-  sh.getRange(1, 1).setValue('Copa Prosein · ' + cfg.nombre_sorteo + ' — actualizado ' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy HH:mm'))
+  sh.getRange(1, 1).setValue(cfg.nombre_concurso + ' — actualizado ' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy HH:mm'))
     .setFontWeight('bold').setFontSize(12);
 
   let columna = 1;

@@ -1,5 +1,5 @@
 /**
- * Copa Prosein · portal del vendedor (y vista de auditoría del administrador).
+ * Copa Navideña Austral - Prosein · portal del vendedor (y vista de auditoría del administrador).
  * Punto de entrada: decide entre la pantalla de acceso, el panel y la administración.
  */
 import { llamar, sesion, recuerdo } from './js/api.js';
@@ -88,7 +88,7 @@ async function cargarPanel({ silencioso = false } = {}) {
   }
   if (r.data.usuario.rol === 'admin') { entrarAdmin(); return; }
   datos = r.data;
-  document.title = `${datos.concurso.nombre_sorteo} · ${datos.usuario.nombre.split(' ')[0]}`;
+  document.title = `Copa Navideña · ${datos.usuario.nombre.split(' ')[0]}`;
   const vistos = recuerdo.leer(claveVistos());
   const vistosViaje = recuerdo.leer(claveVistosViaje());
   pintarTodo({

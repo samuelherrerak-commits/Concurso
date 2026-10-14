@@ -1,5 +1,5 @@
 /* ==========================================================
-   Copa Prosein · cupones para imprimir (urnas del sorteo)
+   Copa Navideña Austral - Prosein · cupones para imprimir (urnas del sorteo)
    Hoja carta (215,9 × 279,4 mm), margen 8 mm, 3 × 8 cupones.
    ========================================================== */
 
@@ -114,6 +114,8 @@ main { overflow-x: auto; padding: 24px 16px 48px; }
   white-space: nowrap;
 }
 .boleto__marca { font: 800 9pt/1 var(--f-marca); font-stretch: 115%; color: var(--carbon); letter-spacing: 0; }
+.boleto__austral { color: #0B5CD5; }
+.boleto__banda .boleto__austral { padding: 0 2px; border-radius: 2px; background: #fff; }
 .boleto__codigo {
   margin-top: 1.6mm;
   font: 700 17pt/1 var(--f-ticket);

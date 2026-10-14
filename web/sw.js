@@ -1,10 +1,10 @@
 /**
- * Service worker de La bolsa de los deseos: permite instalar el portal como app.
+ * Service worker de la Copa Navideña Austral - Prosein: permite instalar el portal como app.
  * Estrategia "red primero": siempre se intenta la versión más nueva del sitio y,
  * si no hay conexión, se usa la última guardada. Las llamadas al Web App de
  * Apps Script (otro dominio) nunca pasan por aquí.
  */
-const CACHE = 'bolsa-v2';
+const CACHE = 'copa-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 

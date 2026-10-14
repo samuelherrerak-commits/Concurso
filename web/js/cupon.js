@@ -32,7 +32,7 @@ async function cargarFuentes() {
     await Promise.all([
       document.fonts.load('400 12px "Chivo Mono"'),
       document.fonts.load('700 12px "Chivo Mono"'),
-      document.fonts.load('800 20px Archivo', 'PROSEIN'),
+      document.fonts.load('800 20px Archivo', 'AUSTRAL - PROSEIN'),
     ]);
   } catch { /* se dibuja con la fuente de respaldo */ }
 }
@@ -116,10 +116,15 @@ export async function imagenTicket(d) {
     const alto = ALTO[f.t];
     const medio = y + alto / 2;
     if (f.t === 'marca') {
-      ctx.fillStyle = COLORES.tinta;
-      ctx.font = '800 20px Archivo, "Arial Black", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(f.texto, xc, medio);
+      ctx.font = '800 17px Archivo, "Arial Black", sans-serif';
+      ctx.textAlign = 'left';
+      const anchos = f.partes.map((x) => ctx.measureText(x.texto).width);
+      let x = xc - anchos.reduce((a, b) => a + b, 0) / 2;
+      f.partes.forEach((p, i) => {
+        ctx.fillStyle = p.azul ? COLORES.azul : COLORES.tinta;
+        ctx.fillText(p.texto, x, medio);
+        x += anchos[i];
+      });
     } else if (f.t === 'sub') {
       ctx.fillStyle = d.tipo === 'austral' ? COLORES.azul : COLORES.tinta2;
       ctx.font = '400 11px "Chivo Mono", monospace';
@@ -184,7 +189,7 @@ export async function imagenTicket(d) {
 }
 
 function nombreArchivo(d) {
-  return `${d.tipo === 'austral' ? 'ticket-austral' : 'cupon'}-copa-prosein-${String(d.n).padStart(2, '0')}.png`;
+  return `${d.tipo === 'austral' ? 'ticket-austral' : 'cupon'}-copa-navidena-${String(d.n).padStart(2, '0')}.png`;
 }
 
 export async function descargarTicket(d) {
@@ -200,7 +205,7 @@ export async function descargarTicket(d) {
 async function compartirTicket(d) {
   const blob = await imagenTicket(d);
   const archivo = new File([blob], nombreArchivo(d), { type: 'image/png' });
-  await navigator.share({ files: [archivo], title: d.tipo === 'austral' ? 'Mi ticket Austral · La bolsa de los deseos' : 'Mi cupón · La bolsa de los deseos' });
+  await navigator.share({ files: [archivo], title: d.tipo === 'austral' ? 'Mi ticket Austral · Copa Navideña Austral - Prosein' : 'Mi cupón · Copa Navideña Austral - Prosein' });
 }
 
 function puedeCompartir() {

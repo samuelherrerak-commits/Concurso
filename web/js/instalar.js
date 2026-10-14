@@ -21,7 +21,7 @@ async function instalar() {
     const { outcome } = await aviso.userChoice;
     aviso = null;
     mostrarBotones(false);
-    if (outcome === 'accepted') avisar('Listo: La bolsa de los deseos quedó en tu pantalla de inicio.');
+    if (outcome === 'accepted') avisar('Listo: la Copa Navideña quedó en tu pantalla de inicio.');
     return;
   }
   if (esIOS()) {

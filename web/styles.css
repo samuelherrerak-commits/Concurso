@@ -1,5 +1,5 @@
 /* ==========================================================
-   Copa Prosein · estilos
+   Copa Navideña Austral - Prosein · estilos
    Mobile-first. Sin frameworks. Colores de prosein.com.ve.
    ========================================================== */
 
@@ -339,6 +339,17 @@ input[type='date'].entrada::-webkit-date-and-time-value { text-align: left; }
   padding: calc(var(--s5) + env(safe-area-inset-top)) var(--s5) var(--s7);
   color: #fff;
 }
+/* "Austral" siempre en azul: va en una placa blanca para que se lea sobre el rojo. */
+.austral-marca {
+  display: inline-block;
+  padding: 0.04em 0.28em 0.08em;
+  border-radius: 0.18em;
+  background: #fff;
+  color: var(--austral);
+  line-height: 1;
+}
+.austral-marca--chica { padding: 1px 6px 2px; border-radius: 5px; font-size: 16px; }
+.acceso__firma { display: block; margin-top: 0.18em; font-size: 0.5em; letter-spacing: 0; }
 .marca-bolsa { display: inline-flex; align-items: center; gap: var(--s2); font-weight: 600; font-size: 15px; color: #fff; }
 .marca-bolsa img { width: 36px; height: 36px; }
 .acceso__titulo {
@@ -428,9 +439,9 @@ input[type='date'].entrada::-webkit-date-and-time-value { text-align: left; }
   padding: env(safe-area-inset-top) 0 calc(var(--s8) + var(--s3));
 }
 .barra__interior, .panel, .admin { width: 100%; max-width: 1120px; margin: 0 auto; padding-inline: var(--s4); }
-.barra__fila { display: flex; align-items: center; justify-content: space-between; min-height: 60px; }
+.barra__fila { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 60px; }
 .barra__logo { width: 34px; height: 34px; align-self: center; margin-right: var(--s2); }
-.barra__nombre { font-weight: 700; font-size: 17px; color: #fff; letter-spacing: -0.01em; }
+.barra__nombre { flex: 1 1 0; min-width: 0; font-weight: 700; font-size: 16px; line-height: 1.25; color: #fff; letter-spacing: -0.01em; }
 .barra__copa { font-weight: 500; font-size: 14px; margin-left: var(--s2); color: #FFE3E7; }
 .barra__marca { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; }
 .barra__rol {
@@ -887,7 +898,7 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .ticket { width: 280px; transform-origin: 50% 0; }
 .ticket .papel { --diente: 12px; padding: 18px 18px 22px; font-size: 12px; line-height: 1.45; }
 .ticket .corte { margin: 8px 0; }
-.ticket__marca { text-align: center; font-family: var(--f-marca); font-weight: 800; font-stretch: 115%; font-size: 20px; letter-spacing: 0.02em; color: var(--papel-tinta); }
+.ticket__marca { text-align: center; white-space: nowrap; font-family: var(--f-marca); font-weight: 800; font-stretch: 115%; font-size: 17px; letter-spacing: 0; color: var(--papel-tinta); }
 .ticket__sub { text-align: center; font-size: 11px; letter-spacing: 0.18em; color: var(--papel-tinta-2); }
 .ticket__fila { display: flex; justify-content: space-between; gap: 12px; }
 .ticket__fila span:first-child { color: var(--papel-tinta-2); }
@@ -911,6 +922,7 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .ticket__barras svg { width: 196px; height: 32px; }
 .ticket__codigo { font-size: 10px; letter-spacing: 0.3em; color: var(--papel-tinta-2); }
 .ticket__gracias { text-align: center; margin-top: 6px; font-weight: 700; letter-spacing: 0.06em; }
+.ticket__austral { color: var(--austral); }
 .ticket--austral .ticket__sub { color: var(--austral); font-weight: 700; }
 .ticket--austral .sello { border-color: var(--austral); color: var(--austral); }
 .impresora--austral .progreso__relleno { background: var(--austral); }

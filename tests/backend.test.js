@@ -109,7 +109,7 @@ test('setup crea las 6 hojas, el cronograma de rondas y los canales, y se puede 
   assert.equal(e.servicios.DriveApp._carpetas.size, 1, 'no crea carpetas repetidas');
 
   const cfg = e.gas.leerConfig_();
-  assert.equal(cfg.nombre_sorteo, 'La bolsa de los deseos');
+  assert.equal(cfg.nombre_sorteo, 'Copa Navideña');
   assert.deepEqual(plano(cfg.rondas.map((r) => [r.nombre, r.inicio, r.fin, r.sorteo, r.con_sorteo])), [
     ['Ronda 1', '2026-10-15', '2026-11-05', '2026-11-09', true],
     ['Ronda 2', '2026-11-06', '2026-11-26', '2026-11-30', true],
@@ -558,6 +558,15 @@ test('la hoja Rondas manda: fechas, cortes y nombres se editan a mano', () => {
   assert.equal(e.gas.leerConfig_().rondas[2].inicio, '2026-11-27', 'el menú restaura el cronograma original');
 });
 
+test('si la hoja aún tiene los nombres anteriores, se usa Copa Navideña Austral - Prosein', () => {
+  const e = entorno({ config: { nombre_concurso: 'Copa Prosein', nombre_sorteo: 'La bolsa de los deseos' } });
+  const cfg = e.gas.leerConfig_();
+  assert.equal(cfg.nombre_concurso, 'Copa Navideña Austral - Prosein');
+  assert.equal(cfg.nombre_sorteo, 'Copa Navideña');
+  const otro = entorno({ config: { nombre_concurso: 'Mi concurso' } }).gas.leerConfig_();
+  assert.equal(otro.nombre_concurso, 'Mi concurso');
+});
+
 test('concurso cerrado: no se cargan ventas', () => {
   const e = entorno({ config: { concurso_abierto: 'NO' } });
   const t = e.registrar('61111222');
@@ -705,7 +714,7 @@ test('menús: cupones para sorteo en la hoja Ranking, resultado de una ronda y r
 
   e.gas.menuResumenSorteo();
   const resumen = e.servicios.ui.alertas.at(-1).msg;
-  assert.match(resumen, /La bolsa de los deseos/);
+  assert.match(resumen, /Copa Navideña/);
   assert.match(resumen, /Ronda 2 \([^)]*\): 1 cupones de 1 vendedores/);
   assert.match(resumen, /Gran Sorteo Final[^\n]*: 1 cupones/);
 });
@@ -760,7 +769,7 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   const bolsa = e.api('adminCupones', { token: admin, bolsa: 'r1' }).data;
   assert.equal(bolsa.bolsas.length, 1);
   assert.equal(bolsa.bolsas[0].cupones.length, 10);
-  assert.equal(bolsa.sorteo, 'La bolsa de los deseos');
+  assert.equal(bolsa.sorteo, 'Copa Navideña');
   assert.equal(e.api('adminCupones', { token: admin }).data.bolsas.length, 4, 'sin bolsa: todas');
   assert.equal(e.api('adminCupones', { token: admin, bolsa: 'nada' }).code, 'NOT_FOUND');
 
@@ -835,5 +844,5 @@ test('acciones desconocidas o cuerpo inválido no rompen el servicio', () => {
   const e = entorno();
   assert.equal(e.api('borrarTodo').code, 'BAD_REQUEST');
   assert.equal(JSON.parse(e.gas.doPost({ postData: { contents: '{no es json' } }).getContent()).code, 'BAD_REQUEST');
-  assert.equal(JSON.parse(e.gas.doGet({ parameter: { action: 'config', api_token: 'copaprosein' } }).getContent()).data.nombre, 'Copa Prosein');
+  assert.equal(JSON.parse(e.gas.doGet({ parameter: { action: 'config', api_token: 'copaprosein' } }).getContent()).data.nombre, 'Copa Navideña Austral - Prosein');
 });

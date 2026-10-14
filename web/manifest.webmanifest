@@ -1,7 +1,7 @@
 {
-  "name": "La bolsa de los deseos · Prosein",
-  "short_name": "La bolsa",
-  "description": "Registra tus ventas, suma cupones y participa en los sorteos de La bolsa de los deseos.",
+  "name": "Copa Navideña Austral - Prosein",
+  "short_name": "Copa Navideña",
+  "description": "Registra tus ventas, suma cupones y participa en los sorteos de la Copa Navideña Austral - Prosein.",
   "lang": "es-VE",
   "start_url": "./",
   "scope": "./",

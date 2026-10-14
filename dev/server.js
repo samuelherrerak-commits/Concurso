@@ -141,7 +141,7 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 servidor.listen(PORT, () => {
-  console.log(`Copa Prosein (local) en http://localhost:${PORT}`);
+  console.log(`Copa Navideña (local) en http://localhost:${PORT}`);
   rondas.forEach((r) => console.log(`  ${r.nombre}: ${r.inicio} → ${r.fin}${r.sorteo ? ' · sorteo ' + r.sorteo : ' · sin sorteo'}`));
   console.log(`Latencia simulada ${latencia} ms`);
   if (args.includes('--demo')) console.log('Vendedores de prueba: cédulas 90000001 a 90000008, contraseña "prueba123"');

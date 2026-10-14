@@ -1,4 +1,4 @@
-# Copa Prosein · La bolsa de los deseos
+# Copa Navideña Austral - Prosein
 
 Portal web para el concurso interno de ventas de Prosein (fin de año 2026), publicado en **https://bolsa-de-los-deseos-2026.onrender.com/**. Cada vendedor:
 
@@ -53,7 +53,7 @@ Todo se recalcula desde la hoja **Registros** en cada consulta. No hay contadore
 
 ### 1. Crear el Google Sheet
 
-Crea un Google Sheet nuevo (por ejemplo "Copa Prosein 2026") en la cuenta de Google que va a administrar el concurso.
+Crea un Google Sheet nuevo (por ejemplo "Copa Navideña 2026") en la cuenta de Google que va a administrar el concurso.
 
 ### 2. Pegar el script
 
@@ -66,8 +66,8 @@ Crea un Google Sheet nuevo (por ejemplo "Copa Prosein 2026") en la cuenta de Goo
 
 1. En el selector de funciones (arriba), elige **`setup`** y pulsa **Ejecutar**.
 2. Google pedirá permisos. Si aparece "Google no ha verificado esta app": **Configuración avanzada → Ir a … (no seguro)**. Es normal en scripts propios.
-3. `setup()` crea las hojas **Configuracion**, **Rondas**, **Canales**, **Registros**, **Usuarios** y **Ranking**, con sus formatos y listas desplegables. También crea en tu Drive la carpeta **"Copa Prosein · Fotos de facturas"**. Puedes correrlo otra vez sin perder datos.
-4. Recarga el Sheet: aparecerá el menú **Copa Prosein**.
+3. `setup()` crea las hojas **Configuracion**, **Rondas**, **Canales**, **Registros**, **Usuarios** y **Ranking**, con sus formatos y listas desplegables. También crea en tu Drive la carpeta **"Copa Navideña · Fotos de facturas"**. Puedes correrlo otra vez sin perder datos.
+4. Recarga el Sheet: aparecerá el menú **Copa Navideña**.
 
 ### 4. Revisar la hoja Configuracion
 
@@ -75,7 +75,7 @@ Cada fila tiene su explicación en la columna **descripción**:
 
 | clave | valor inicial | qué es |
 |---|---|---|
-| `nombre_sorteo` | La bolsa de los deseos | Nombre de los sorteos en el portal. |
+| `nombre_sorteo` | Copa Navideña | Nombre de los sorteos en el portal. Si la hoja aún dice "La bolsa de los deseos" o "Copa Prosein", se usa el nombre nuevo. |
 | `hora_corte` | 15:00 | Hora del corte (el día siguiente al fin de cada ronda) cuando la hoja Rondas no trae otra. |
 | `bloquear_rondas_cerradas` | SI | Después del corte ya no se cargan ventas con fecha de esa ronda. |
 | `fecha_sorteo_final` | 21/12/2026 | Gran Sorteo Final. |
@@ -93,7 +93,7 @@ Otras claves: `nombre_concurso`, `moneda`, `carpeta_fotos_id` (la crea `setup()`
 
 ### 4b. Revisar la hoja Rondas
 
-Una fila por ronda: `ronda`, `nombre`, `inicio`, `fin`, `corte` (fecha y hora) y `sorteo`. Ya viene con el cronograma de fin de año. Puedes editar cualquier celda (por ejemplo, mover un corte); el portal usa lo que diga esta hoja. Una ronda con `sorteo` vacío no tiene sorteo (como La Ñapa). Si algo se daña: menú **Copa Prosein → Restaurar rondas**.
+Una fila por ronda: `ronda`, `nombre`, `inicio`, `fin`, `corte` (fecha y hora) y `sorteo`. Ya viene con el cronograma de fin de año. Puedes editar cualquier celda (por ejemplo, mover un corte); el portal usa lo que diga esta hoja. Una ronda con `sorteo` vacío no tiene sorteo (como La Ñapa). Si algo se daña: menú **Copa Navideña → Restaurar rondas**.
 
 ### 4c. Poner el valor del cupón y la meta en la hoja Canales
 
@@ -203,7 +203,7 @@ Otros casos en **Usuarios**:
 - **Bloquear a alguien:** cambia `estado` a `bloqueado`. Pierde la sesión de inmediato.
 - **Cambio de tienda o canal:** edita `canal` (Tienda, Distribuidor o Corporativo) y `sucursal_o_zona` (una tienda de la hoja Canales). Las cuentas sin canal válido lo eligen la próxima vez que entran.
 
-### Menú "Copa Prosein"
+### Menú "Copa Navideña"
 
 | Opción | Qué hace |
 |---|---|

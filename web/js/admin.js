@@ -37,12 +37,12 @@ export function mostrarAdmin({ verFoto }) {
   const s = sesion.leer();
   const u = (s && s.usuario) || { nombre: '', apellido: '' };
   $('#saludo-titulo').textContent = u.nombre ? `Hola, ${u.nombre.split(' ')[0]}` : 'Administración';
-  $('#saludo-semana').textContent = 'Auditoría de La bolsa de los deseos';
+  $('#saludo-semana').textContent = 'Auditoría de la Copa Navideña';
   $('#saludo-corte').textContent = '';
   $('#avatar-iniciales').textContent = iniciales(u.nombre, u.apellido).toUpperCase() || 'AD';
   $('#menu-nombre').textContent = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'Administrador';
   $('#menu-cedula').textContent = 'Administrador · solo lectura';
-  document.title = 'La bolsa de los deseos · Administración';
+  document.title = 'Copa Navideña · Administración';
   irA(VISTAS.includes(vista) ? vista : 'resumen');
 }
 
@@ -267,7 +267,7 @@ function vistaVendedores(d, resumen) {
         : h('div', { class: 'superficie vacio' }, h('strong', {}, 'Nadie coincide con el filtro'), 'Cambia la búsqueda, la tienda o la meta.'));
   };
 
-  const exportar = () => descargarCsv('vendedores-copa-prosein.csv', [
+  const exportar = () => descargarCsv('vendedores-copa-navidena.csv', [
     ['Cédula', 'Nombre', 'Teléfono', 'Canal', 'Tienda o canal', 'Estado', 'Valor cupón', 'Cupones', 'Cupones ronda actual', 'Total vendido', 'Meta', '% de la meta', 'Cumple', 'Cupones Gran Final', 'Tickets Gran Final', 'm² Austral', 'Tickets Austral', 'Austral entra al final', 'Facturas', 'Pendientes', 'Rechazadas'],
     ...filtrar().map((v) => [v.cedula, v.nombre, v.telefono, v.canal, v.grupo, v.estado, v.monto_por_cupon, v.cupones, v.cupones_ronda, v.total, v.meta || '', v.meta ? Math.round(v.avance * 1000) / 10 : '', v.cumple ? 'SI' : 'NO', v.cupones_final, v.tickets_final, v.m2, v.cupones_austral, v.austral_en_final ? 'SI' : 'NO', v.ventas, v.pendientes, v.rechazadas]),
   ]);
@@ -324,7 +324,7 @@ function vistaVentas(d) {
   };
 
   const cambiar = (clave) => (v) => { f[clave] = v; f.limite = POR_PAGINA; pintar(); };
-  const exportar = () => descargarCsv('ventas-copa-prosein.csv', [
+  const exportar = () => descargarCsv('ventas-copa-navidena.csv', [
     ['ID', 'Día de venta', 'Cargada', 'Factura', 'Cédula', 'Vendedor', 'Tienda o canal', 'Ronda', 'Monto', 'Austral', 'm² Austral', 'Estado', 'Cuenta', 'Nota'],
     ...filtrar().map((v) => [v.id, fechaCorta(v.dia_venta), fechaHora(v.fecha_carga), v.numero_factura, v.cedula, v.vendedor, v.grupo, nombreRonda(v.ronda), v.monto, v.vendio_austral ? 'SI' : 'NO', v.m2_austral, v.estado, v.cuenta ? 'SI' : 'NO', v.nota_admin || '']),
   ]);
@@ -433,7 +433,7 @@ function vistaSorteo(resumen) {
   };
 
   return [
-    cabeza(c.nombre_sorteo, [enlace('todas', 'Imprimir todos', 'btn--primario btn--chico')]),
+    cabeza('Sorteos', [enlace('todas', 'Imprimir todos', 'btn--primario btn--chico')]),
     h('div', { class: 'urnas urnas--5' }, resumen.bolsas.map((b) => h('article', { class: 'superficie urna' + (b.tipo === 'final' ? ' urna--final' : '') },
       h('div', { class: 'urna__cab' },
         h('strong', {}, b.nombre),

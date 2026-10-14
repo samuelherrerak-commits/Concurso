@@ -16,11 +16,11 @@ Prosein sales staff in Venezuela (showrooms and franchises), mostly on their pho
 
 ## Product Purpose
 
-Run "Copa Prosein", an internal sales contest. Sellers register sales (day, invoice number, amount, invoice photo, optional Austral m²) and see their coupons per round, goal progress, final-draw tickets and Austral tickets. They can reopen and download any coupon they won. Goal: sell as much as possible, and push Austral products.
+Run "Copa Navideña Austral - Prosein", an internal sales contest. Sellers register sales (day, invoice number, amount, invoice photo, optional Austral m²) and see their coupons per round, goal progress, final-draw tickets and Austral tickets. They can reopen and download any coupon they won. Goal: sell as much as possible, and push Austral products.
 
 ## Capabilities and Constraints
 
-- Campaign name for the draws: "La bolsa de los deseos" (end of 2026).
+- Campaign name: "Copa Navideña Austral - Prosein" (end of 2026). "Austral" is always shown in Austral blue `#0B5CD5` (on red grounds, inside a white plate). The earlier name "La bolsa de los deseos" is retired.
 - Sales channels: Tiendas (one of the Prosein stores), Distribuidores, Corporativo. Each store and channel has its own coupon value and sales goal (Canales sheet).
 - 1 coupon per coupon value accumulated. Leftover carries over.
 - Rounds (Rondas sheet): Ronda 1 (15/10–5/11, draw Mon 9/11), Ronda 2 (6/11–26/11, draw 30/11), Ronda 3 (27/11–10/12, draw 14/12), La Ñapa (11/12–19/12, no draw). Each round's draw uses only coupons completed in that round. Cut: the day after the round ends, 3:00 p.m.
