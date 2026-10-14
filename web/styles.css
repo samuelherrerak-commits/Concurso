@@ -808,6 +808,8 @@ button.mini:active { transform: scale(0.96); }
 .reglas__bloque p { line-height: 1.5; }
 .reglas__kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rojo); }
 .reglas__titulo { font-size: 17px; font-weight: 700; line-height: 1.25; color: var(--carbon); }
+.reglas__ronda, .reglas__condicion { line-height: 1.5; white-space: pre-wrap; }
+.reglas__condicion strong { color: var(--rojo); }
 
 /* Mejor vendedor por canal en el detalle de una ronda (admin) */
 .admin__mejores { display: grid; gap: var(--s2); padding: var(--s4); margin-bottom: var(--s3); font-size: 14px; }

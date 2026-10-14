@@ -4,7 +4,7 @@
  * si no hay conexión, se usa la última guardada. Las llamadas al Web App de
  * Apps Script (otro dominio) nunca pasan por aquí.
  */
-const CACHE = 'copa-v5';
+const CACHE = 'copa-v6';
 
 self.addEventListener('install', () => self.skipWaiting());
 

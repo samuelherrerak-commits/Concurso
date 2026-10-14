@@ -223,13 +223,48 @@ export function mostrarIntroSiFalta(c, yo = null) {
 
 // ---------- "Cómo funciona la Copa" ----------
 
+/** "Austral" en azul dentro de un texto (el texto no cambia). */
+function conAustral(texto) {
+  return texto.split(/(Austral)/).map((t) => (t === 'Austral' ? h('span', { class: 'austral-texto' }, t) : t));
+}
+
+/**
+ * Texto exacto que envió Prosein para "Cómo funciona la Copa", sin reescribir.
+ * Solo "(XXXX)" se cambia por el valor del cupón del vendedor.
+ */
 export function pintarComoFunciona(c, yo, { alVerTarjetas } = {}) {
-  const bloques = bloquesCopa(c, yo);
+  const valor = yo && yo.monto_por_cupon ? dinero(yo.monto_por_cupon, { compacto: true }) : 'XXXX';
+  const titulo = (t) => h('h3', { class: 'reglas__titulo' }, t);
+  const linea = (t) => h('p', {}, conAustral(t));
+  const ronda = (nombre, resto) => h('p', { class: 'reglas__ronda' }, h('strong', {}, nombre), '  ', resto);
+  const letra = (t) => {
+    const m = t.match(/^([A-J]\.-)(.*)$/);
+    return h('p', { class: 'reglas__condicion' }, h('strong', {}, m[1]), conAustral(m[2]));
+  };
   $('#reglas-contenido').replaceChildren(
-    ...bloques.map((b) => h('section', { class: 'reglas__bloque' },
-      h('p', { class: 'reglas__kicker' }, b.kicker),
-      h('h3', { class: 'reglas__titulo' }, b.titulo),
-      b.cuerpo)),
-    c.contar_solo_aprobadas ? h('p', { class: 'copa__nota' }, 'Tus cupones cuentan cuando el coordinador aprueba la factura.') : null,
+    h('section', { class: 'reglas__bloque' },
+      titulo('¿En qué consiste la COPA?'),
+      linea('Tres sorteos + una ñapa para que puedas: Ir a Margarita por dos días en pareja, ganarte un reloj Cubit, complementos para un mercado de tus hallacas y algunas sorpresas más.')),
+    h('section', { class: 'reglas__bloque' },
+      titulo('1.- 04 SORTEOS CON 07 PREMIOS CADA UNO:'),
+      ronda('Ronda 1', 'Del 15 de oct. al 05 de nov. Sorteo el lunes 9 de nov.'),
+      ronda('Ronda 2', 'Del 06 al 26 de nov. Sorteo el lunes 30 de nov.'),
+      ronda('Ronda 3', 'Del 27 de nov. al 10 de dic.  Sorteo el lunes 14 de dic.'),
+      ronda('GRAN SORTEO FINAL:', 'Lunes 21 de diciembre')),
+    h('section', { class: 'reglas__bloque' },
+      titulo('2.- 01 ÑAPA:'),
+      linea('Para que puedas tener más oportunidad de llegar con cupones al sorteo final, te damos del 11 al 19 de dic. para seguir ganando puntos.')),
+    h('section', { class: 'reglas__bloque' },
+      titulo('3.- CONDICIONES'),
+      letra('A.- Ganas un cupón por el logro de un monto específico de venta asociado a tu canal.'),
+      letra(`B.- Cada (${valor}) en ventas te da 01 cupón (es el valor del cupón de tu canal). Lo que sobra no se pierde, se suma para tus próximas ventas y para generar más cupones.`),
+      letra('C.- A cada sorteo entran los cupones que completes en esa ronda.'),
+      letra('D.- Las rondas cierran el día previsto. Si registras después de ese último día, queda para la siguiente ronda.'),
+      letra('E.- Por cada10 cupones de todas las rondas tienes 01 cupón que cuenta desde el inicio de la Copa para el Sorteo final. (Desde el inicio hasta el final puedes acumular cupones)'),
+      letra('F.- Gran Sorteo Final será con cupones que ganaste cada 10 cupones acumulados en toda la campaña.'),
+      letra('G.- Cada 80 m² / piezas de Austral te dan 1 cupón adicional para el Gran Sorteo Final.'),
+      letra('H.- El mejor vendedor de cada ronda por canal, gana un cupón para el Gran Sorteo Final.'),
+      letra('I.- Registra cada factura con su foto. Una factura solo se registra una vez, y el coordinador puede rechazar las que no se lean bien.'),
+      letra('J.- En caso de ganar y la información no concordar con el sistema, quedas eliminado de cualquiera de los sorteos.')),
     h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: alVerTarjetas }, 'Ver las tarjetas de bienvenida'));
 }
