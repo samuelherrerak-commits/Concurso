@@ -173,6 +173,10 @@ class MockSheet {
     this.datos.splice(fila - 1, 1);
     return this;
   }
+  deleteColumn(col) {
+    this.datos.forEach((f) => { if (f) f.splice(col - 1, 1); });
+    return this;
+  }
   clear() {
     this.datos = [];
     this.formatos.clear();

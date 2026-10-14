@@ -205,7 +205,7 @@ export async function descargarTicket(d) {
 async function compartirTicket(d) {
   const blob = await imagenTicket(d);
   const archivo = new File([blob], nombreArchivo(d), { type: 'image/png' });
-  await navigator.share({ files: [archivo], title: d.tipo === 'austral' ? 'Mi ticket Austral · Copa Navideña Austral - Prosein' : 'Mi cupón · Copa Navideña Austral - Prosein' });
+  await navigator.share({ files: [archivo], title: d.tipo === 'austral' ? 'Mi cupón Austral · Copa Navideña Austral - Prosein' : 'Mi cupón · Copa Navideña Austral - Prosein' });
 }
 
 function puedeCompartir() {
@@ -252,10 +252,10 @@ function preparar() {
 export function verCupon(d) {
   const ctl = preparar();
   actual = d;
-  $('#cupon-titulo').textContent = d.tipo === 'austral' ? `Ticket Austral N° ${d.n}` : `Cupón N° ${d.n}`;
+  $('#cupon-titulo').textContent = d.tipo === 'austral' ? `Cupón Austral N° ${d.n}` : `Cupón N° ${d.n}`;
   $('#cupon-ticket').replaceChildren(crearTicket(d));
   $('#cupon-nota').replaceChildren(d.tipo === 'austral'
-    ? h('span', {}, icono('ticket'), 'Es un ticket adicional para el Gran Sorteo Final.')
+    ? h('span', {}, icono('ticket'), 'Es un cupón adicional para el Gran Sorteo Final.')
     : h('span', {}, icono('ticket'), d.conSorteo === false
       ? 'Es de La Ñapa: no tiene sorteo propio y suma para el Gran Sorteo Final.'
       : 'Entra a la bolsa del sorteo de su ronda y suma para el Gran Sorteo Final.'));

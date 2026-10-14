@@ -34,12 +34,13 @@ Prosein's own identity (red shell, charcoal ink, Poppins) plus one signature: **
 - Fixed bottom action bar on mobile; inline in the left column from 960px.
 - Desktop: two columns (summary + coupons + Austral ticket sticky on the left; sales table + ranking on the right).
 - Mini tickets are buttons: tap opens the coupon viewer (same ticket, no printing, stamp already on) with "Descargar imagen" (canvas PNG at 3×, same rows as the on-screen ticket) and "Compartir" where the Web Share API takes files.
-- Austral tickets section: blue progress toward the next 100 m², blue mini tickets, one line saying whether the seller's Austral tickets enter the draw.
+- Austral coupons section: blue progress toward the next coupon (80 m² or pieces; 500 for Distribuidores), blue mini tickets.
+- Welcome cards (`#dlg-intro`, `web/js/copa.js`): full-screen red dialog, white rounded cards in a horizontal scroll-snap track, dots and Saltar / Siguiente / ¡Empezar!. Shown once per device; reopened from "¿Cómo funciona la Copa?". Rules A–J use red letter badges.
 - Store picker: native `<select>` with a chevron; bottom sheet for old accounts without a store.
 - Receipt summary: total coupons, the current round's coupons, next-coupon progress, and a "Gran Sorteo Final" block with a goal bar (charcoal fill, red tick at the required %).
 - Mini tickets carry their round name (RONDA 1, LA ÑAPA) instead of "CUPÓN"; the ticket header is "AUSTRAL - PROSEIN" (AUSTRAL in blue, PROSEIN in red), the subtitle "COPA NAVIDEÑA", with a RONDA row.
 - Admin view: same red shell with an "Administración" pill, a white tab bar (selected tab in charcoal), plain tables in scroll containers, a hairline grid of figures. Draw cards: Ronda 1–3 plain, Gran Sorteo Final with a red band, Austral ticket with a black band, matching their printed slips.
-- Printable coupons (`cupones.html` + `imprimir.css`): Letter, 8 mm margin, 3 × 8 grid of 66 × 31.8 mm slips with dashed cut lines, one draw bag per page run. Regular slips: wordmark + red rule + red code. Final-draw slips: red band "GRAN SORTEO FINAL". Austral tickets (inside the final bag): black band "GRAN FINAL · TICKET AUSTRAL" (print-color-adjust exact) and a black code.
+- Printable coupons (`cupones.html` + `imprimir.css`): Letter, 8 mm margin, 3 × 8 grid of 66 × 31.8 mm slips with dashed cut lines, one draw bag per page run. Regular slips: wordmark + red rule + red code. Final-draw slips: red band "GRAN SORTEO FINAL". Austral coupons (inside the final bag): black band "CUPÓN AUSTRAL" (print-color-adjust exact) and a black code. Best-seller coupons: gold band "MEJOR VENDEDOR".
 
 ## Motion
 

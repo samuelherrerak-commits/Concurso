@@ -2,7 +2,8 @@
  * Cupones de la Copa Navideña listos para imprimir (solo administradores).
  * Hoja carta, 24 cupones por hoja (3 × 8), líneas punteadas para recortar.
  * Cada sorteo empieza en una hoja nueva. Los del Gran Sorteo Final llevan una
- * banda roja; los tickets Austral (en la misma bolsa del final) una banda negra.
+ * banda roja; los cupones Austral (en la misma bolsa del final) una banda negra y los
+ * de mejor vendedor una banda dorada.
  */
 import { llamar, sesion } from './api.js';
 import { $, h } from './dom.js';
@@ -19,19 +20,21 @@ function cedulaConPuntos(c) {
 }
 
 function cabecera(bolsa, c) {
-  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'TICKET AUSTRAL'), marca());
+  if (c.origen === 'austral') return h('div', { class: 'boleto__banda' }, h('span', {}, 'CUPÓN AUSTRAL'), marca());
+  if (c.origen === 'mejor_vendedor') return h('div', { class: 'boleto__banda boleto__banda--mejor' }, h('span', {}, 'MEJOR VENDEDOR'), marca());
   if (bolsa.tipo === 'final') return h('div', { class: 'boleto__banda boleto__banda--final' }, h('span', {}, 'GRAN SORTEO FINAL'), marca());
   return h('div', { class: 'boleto__cab' }, marca(), h('span', {}, bolsa.nombre.toUpperCase()));
 }
 
 function pie(c, bolsa) {
   if (c.origen === 'austral') return `Fact. ${c.factura} · ${fechaCorta(c.dia_venta)} · Austral N° ${c.n}`;
+  if (c.origen === 'mejor_vendedor') return `Mejor vendedor de su canal · ${c.ronda}`;
   if (bolsa.tipo === 'final') return `Cupón final ${c.n} de ${c.de} · ${fechaCorta(bolsa.fecha)}`;
   return `Fact. ${c.factura} · ${fechaCorta(c.dia_venta)} · N° ${c.n}`;
 }
 
 function boleto(c, bolsa) {
-  const clase = c.origen === 'austral' ? ' boleto--viaje' : bolsa.tipo === 'final' ? ' boleto--final' : '';
+  const clase = c.origen === 'austral' ? ' boleto--viaje' : c.origen === 'mejor_vendedor' ? ' boleto--mejor' : bolsa.tipo === 'final' ? ' boleto--final' : '';
   return h('div', { class: 'boleto' + clase },
     cabecera(bolsa, c),
     h('div', { class: 'boleto__codigo' }, c.codigo),
@@ -71,7 +74,7 @@ function pintar() {
   const aviso = $('#aviso');
   aviso.hidden = !provisionales.length;
   aviso.textContent = provisionales.length
-    ? `Provisional: ${provisionales.join(', ')} todavía no ${provisionales.length === 1 ? 'llega a su corte' : 'llegan a su corte'}, así que los cupones pueden cambiar. Las hojas impresas dirán PROVISIONAL.`
+    ? `Provisional: ${provisionales.join(', ')} todavía no ${provisionales.length === 1 ? 'ha cerrado' : 'han cerrado'}, así que los cupones pueden cambiar. Las hojas impresas dirán PROVISIONAL.`
     : '';
   document.title = `Cupones ${elegida === 'todas' ? 'de los sorteos' : bolsas[0] ? bolsas[0].nombre : ''} · Copa Navideña`;
 }

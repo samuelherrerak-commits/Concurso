@@ -52,7 +52,7 @@ export function abrirVenta(datos) {
   contexto = datos;
   const form = $('#form-venta');
   const c = datos.concurso;
-  // Solo días de semanas que no han cerrado su corte (lo decide el servidor).
+  // Cualquier día de la campaña hasta hoy (lo decide el servidor).
   const dia = form.elements.dia_venta;
   dia.min = c.dia_min_carga;
   dia.max = c.dia_max_carga;
@@ -98,7 +98,7 @@ function mostrarRevision(activa, valores) {
     dato('Día de la venta', fechaConDia(valores.dia_venta)),
     dato('N° de factura', valores.numero_factura),
     dato('Monto', dinero(valores.monto)),
-    dato('Austral', valores.vendio_austral ? `${decimal(valores.m2_austral)} m²` : 'No'),
+    dato('Austral', valores.vendio_austral ? `${decimal(valores.m2_austral)} m²/pzs` : 'No'),
   );
   const img = new Image();
   img.alt = 'Foto de la factura';
@@ -168,7 +168,7 @@ function validar(form) {
   if (!dia) e.dia_venta = 'Elige el día de la venta.';
   else if (dia > c.dia_max_carga) e.dia_venta = dia > c.hoy ? 'La fecha no puede ser futura.' : `La Copa terminó el ${fechaCorta(c.fecha_fin)}.`;
   else if (dia < c.fecha_inicio) e.dia_venta = `La Copa empezó el ${fechaCorta(c.fecha_inicio)}.`;
-  else if (dia < c.dia_min_carga) e.dia_venta = `Esa semana ya cerró. Puedes cargar ventas desde el ${fechaCorta(c.dia_min_carga)}.`;
+  else if (dia < c.dia_min_carga) e.dia_venta = `La Copa empezó el ${fechaCorta(c.dia_min_carga)}.`;
 
   const factura = form.elements.numero_factura.value.trim();
   if (!factura) e.numero_factura = 'Escribe el número de factura.';
@@ -181,7 +181,7 @@ function validar(form) {
 
   const austral = $('#v-austral').checked;
   const m2 = parsearDecimal(form.elements.m2_austral.value);
-  if (austral && !(m2 > 0)) e.m2_austral = 'Escribe cuántos m² de Austral vendiste.';
+  if (austral && !(m2 > 0)) e.m2_austral = 'Escribe cuántos m² o piezas de Austral vendiste.';
 
   return { errores: e, valores: { dia_venta: dia, numero_factura: factura.toUpperCase(), monto, vendio_austral: austral, m2_austral: austral ? m2 : 0 } };
 }

@@ -6,7 +6,6 @@
  *   node dev/server.js --demo     → con 8 vendedores de prueba (contraseña prueba123)
  *   node dev/server.js --admin    → agrega un administrador: cédula 11111111, contraseña admin123
  *   node dev/server.js --solo-aprobadas   → contar_solo_aprobadas = SI
- *   node dev/server.js --sin-bloqueo      → bloquear_rondas_cerradas = NO
  *   node dev/server.js --dia=5    → hoy es el día 5 de la campaña (negativo: empieza dentro de N días)
  *   node dev/server.js --real     → las fechas reales del cronograma (15/10 al 19/12/2026)
  *   node dev/server.js --metas    → metas de ejemplo en la hoja Canales
@@ -30,16 +29,15 @@ const e = crearEntorno({ silencioso: true, sinUi: true });
 e.gas.setup();
 const hoy = e.gas.hoyISO_();
 // El cronograma real se corre en el tiempo para que "hoy" caiga dentro de la campaña.
-const original = e.gas.rondasPorDefecto_('15:00');
+const original = require('vm').runInContext('RONDAS_POR_DEFECTO', e.gas);
 const dia = Number((args.find((a) => a.startsWith('--dia=')) || '--dia=25').split('=')[1]);
 const corrimiento = args.includes('--real') ? 0 : e.gas.diasEntre_(original[0].inicio, e.gas.sumarDias_(hoy, -dia));
 const mover = (iso) => (iso ? e.gas.sumarDias_(iso, corrimiento) : '');
-const rondas = original.map((r) => ({ ...r, inicio: mover(r.inicio), fin: mover(r.fin), sorteo: mover(r.sorteo), corte: r.corte + corrimiento * 86400000 }));
+const rondas = original.map((r) => ({ ...r, inicio: mover(r.inicio), fin: mover(r.fin), sorteo: mover(r.sorteo) }));
 e.gas.escribirRondas_(rondas);
 e.gas.escribirConfig_('fecha_sorteo_final', e.gas.fechaDesdeISO_(mover('2026-12-21')));
 if (args.includes('--solo-aprobadas')) e.gas.escribirConfig_('contar_solo_aprobadas', 'SI');
 if (args.includes('--sin-ranking')) e.gas.escribirConfig_('mostrar_ranking_publico', 'NO');
-if (args.includes('--sin-bloqueo')) e.gas.escribirConfig_('bloquear_rondas_cerradas', 'NO');
 if (args.includes('--metas')) {
   // Metas de ejemplo: $8.000 en tiendas, $12.000 en Distribuidores, Corporativo sin meta; Maracaibo con cupón de $1.000.
   const sh = e.servicios.ss.getSheetByName('Canales');

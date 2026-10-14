@@ -178,3 +178,19 @@ main { overflow-x: auto; padding: 24px 16px 48px; }
   main { padding: 0; overflow: visible; }
   .hoja { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
 }
+
+/* Cupón de mejor vendedor (Gran Sorteo Final): banda dorada. */
+.boleto--mejor .boleto__banda {
+  display: flex; align-items: center; gap: 1.6mm;
+  margin: -2.6mm -3.4mm 0;
+  padding: 1.5mm 3.4mm;
+  background: #F2B233;
+  color: #141618;
+  font: 700 7pt/1 var(--f-ui);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.boleto--mejor .boleto__banda .boleto__marca { margin-left: auto; font-size: 7pt; }
+.boleto--mejor .boleto__codigo { color: var(--carbon); }

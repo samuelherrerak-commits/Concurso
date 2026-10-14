@@ -1,10 +1,11 @@
-/** Render del panel del vendedor: resumen, cupones, tickets Austral, ventas, ranking y reglas. */
+/** Render del panel del vendedor: resumen, cupones, cupones Austral, ventas, ranking y reglas. */
 import { $, $$, h, icono } from './dom.js';
 import {
   dinero, decimal, fechaCorta, fechaMedia, diaMes, rango, plural, iniciales, ordinal,
-  fechaConDia, momento, enCaracas, conPunto,
+  fechaConDia, conPunto,
 } from './formato.js';
 import { crearMini } from './ticket.js';
+import { pintarComoFunciona, mostrarIntro } from './copa.js';
 
 let pestanaRanking = 'ronda';
 let ultimoRanking = null;
@@ -35,11 +36,11 @@ export function textoRonda(c) {
   return `${nombre} · ${rango(s.inicio, s.fin)}`;
 }
 
+/** La ronda cierra al terminar su último día: lo registrado después pasa a la siguiente. */
 export function textoCorte(c) {
   const s = c.ronda_actual;
   if (!s || s.estado === 'antes' || s.estado === 'terminado') return '';
-  const corte = enCaracas(s.corte);
-  const cuando = corte.iso === c.hoy ? `Corte hoy a las ${corte.hora}` : `Corte: ${momento(s.corte)}`;
+  const cuando = s.fin === c.hoy ? 'Cierra hoy a las 11:59 p. m.' : `Cierra el ${fechaConDia(s.fin)}`;
   return s.con_sorteo ? `${cuando} · sorteo ${diaSorteo(s.sorteo)}` : `${cuando} · sin sorteo, suma para el final`;
 }
 
@@ -49,30 +50,31 @@ function renglon(etiqueta, valor, clase = '') {
   return h('div', { class: 'renglon ' + clase }, h('dt', {}, etiqueta), h('dd', {}, valor));
 }
 
-function barra(valor, max, etiqueta, { relleno, marca } = {}) {
+function barra(valor, max, etiqueta, { relleno } = {}) {
   return h('div', { class: 'progreso__barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(valor), 'aria-label': etiqueta },
-    h('div', { class: 'progreso__relleno', style: { transform: `scaleX(${Math.min(1, Math.max(0, relleno))})` } }),
-    marca ? h('span', { class: 'progreso__marca', style: { left: `${Math.min(100, marca * 100)}%` }, 'aria-hidden': 'true' }) : null);
+    h('div', { class: 'progreso__relleno', style: { transform: `scaleX(${Math.min(1, Math.max(0, relleno))})` } }));
 }
 
-/** Bloque "Gran Sorteo Final": avance de la meta y cupones finales. */
-function bloqueFinal(r, c) {
+/** "3 (1 + 1 Austral + 1 mejor vendedor)" */
+function desgloseFinal(f) {
+  const partes = [String(f.cupones)];
+  if (f.austral) partes.push(`${f.austral} Austral`);
+  if (f.mejor_vendedor) partes.push(`${f.mejor_vendedor} mejor vendedor`);
+  return partes.length > 1 ? `${f.total} (${partes.join(' + ')})` : String(f.total);
+}
+
+/** Bloque "Gran Sorteo Final": cupones finales y avance de la meta (informativo). */
+function bloqueFinal(r) {
   const m = r.meta;
   const f = r.final;
-  const pct = `${decimal(m.porcentaje_requerido)} %`;
-  const lineas = [renglon('TICKETS GRAN FINAL', f.austral ? `${f.total} (${f.cupones} + ${f.austral} Austral)` : String(f.total), 'renglon--final')];
-  let nota;
+  const lineas = [renglon('CUPONES GRAN FINAL', desgloseFinal(f), 'renglon--final')];
   if (m.definida) {
     lineas.push(h('div', { class: 'progreso progreso--meta' },
       h('div', { class: 'progreso__cab' }, h('span', {}, 'Tu meta'), h('span', {}, `${decimal(Math.floor(m.avance * 100))} % de ${dinero(m.meta, { compacto: true })}`)),
-      barra(m.vendido, m.meta, 'Avance de tu meta', { relleno: m.avance, marca: m.porcentaje_requerido / 100 })));
+      barra(m.vendido, m.meta, 'Avance de tu meta', { relleno: m.avance })));
   }
-  if (!m.cumple) {
-    nota = ['Para entrar necesitas vender el ', h('strong', {}, pct), ' de tu meta: te faltan ', h('strong', {}, dinero(m.falta, { compacto: true })), '.'];
-    if (f.posibles) nota.push(` Ya tienes ${plural(f.posibles, 'cupón final esperando', 'cupones finales esperando')}.`);
-  } else {
-    nota = [m.definida ? '¡Ya cumples tu meta! ' : '', `Cada ${f.por_cada} cupones = 1 cupón final. Te `, h('strong', {}, f.faltan_para_proximo === 1 ? 'falta 1 cupón' : `faltan ${f.faltan_para_proximo} cupones`), ' para el próximo.'];
-  }
+  const nota = [`Cada ${f.por_cada} cupones = 1 cupón final. Te `, h('strong', {}, f.faltan_para_proximo === 1 ? 'falta 1 cupón' : `faltan ${f.faltan_para_proximo} cupones`), ' para el próximo.'];
+  if (f.mejor_vendedor) nota.push(' ', h('strong', {}, `¡Fuiste el mejor vendedor de tu canal en ${f.rondas_mejor_vendedor.join(' y ')}!`));
   return [h('dl', {}, lineas), h('p', { class: 'resumen__nota' }, nota)];
 }
 
@@ -84,8 +86,8 @@ export function pintarResumen(datos) {
   const ronda = r.ronda;
   const lineas = [
     renglon('TOTAL VENDIDO', dinero(r.total)),
-    renglon('AUSTRAL (m²)', `${decimal(r.m2)} m²`, 'renglon--austral'),
-    renglon('TICKETS AUSTRAL', String(r.austral.cupones), 'renglon--austral'),
+    renglon('AUSTRAL (m²/PZS)', `${decimal(r.m2)} m²/pzs`, 'renglon--austral'),
+    renglon('CUPONES AUSTRAL', String(r.austral.cupones), 'renglon--austral'),
   ];
   if (ronda.posicion && datos.ranking && datos.ranking.ronda) {
     lineas.push(renglon(`PUESTO ${ronda.nombre.toUpperCase()}`, `${ordinal(ronda.posicion)} de ${datos.ranking.ronda.participantes}`));
@@ -114,7 +116,7 @@ export function pintarResumen(datos) {
       barra(r.sobrante, M, 'Avance hacia el próximo cupón', { relleno: r.progreso }),
       h('p', { class: 'progreso__pie' }, 'Te faltan ', h('strong', {}, dinero(r.falta_para_proximo, { compacto: true })), ' en ventas.')),
     h('hr', { class: 'corte' }),
-    ...bloqueFinal(r, c),
+    ...bloqueFinal(r),
     h('hr', { class: 'corte' }),
     h('dl', {}, lineas));
 }
@@ -165,7 +167,7 @@ export function pintarAccion(datos) {
   nota.textContent = motivo;
 }
 
-// ---------- Mis cupones y tickets Austral ----------
+// ---------- Mis cupones y cupones Austral ----------
 
 /** Nombre corto de la ronda de un cupón para el mini ticket ("RONDA 1", "LA ÑAPA"). */
 export function nombreRonda(c, numero) {
@@ -195,21 +197,19 @@ export function pintarViaje(datos, { nuevosDesde = Infinity, alAbrir } = {}) {
   const a = r.austral;
   const caja = $('#viaje');
   const cupones = (datos.cupones_austral || []).slice().reverse();
-  $('#viaje-cuenta').textContent = a.cupones ? plural(a.cupones, 'ticket', 'tickets') : '';
-  const estado = a.participa
-    ? h('p', { class: 'viaje__estado viaje__estado--si' }, icono('check'), conPunto(`Son tickets adicionales para el Gran Sorteo Final del ${fechaConDia(c.fecha_sorteo_final)}`))
-    : h('p', { class: 'viaje__estado' }, `Son tickets adicionales para el Gran Sorteo Final: entran cuando llegues al ${decimal(r.meta.porcentaje_requerido)} % de tu meta.`);
+  $('#viaje-cuenta').textContent = a.cupones ? plural(a.cupones, 'cupón', 'cupones') : '';
+  const estado = h('p', { class: 'viaje__estado viaje__estado--si' }, icono('check'), conPunto(`Son cupones adicionales para el Gran Sorteo Final del ${fechaConDia(c.fecha_sorteo_final)}`));
 
   caja.replaceChildren(
     h('div', { class: 'viaje__cuerpo' },
       h('div', { class: 'progreso progreso--austral' },
-        h('div', { class: 'progreso__cab' }, h('span', {}, 'Próximo ticket Austral'), h('span', {}, `${decimal(a.sobrante)} de ${decimal(a.m2_por_cupon)} m²`)),
-        h('div', { class: 'progreso__barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(a.m2_por_cupon), 'aria-valuenow': String(a.sobrante), 'aria-label': 'Avance hacia el próximo ticket Austral' },
+        h('div', { class: 'progreso__cab' }, h('span', {}, 'Próximo cupón Austral'), h('span', {}, `${decimal(a.sobrante)} de ${decimal(a.m2_por_cupon)} m²/pzs`)),
+        h('div', { class: 'progreso__barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(a.m2_por_cupon), 'aria-valuenow': String(a.sobrante), 'aria-label': 'Avance hacia el próximo cupón Austral' },
           h('div', { class: 'progreso__relleno', style: { transform: `scaleX(${Math.min(1, a.progreso)})` } })),
-        h('p', { class: 'progreso__pie' }, 'Te faltan ', h('strong', {}, `${decimal(a.falta)} m²`), ' de Austral. Cada ', `${decimal(a.m2_por_cupon)} m²`, ' es 1 ticket.')),
+        h('p', { class: 'progreso__pie' }, 'Te faltan ', h('strong', {}, `${decimal(a.falta)} m²/pzs`), ' de Austral. Cada ', `${decimal(a.m2_por_cupon)} m² o piezas`, ' es 1 cupón.')),
       estado),
     cupones.length
-      ? h('div', { class: 'cupones cupones--viaje', 'aria-label': 'Tickets Austral' },
+      ? h('div', { class: 'cupones cupones--viaje', 'aria-label': 'Cupones Austral' },
         cupones.map((x) => crearMini({ n: x.n, dia: diaMes(x.dia_venta), factura: x.factura, tipo: 'austral', nuevo: x.n > nuevosDesde, alTocar: () => alAbrir && alAbrir(x, 'austral') })))
       : null);
 }
@@ -221,7 +221,7 @@ function chipEstado(estado) {
 }
 
 function chipAustral(m2) {
-  return h('span', { class: 'chip chip--austral' }, `Austral ${decimal(m2)} m²`);
+  return h('span', { class: 'chip chip--austral' }, `Austral ${decimal(m2)} m²/pzs`);
 }
 
 export function pintarVentas(datos, { verFoto }) {
@@ -249,7 +249,7 @@ export function pintarVentas(datos, { verFoto }) {
       h('td', {}, fechaCorta(v.dia_venta)),
       h('td', {}, v.numero_factura, v.estado === 'Rechazada' && v.nota_admin ? h('span', { class: 'nota' }, v.nota_admin) : null),
       h('td', {}, chipEstado(v.estado)),
-      h('td', {}, v.vendio_austral ? `${decimal(v.m2_austral)} m²` : '—'),
+      h('td', {}, v.vendio_austral ? `${decimal(v.m2_austral)} m²/pzs` : '—'),
       h('td', { class: 'num' }, dinero(v.monto)),
       h('td', { class: 'num' }, botonFoto(v))))));
 
@@ -296,16 +296,16 @@ function contenidoRanking(datos, tipo) {
   if (tipo === 'ronda' && r.ronda) {
     const s = r.ronda;
     const nota = h('p', { class: 'ranking__nota' }, s.con_sorteo
-      ? `${s.nombre}, del ${rango(s.inicio, s.fin)} Corte: ${momento(s.corte)} · cada cupón que completes en la ronda entra a la bolsa del sorteo del ${conPunto(fechaConDia(s.sorteo))}`
+      ? `${s.nombre}, del ${rango(s.inicio, s.fin)} Cierra el ${fechaConDia(s.fin)} · cada cupón que completes en la ronda entra al sorteo del ${conPunto(fechaConDia(s.sorteo))}`
       : `${s.nombre}, del ${rango(s.inicio, s.fin)} No tiene sorteo: los cupones suman para el Gran Sorteo Final.`);
     if (!s.top.length) return [nota, h('div', { class: 'vacio' }, h('strong', {}, 'Nadie ha completado cupones en esta ronda'), 'El primero en llegar se pone a la cabeza.')];
     return [nota, h('ol', { class: 'ranking__lista' }, s.top.map((x) => puesto(x, plural(x.cupones, 'cupón', 'cupones')))), piePosicion(s, 'completa un cupón en esta ronda')];
   }
   if (tipo === 'austral') {
     const a = r.austral;
-    const nota = h('p', { class: 'ranking__nota' }, `Cada ${decimal(c.m2_por_cupon_austral)} m² de Austral es 1 ticket adicional para el Gran Sorteo Final.`);
+    const nota = h('p', { class: 'ranking__nota' }, `Cada ${decimal(datos.resumen.austral.m2_por_cupon)} m² o piezas de Austral es 1 cupón adicional para el Gran Sorteo Final.`);
     if (!a.top.length) return [nota, h('div', { class: 'vacio' }, h('strong', {}, 'Todavía no hay ventas de Austral'), 'La primera venta suma el primer ticket.')];
-    return [nota, h('ol', { class: 'ranking__lista' }, a.top.map((x, i) => puesto(x, h('span', {}, `${decimal(x.m2)} m² `, h('small', {}, `· ${plural(x.cupones, 'cupón', 'cupones')}`)), 'puesto--austral' + (i === 0 ? ' puesto--lider' : '')))), piePosicion(a, 'registra una venta Austral')];
+    return [nota, h('ol', { class: 'ranking__lista' }, a.top.map((x, i) => puesto(x, h('span', {}, `${decimal(x.m2)} m²/pzs `, h('small', {}, `· ${plural(x.cupones, 'cupón', 'cupones')}`)), 'puesto--austral' + (i === 0 ? ' puesto--lider' : '')))), piePosicion(a, 'registra una venta Austral')];
   }
   const g = r.general;
   const nota = h('p', { class: 'ranking__nota' }, `Cupones acumulados en toda la campaña. Cada ${c.cupones_por_cupon_final} son 1 cupón para el Gran Sorteo Final del ${conPunto(fechaConDia(c.fecha_sorteo_final))}`);
@@ -313,25 +313,9 @@ function contenidoRanking(datos, tipo) {
   return [nota, h('ol', { class: 'ranking__lista' }, g.top.map((x) => puesto(x, plural(x.cupones, 'cupón', 'cupones')))), piePosicion(g, 'registra tu primera venta')];
 }
 
-// ---------- Reglas ----------
+// ---------- Cómo funciona la Copa ----------
 
 export function pintarReglas(datos) {
-  const c = datos.concurso;
-  const r = datos.resumen;
-  const M = dinero(r.monto_por_cupon, { compacto: true });
-  const fuerte = (t) => h('strong', {}, t);
-  const sorteos = c.rondas.filter((p) => p.con_sorteo);
-  const sinSorteo = c.rondas.filter((p) => !p.con_sorteo);
-  const corte = enCaracas(c.rondas[0].corte);
-  const items = [
-    ['Cada ', fuerte(`${M} en ventas`), ` te da `, fuerte('1 cupón'), ` (es el valor del cupón ${datos.usuario.canal === 'Tienda' ? 'de tu tienda' : 'de tu canal'}). Lo que sobra no se pierde: se suma a tus próximas ventas.`],
-    [`${c.nombre_sorteo} tiene ${sorteos.length} rondas con sorteo: `, ...sorteos.flatMap((p, i) => [i ? (i === sorteos.length - 1 ? ' y ' : ', ') : '', fuerte(p.nombre), ` (${rango(p.inicio, p.fin).replace(/\.$/, '')}, sorteo el ${fechaConDia(p.sorteo)})`]), '. A cada sorteo entran los cupones que completes en esa ronda.'],
-    sinSorteo.length ? [...sinSorteo.flatMap((p) => [fuerte(p.nombre), ` (${rango(p.inicio, p.fin).replace(/\.$/, '')})`]), ' no tiene sorteo: es para seguir sumando cupones para el final.'] : null,
-    ['Cada ronda cierra el día siguiente a su último día, a las ', fuerte(corte.hora), '.', c.bloquear_rondas_cerradas ? ' Después del corte ya no se cargan ventas de esa ronda.' : ''],
-    ['Gran Sorteo Final, ', fuerte(fechaConDia(c.fecha_sorteo_final)), `: cada `, fuerte(`${c.cupones_por_cupon_final} cupones`), ' acumulados en toda la campaña son 1 cupón final, si vendiste al menos el ', fuerte(`${decimal(c.porcentaje_meta_final)} % de tu meta`), '.'],
-    ['Cada ', fuerte(`${decimal(c.m2_por_cupon_austral)} m² de Austral`), ' te dan 1 ', fuerte('ticket adicional para el Gran Sorteo Final'), c.austral_requiere_meta ? `, que cuenta si llegas al ${decimal(c.porcentaje_meta_final)} % de tu meta.` : '.'],
-    ['Registra cada factura con su foto. Una factura solo se registra una vez, y el coordinador puede rechazar las que no se lean bien.'],
-  ].filter(Boolean);
-  if (c.contar_solo_aprobadas) items.push(['Tus cupones cuentan cuando el coordinador aprueba la factura.']);
-  $('#reglas-lista').replaceChildren(...items.map((partes) => h('li', {}, partes)));
+  const yo = { monto_por_cupon: datos.resumen.monto_por_cupon, m2_austral: datos.resumen.austral.m2_por_cupon };
+  pintarComoFunciona(datos.concurso, yo, { alVerTarjetas: () => mostrarIntro(datos.concurso, yo) });
 }

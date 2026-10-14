@@ -55,8 +55,9 @@
     <header class="acceso__marca">
       <div class="acceso__interior">
         <h1 class="acceso__titulo">Copa<br>Navideña <span class="acceso__firma"><span class="austral-marca">Austral</span> - Prosein</span></h1>
-        <p class="acceso__lema">Registra tus ventas y suma cupones: cada ronda tiene su sorteo y en diciembre viene el Gran Sorteo Final. Con Austral sumas tickets extra para el Gran Sorteo Final.</p>
+        <p class="acceso__lema">Registra tus ventas y suma cupones: cada ronda tiene su sorteo y en diciembre viene el Gran Sorteo Final. Con Austral sumas cupones extra para el Gran Sorteo Final.</p>
         <p class="acceso__fechas" id="acceso-fechas"></p>
+        <button type="button" class="btn btn--claro btn--chico acceso__ver-copa" id="acceso-ver-copa" hidden>¿Cómo funciona la Copa?</button>
       </div>
       <img class="acceso__bolsa" src="assets/bolsa.svg" alt="" width="150" height="150" aria-hidden="true">
     </header>
@@ -244,7 +245,7 @@
         </section>
 
         <section class="seccion seccion--viaje" aria-labelledby="viaje-titulo">
-          <div class="seccion__cabeza"><h2 id="viaje-titulo"><svg class="icono"><use href="#i-ticket"/></svg>Tickets Austral</h2><span id="viaje-cuenta"></span></div>
+          <div class="seccion__cabeza"><h2 id="viaje-titulo"><svg class="icono"><use href="#i-ticket"/></svg>Cupones Austral</h2><span id="viaje-cuenta"></span></div>
           <div class="superficie viaje" id="viaje"></div>
         </section>
       </div>
@@ -268,7 +269,7 @@
         <section class="seccion">
           <details class="reglas superficie">
             <summary>Cómo funciona la Copa <svg class="icono"><use href="#i-abajo"/></svg></summary>
-            <ol id="reglas-lista"></ol>
+            <div class="reglas__contenido" id="reglas-contenido"></div>
           </details>
         </section>
       </div>
@@ -288,6 +289,20 @@
   </div>
 
   <!-- ============ Registrar venta ============ -->
+  <!-- Tarjetas de bienvenida: salen la primera vez que se abre la app -->
+  <dialog class="intro" id="dlg-intro" aria-label="Bienvenida a la Copa Navideña">
+    <div class="intro__caja">
+      <div class="intro__pista" id="intro-pista"></div>
+      <div class="intro__pie">
+        <div class="intro__puntos" id="intro-puntos"></div>
+        <div class="intro__botones">
+          <button type="button" class="btn btn--fantasma" id="intro-saltar">Saltar</button>
+          <button type="button" class="btn btn--blanco btn--grande" id="intro-siguiente"><span data-texto>Siguiente</span></button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <dialog class="hoja" id="dlg-venta" aria-labelledby="venta-titulo">
     <form class="hoja__caja" id="form-venta" novalidate>
       <div class="hoja__asa" aria-hidden="true"></div>
@@ -349,10 +364,10 @@
           <div class="desplegable" id="v-austral-bloque">
             <div>
               <div class="desplegable__interior">
-                <label class="etiqueta" for="v-m2">Metros cuadrados (m²) Austral vendidos</label>
+                <label class="etiqueta" for="v-m2">Metros cuadrados (m²) o piezas de Austral vendidos</label>
                 <div class="entrada-grupo" style="margin-top:6px">
                   <input class="entrada" id="v-m2" name="m2_austral" inputmode="decimal" autocomplete="off" placeholder="0,00" disabled>
-                  <span class="sufijo">m²</span>
+                  <span class="sufijo">m²/pzs</span>
                 </div>
                 <p class="error-campo" data-error="m2_austral" style="margin-top:6px"></p>
               </div>

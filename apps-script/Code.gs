@@ -17,14 +17,16 @@
  *
  *  Reglas (editables en las hojas Configuracion, Rondas y Canales):
  *    - Cada vendedor tiene un canal (Tienda, Distribuidor o Corporativo). Cada
- *      tienda y cada canal tiene su valor de cupón y su meta (hoja Canales).
+ *      tienda y cada canal tiene su valor de cupón, su meta (informativa) y sus m² o
+ *      piezas de Austral por cupón (hoja Canales).
  *    - 1 cupón por cada "valor de cupón" vendido (acumulado; el sobrante no se pierde).
  *    - Rondas (hoja Rondas): cada sorteo de ronda usa los cupones completados en
- *      esa ronda. La Ñapa no tiene sorteo: solo suma para el final.
- *    - Gran Sorteo Final: 1 cupón final por cada cupones_por_cupon_final cupones,
- *      solo si el vendedor vendió al menos porcentaje_meta_final % de su meta.
- *    - Tickets Austral: 1 ticket adicional para el Gran Sorteo Final por cada
- *      m2_por_cupon_austral de Austral (con la misma condición de la meta).
+ *      esa ronda. La ronda de una venta es la del día en que se registra: lo que se
+ *      registra después del último día de una ronda pasa a la siguiente.
+ *      La Ñapa no tiene sorteo: solo suma para el final.
+ *    - Gran Sorteo Final: 1 cupón por cada cupones_por_cupon_final cupones, 1 por cada
+ *      m² o piezas de Austral de su canal (80; 500 para distribuidores) y 1 por cada
+ *      ronda con sorteo en la que fue quien más vendió de su canal.
  */
 
 // ------------------------------------------------------------
@@ -56,8 +58,8 @@ const COLUMNAS_REGISTROS = [
   'monto', 'vendio_austral', 'm2_austral', 'url_foto', 'estado', 'nota_admin',
 ];
 
-const COLUMNAS_RONDAS = ['ronda', 'nombre', 'inicio', 'fin', 'corte', 'sorteo'];
-const COLUMNAS_CANALES = ['canal', 'tienda', 'monto_por_cupon', 'meta'];
+const COLUMNAS_RONDAS = ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'];
+const COLUMNAS_CANALES = ['canal', 'tienda', 'monto_por_cupon', 'meta', 'm2_por_cupon_austral'];
 
 const ESTADO = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' };
 const ESTADO_USUARIO = { ACTIVO: 'activo', BLOQUEADO: 'bloqueado' };
@@ -67,12 +69,18 @@ const CANAL = { TIENDA: 'Tienda', DISTRIBUIDOR: 'Distribuidor', CORPORATIVO: 'Co
 const CANALES = [CANAL.TIENDA, CANAL.DISTRIBUIDOR, CANAL.CORPORATIVO];
 const ETIQUETA_CANAL = { Tienda: 'Tiendas', Distribuidor: 'Distribuidores', Corporativo: 'Corporativo' };
 
+/** Los distribuidores venden mercancía Austral: su cupón Austral pide más m² o piezas. */
+const M2_AUSTRAL_DISTRIBUIDOR = 500;
+
 const SUCURSALES_POR_DEFECTO = [
   'Boleíta', 'La Castellana', 'Los Naranjos', 'El Bosque', 'Las Mercedes',
   'San Martín', 'Maracaibo', 'Acarigua', 'Barquisimeto',
 ];
 
-/** Cronograma de fin de año 2026. El corte es el día siguiente al fin a la hora_corte. */
+/**
+ * Cronograma de fin de año 2026. Cada ronda cierra al terminar su último día: lo que
+ * se registra después pasa a la ronda siguiente (cuenta la fecha de registro).
+ */
 const RONDAS_POR_DEFECTO = [
   { nombre: 'Ronda 1', inicio: '2026-10-15', fin: '2026-11-05', sorteo: '2026-11-09' },
   { nombre: 'Ronda 2', inicio: '2026-11-06', fin: '2026-11-26', sorteo: '2026-11-30' },
@@ -103,14 +111,10 @@ function configuracionPorDefecto_() {
   return [
     ['nombre_concurso', 'Copa Navideña Austral - Prosein', 'Nombre visible en el portal.'],
     ['nombre_sorteo', 'Copa Navideña', 'Nombre de los sorteos.'],
-    ['hora_corte', "'15:00", 'Hora del corte cuando la hoja Rondas no trae una: el día siguiente al último día de la ronda (formato 24 h).'],
-    ['bloquear_rondas_cerradas', 'SI', 'SI = después del corte de una ronda ya no se cargan ventas con fecha de esa ronda.'],
     ['fecha_sorteo_final', fechaDesdeISO_('2026-12-21'), 'Fecha del Gran Sorteo Final.'],
     ['monto_por_cupon', 1500, 'Valor del cupón para quien no tenga valor en la hoja Canales (respaldo).'],
-    ['porcentaje_meta_final', 80, '% de la meta de su tienda o canal (hoja Canales) que debe vender un vendedor para entrar al Gran Sorteo Final.'],
     ['cupones_por_cupon_final', 10, 'Cada N cupones acumulados en toda la campaña = 1 cupón para el Gran Sorteo Final.'],
-    ['m2_por_cupon_austral', 100, 'm² de Austral que dan 1 ticket adicional para el Gran Sorteo Final.'],
-    ['austral_requiere_meta', 'SI', 'SI = los tickets Austral entran al Gran Sorteo Final solo si el vendedor cumple el % de su meta. NO = entran siempre.'],
+    ['m2_por_cupon_austral', 80, 'm² o piezas de Austral que dan 1 cupón adicional para el Gran Sorteo Final, si la hoja Canales no trae otro valor para la tienda o el canal.'],
     ['moneda', 'USD', 'Moneda de los montos.'],
     ['concurso_abierto', 'SI', 'SI = los vendedores pueden cargar ventas.'],
     ['contar_solo_aprobadas', 'NO', 'SI = solo cuentan facturas Aprobadas. NO = cuentan todas menos las Rechazadas.'],
@@ -130,6 +134,7 @@ const CLAVES_OBSOLETAS = [
   'categoria_3_nombre', 'categoria_1_porcentaje', 'categoria_2_porcentaje', 'categoria_1_min_cupones',
   'categoria_2_min_cupones', 'premios_categoria_1', 'premios_categoria_2', 'premios_categoria_3',
   'viaje_hasta_categoria', 'semana_ranking', 'premios_viaje', 'viaje_requiere_meta',
+  'hora_corte', 'bloquear_rondas_cerradas', 'porcentaje_meta_final', 'austral_requiere_meta',
 ];
 
 // ------------------------------------------------------------
@@ -366,19 +371,14 @@ function apiDefinirCanal_(req) {
   return ok_({ usuario: usuarioPublico_(usuario, cfg) });
 }
 
-/** Lo que el vendedor ve de su meta y de su pase al Gran Sorteo Final. */
-function metaPublica_(v, cfg) {
+/** Avance de la meta de su tienda o canal (informativo). */
+function metaPublica_(v) {
   const meta = v.metaCentavos;
-  const requerido = Math.ceil(meta * cfg.porcentaje_meta_final / 100);
   return {
     definida: meta > 0,
     meta: centavosADolares_(meta),
     vendido: centavosADolares_(v.totalCentavos),
     avance: meta > 0 ? v.totalCentavos / meta : 0,
-    porcentaje_requerido: cfg.porcentaje_meta_final,
-    requerido: centavosADolares_(requerido),
-    falta: centavosADolares_(Math.max(0, requerido - v.totalCentavos)),
-    cumple: v.cumpleMeta,
   };
 }
 
@@ -387,11 +387,11 @@ function finalPublico_(v, cfg) {
   return {
     cupones: v.cuponesFinal,
     austral: v.ticketsAustralFinal,
-    total: v.cuponesFinal + v.ticketsAustralFinal,
-    posibles: v.cuponesFinalPosibles,
+    mejor_vendedor: v.ticketsMejorVendedor,
+    rondas_mejor_vendedor: v.mejorVendedor.map(function (m) { return m.nombre_ronda; }),
+    total: v.ticketsFinal,
     por_cada: N,
     faltan_para_proximo: N - (v.cupones % N),
-    cumple: v.cumpleMeta,
   };
 }
 
@@ -404,13 +404,10 @@ function apiDashboard_(req) {
   const ronda = rondaActual_(cfg);
   const yo = stats.vendedores[usuario.cedula] || vendedorVacio_(usuario.cedula, reglaDe_(usuario, cfg), cfg);
   const M = yo.montoPorCuponCentavos;
-  const MA = cfg.m2_por_cupon_austral_centesimas;
+  const MA = yo.m2PorCuponCentesimas;
 
   const propios = registros.filter(function (r) { return r.cedula === usuario.cedula; });
-  propios.sort(function (a, b) {
-    if (a.diaVenta !== b.diaVenta) return a.diaVenta < b.diaVenta ? 1 : -1;
-    return b.fechaCarga - a.fechaCarga;
-  });
+  propios.sort(function (a, b) { return b.fechaCarga - a.fechaCarga; });
   const pendientes = propios.filter(function (r) { return r.estado === ESTADO.PENDIENTE; });
 
   const enRonda = ronda.numero ? yo.rondas[ronda.numero] : null;
@@ -431,16 +428,15 @@ function apiDashboard_(req) {
       cupones: enRonda ? enRonda.cupones : 0,
       monto: enRonda ? centavosADolares_(enRonda.montoCentavos) : 0,
     },
-    meta: metaPublica_(yo, cfg),
+    meta: metaPublica_(yo),
     final: finalPublico_(yo, cfg),
     austral: {
       m2: yo.m2Centesimas / 100,
       cupones: yo.cuponesAustral,
-      m2_por_cupon: cfg.m2_por_cupon_austral,
+      m2_por_cupon: MA / 100,
       sobrante: yo.sobranteM2Centesimas / 100,
       falta: (MA - yo.sobranteM2Centesimas) / 100,
       progreso: MA ? yo.sobranteM2Centesimas / MA : 0,
-      participa: yo.australEnFinal,
     },
   };
 
@@ -455,7 +451,7 @@ function apiDashboard_(req) {
     concurso: configPublica_(cfg),
     resumen: resumen,
     cupones: yo.detalleCupones.map(function (c) { return cuponPublico_(c, M); }),
-    cupones_austral: yo.detalleAustral.map(function (c) { return cuponAustralPublico_(c, cfg); }),
+    cupones_austral: yo.detalleAustral.map(function (c) { return cuponAustralPublico_(c, MA); }),
     registros: propios.map(registroPublico_),
     ranking: ranking,
   });
@@ -467,6 +463,9 @@ function apiAgregarVenta_(req) {
   if (usuario.rol === ROL.ADMIN) throw errorApi_('FORBIDDEN', 'Las cuentas de administrador no registran ventas.');
   if (!cfg.concurso_abierto) {
     throw errorApi_('CLOSED', 'La carga de ventas está cerrada en este momento.');
+  }
+  if (hoyISO_() > cfg.fecha_fin) {
+    throw errorApi_('CLOSED', 'La Copa terminó el ' + fechaCorta_(cfg.fecha_fin) + '. Ya no se registran ventas.');
   }
   if (!perfilUsuario_(usuario, cfg)) {
     throw errorApi_('NEED_CANAL', 'Elige tu canal (y tu tienda) antes de registrar ventas.');
@@ -496,7 +495,7 @@ function apiAgregarVenta_(req) {
 
       nuevo = {
         id: siguienteId_(registros),
-        fechaCarga: Date.now(),
+        fechaCarga: ahora_(),
         cedula: usuario.cedula,
         nombre: nombreCorto_(usuario),
         diaVenta: diaVenta,
@@ -519,9 +518,9 @@ function apiAgregarVenta_(req) {
 
   registros.push(nuevo);
   const despues = calcularEstadisticas_(registros, cfg, usuarios).vendedores[usuario.cedula] || vendedorVacio_(usuario.cedula, regla, cfg);
-  const ronda = rondaDe_(diaVenta, cfg);
+  const ronda = rondaDeCarga_(nuevo.fechaCarga, cfg);
   const M = despues.montoPorCuponCentavos;
-  const MA = cfg.m2_por_cupon_austral_centesimas;
+  const MA = despues.m2PorCuponCentesimas;
 
   return ok_({
     registro: registroPublico_(nuevo),
@@ -539,17 +538,17 @@ function apiAgregarVenta_(req) {
     cupones_ronda: ronda && despues.rondas[ronda.numero] ? despues.rondas[ronda.numero].cupones : 0,
     cupones_final_antes: antes.cuponesFinal,
     cupones_final_despues: despues.cuponesFinal,
-    meta: metaPublica_(despues, cfg),
+    meta: metaPublica_(despues),
     final: finalPublico_(despues, cfg),
     m2_total: despues.m2Centesimas / 100,
     austral_antes: antes.cuponesAustral,
     austral_despues: despues.cuponesAustral,
     austral_nuevos: Math.max(0, despues.cuponesAustral - antes.cuponesAustral),
-    nuevos_cupones_austral: despues.detalleAustral.slice(antes.cuponesAustral).map(function (c) { return cuponAustralPublico_(c, cfg); }),
+    nuevos_cupones_austral: despues.detalleAustral.slice(antes.cuponesAustral).map(function (c) { return cuponAustralPublico_(c, MA); }),
     m2_sobrante: despues.sobranteM2Centesimas / 100,
     m2_sobrante_antes: antes.sobranteM2Centesimas / 100,
     m2_falta: (MA - despues.sobranteM2Centesimas) / 100,
-    m2_por_cupon: cfg.m2_por_cupon_austral,
+    m2_por_cupon: MA / 100,
   });
 }
 
@@ -627,7 +626,7 @@ function apiAdminResumen_(req) {
     rechazadas: porEstado(ESTADO.RECHAZADA),
     monto: centavosADolares_(suma(cuentan, function (r) { return r.montoCentavos; })),
     cupones: suma(vendedores, function (v) { return v.cupones; }),
-    cumplen_meta: vendedores.filter(function (v) { return v.cumpleMeta && v.totalCentavos > 0; }).length,
+    cupones_mejor_vendedor: suma(vendedores, function (v) { return v.ticketsMejorVendedor; }),
     cupones_final: suma(vendedores, function (v) { return v.cuponesFinal; }),
     tickets_austral_final: suma(vendedores, function (v) { return v.ticketsAustralFinal; }),
     m2: suma(vendedores, function (v) { return v.m2Centesimas; }) / 100,
@@ -643,7 +642,8 @@ function apiAdminResumen_(req) {
         nombre: nombre, canal: canal,
         monto_por_cupon: regla ? centavosADolares_(regla.montoCentavos) : 0,
         meta: regla ? centavosADolares_(regla.metaCentavos) : 0,
-        vendedores: 0, con_ventas: 0, ventas: 0, monto: 0, cupones: 0, cumplen: 0, cupones_final: 0, m2: 0,
+        m2_por_cupon_austral: regla ? regla.m2Centesimas / 100 : 0,
+        vendedores: 0, con_ventas: 0, ventas: 0, monto: 0, cupones: 0, cupones_final: 0, m2: 0,
       };
       orden.push(nombre);
     }
@@ -666,8 +666,7 @@ function apiAdminResumen_(req) {
     const g = grupoUsuario(v.cedula);
     if (v.totalCentavos > 0) g.con_ventas++;
     g.cupones += v.cupones;
-    g.cupones_final += v.cuponesFinal;
-    if (v.cumpleMeta && v.totalCentavos > 0) g.cumplen++;
+    g.cupones_final += v.ticketsFinal;
   });
 
   const ahora = ahora_();
@@ -686,9 +685,18 @@ function apiAdminResumen_(req) {
         estado: p.corte <= ahora ? 'cerrada' : (p.numero === actual.numero ? 'en_juego' : 'pendiente'),
         participantes: lista.length,
         cupones: suma(lista, function (y) { return y.s.cupones; }),
+        mejores: mejoresPublicos_(x.stats, p.numero, x.porCedula),
       };
     }),
     bolsas: armarBolsas_(x.stats, x.usuarios, cfg).map(resumenBolsa_),
+  });
+}
+
+/** Ganadores del cupón de mejor vendedor de una ronda (uno por canal). */
+function mejoresPublicos_(stats, ronda, porCedula) {
+  return stats.mejores.filter(function (m) { return m.ronda === ronda; }).map(function (m) {
+    const u = porCedula[m.cedula];
+    return { canal: ETIQUETA_CANAL[m.canal], cedula: m.cedula, nombre: u ? nombreCorto_(u) : m.cedula, monto: centavosADolares_(m.montoCentavos) };
   });
 }
 
@@ -730,12 +738,12 @@ function apiAdminVendedores_(req) {
       cupones_ronda: actual && v.rondas[actual] ? v.rondas[actual].cupones : 0,
       meta: centavosADolares_(v.metaCentavos),
       avance: v.metaCentavos > 0 ? v.totalCentavos / v.metaCentavos : 0,
-      cumple: v.cumpleMeta,
       cupones_final: v.cuponesFinal,
       m2: v.m2Centesimas / 100,
+      m2_por_cupon_austral: v.m2PorCuponCentesimas / 100,
       cupones_austral: v.cuponesAustral,
-      austral_en_final: v.australEnFinal && v.cuponesAustral > 0,
-      tickets_final: v.cuponesFinal + v.ticketsAustralFinal,
+      cupones_mejor_vendedor: v.ticketsMejorVendedor,
+      tickets_final: v.ticketsFinal,
     };
   });
   lista.sort(function (a, b) { return (b.cupones - a.cupones) || (b.total - a.total) || compararTexto_(a.nombre, b.nombre); });
@@ -755,7 +763,7 @@ function apiAdminVentas_(req) {
     base.cedula = r.cedula;
     base.vendedor = u ? u.nombre + ' ' + u.apellido : r.nombre;
     base.grupo = grupoDe_(perfil);
-    base.ronda = rondaNumeroDe_(r.diaVenta, cfg);
+    base.ronda = rondaDeCarga_(r.fechaCarga, cfg).numero;
     base.cuenta = registroCuenta_(r, cfg);
     return base;
   });
@@ -776,6 +784,7 @@ function apiAdminRonda_(req) {
   return ok_({
     numero: n, nombre: p.nombre, inicio: p.inicio, fin: p.fin, corte: p.corte, sorteo: p.sorteo, con_sorteo: p.con_sorteo,
     cerrada: p.corte <= ahora_(),
+    mejores: mejoresPublicos_(x.stats, n, x.porCedula),
     lista: rankingRonda_(x.stats, n).map(function (y, i) {
       const u = x.porCedula[y.v.cedula];
       return {
@@ -819,20 +828,20 @@ function registroCuenta_(r, cfg) {
 
 /**
  * Estadísticas por vendedor.
- *  - El valor del cupón (M) y la meta salen de su canal o tienda (hoja Canales).
- *  - cupones = floor(acumulado / M). El sobrante nunca se pierde.
- *  - Cupones de la ronda r = cupones completados durante r:
- *      floor(acum_fin_r / M) - floor(acum_fin_(r-1) / M)
- *    La ronda sale de dia_venta (no de fecha_carga) y de la hoja Rondas.
- *  - Gran Sorteo Final: floor(cupones / cupones_por_cupon_final), solo si vendió
- *    al menos porcentaje_meta_final % de su meta.
- *  - Tickets Austral = floor(m² Austral acumulados / m2_por_cupon_austral): tickets
- *    adicionales para el Gran Sorteo Final.
+ *  - El valor del cupón (M), la meta y los m² o piezas de Austral por cupón (MA) salen
+ *    de su canal o tienda (hoja Canales).
+ *  - Las ventas se acumulan en el orden en que se registraron. cupones = floor(acumulado / M).
+ *    El sobrante nunca se pierde.
+ *  - Cupones de la ronda r = cupones completados con ventas registradas durante r. La ronda
+ *    sale de la fecha de registro (fecha_carga): lo registrado después del último día de una
+ *    ronda cuenta para la siguiente.
+ *  - Gran Sorteo Final: floor(cupones / cupones_por_cupon_final) + 1 cupón por cada
+ *    MA m² o piezas de Austral + 1 por cada ronda con sorteo (ya cerrada) en la que fue el
+ *    que más vendió de su canal.
  *  - Cada cupón queda ligado a la factura que lo completó.
  * Todo en centavos (y centésimas de m²) para evitar errores de redondeo.
  */
 function calcularEstadisticas_(registros, cfg, usuarios) {
-  const MA = cfg.m2_por_cupon_austral_centesimas;
   const usuarioDe = {};
   (usuarios || []).forEach(function (u) { usuarioDe[u.cedula] = u; });
   const porCedula = {};
@@ -846,6 +855,7 @@ function calcularEstadisticas_(registros, cfg, usuarios) {
     const u = usuarioDe[cedula];
     const v = vendedorVacio_(cedula, u ? reglaDe_(u, cfg) : null, cfg);
     const M = v.montoPorCuponCentavos;
+    const MA = v.m2PorCuponCentesimas;
     const ventas = porCedula[cedula].slice().sort(compararCronologico_);
     let acumulado = 0;
     let acumuladoM2 = 0;
@@ -853,7 +863,7 @@ function calcularEstadisticas_(registros, cfg, usuarios) {
       const antes = Math.floor(acumulado / M);
       acumulado += r.montoCentavos;
       const despues = Math.floor(acumulado / M);
-      const ronda = rondaNumeroDe_(r.diaVenta, cfg);
+      const ronda = rondaDeCarga_(r.fechaCarga, cfg).numero;
       const s = v.rondas[ronda] || (v.rondas[ronda] = { montoCentavos: 0, cupones: 0, m2Centesimas: 0, ultimaCarga: 0 });
       s.montoCentavos += r.montoCentavos;
       s.m2Centesimas += r.m2Centesimas;
@@ -884,35 +894,66 @@ function calcularEstadisticas_(registros, cfg, usuarios) {
     v.m2Centesimas = acumuladoM2;
     v.cuponesAustral = v.detalleAustral.length;
     v.sobranteM2Centesimas = acumuladoM2 - v.cuponesAustral * MA;
-    completarFinal_(v, cfg);
     vendedores[cedula] = v;
   });
 
-  return { vendedores: vendedores };
+  const mejores = mejoresVendedores_(vendedores, usuarioDe, cfg);
+  mejores.forEach(function (m) { vendedores[m.cedula].mejorVendedor.push(m); });
+  valores_(vendedores).forEach(function (v) { completarFinal_(v, cfg); });
+  return { vendedores: vendedores, mejores: mejores };
 }
 
-/** Meta (porcentaje_meta_final % de la meta) y cupones del Gran Sorteo Final. Sin meta definida = cumple. */
+/**
+ * El que más vendió (monto) en cada ronda con sorteo, por canal (Tiendas, Distribuidores,
+ * Corporativo). Solo rondas ya cerradas. Empate: quien llegó primero a ese monto.
+ */
+function mejoresVendedores_(vendedores, usuarioDe, cfg) {
+  const ahora = ahora_();
+  const lista = [];
+  cfg.rondas.forEach(function (p) {
+    if (!p.con_sorteo || p.corte > ahora) return;
+    const lider = {};
+    valores_(vendedores).forEach(function (v) {
+      const s = v.rondas[p.numero];
+      const perfil = perfilUsuario_(usuarioDe[v.cedula], cfg);
+      if (!s || !(s.montoCentavos > 0) || !perfil) return;
+      const actual = lider[perfil.canal];
+      if (!actual || s.montoCentavos > actual.s.montoCentavos ||
+        (s.montoCentavos === actual.s.montoCentavos && (s.ultimaCarga < actual.s.ultimaCarga ||
+          (s.ultimaCarga === actual.s.ultimaCarga && compararTexto_(v.cedula, actual.v.cedula) < 0)))) {
+        lider[perfil.canal] = { v: v, s: s };
+      }
+    });
+    CANALES.forEach(function (c) {
+      const x = lider[c];
+      if (x) lista.push({ ronda: p.numero, nombre_ronda: p.nombre, canal: c, cedula: x.v.cedula, montoCentavos: x.s.montoCentavos, fechaCarga: x.s.ultimaCarga });
+    });
+  });
+  return lista;
+}
+
+/** Cupones del Gran Sorteo Final: 1 cada N cupones, los de Austral y los de mejor vendedor. */
 function completarFinal_(v, cfg) {
-  v.cumpleMeta = v.metaCentavos > 0 ? v.totalCentavos * 100 >= v.metaCentavos * cfg.porcentaje_meta_final : true;
-  v.cuponesFinalPosibles = Math.floor(v.cupones / cfg.cupones_por_cupon_final);
-  v.cuponesFinal = v.cumpleMeta ? v.cuponesFinalPosibles : 0;
-  v.australEnFinal = cfg.austral_requiere_meta ? v.cumpleMeta : true;
-  v.ticketsAustralFinal = v.australEnFinal ? v.cuponesAustral : 0;
+  v.cuponesFinal = Math.floor(v.cupones / cfg.cupones_por_cupon_final);
+  v.ticketsAustralFinal = v.cuponesAustral;
+  v.ticketsMejorVendedor = v.mejorVendedor.length;
+  v.ticketsFinal = v.cuponesFinal + v.ticketsAustralFinal + v.ticketsMejorVendedor;
 }
 
 function vendedorVacio_(cedula, regla, cfg) {
-  const r = regla || { montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0 };
+  const r = regla || { montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0, m2Centesimas: cfg.m2_por_cupon_austral_centesimas };
   const v = {
     cedula: cedula, totalCentavos: 0, m2Centesimas: 0, cupones: 0, sobranteCentavos: 0, detalleCupones: [],
-    cuponesAustral: 0, sobranteM2Centesimas: 0, detalleAustral: [], rondas: {}, ultimaCarga: 0,
+    cuponesAustral: 0, sobranteM2Centesimas: 0, detalleAustral: [], rondas: {}, ultimaCarga: 0, mejorVendedor: [],
     montoPorCuponCentavos: r.montoCentavos, metaCentavos: r.metaCentavos,
+    m2PorCuponCentesimas: r.m2Centesimas || cfg.m2_por_cupon_austral_centesimas,
   };
   completarFinal_(v, cfg);
   return v;
 }
 
+/** Orden en que se registraron las ventas (así se acumulan los cupones). */
 function compararCronologico_(a, b) {
-  if (a.diaVenta !== b.diaVenta) return a.diaVenta < b.diaVenta ? -1 : 1;
   if (a.fechaCarga !== b.fechaCarga) return a.fechaCarga - b.fechaCarga;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
@@ -947,8 +988,8 @@ function rankingRonda_(stats, ronda) {
 
 /**
  * Bolsas de los sorteos: una por cada ronda con sorteo (cupones completados
- * en esa ronda) y el Gran Sorteo Final: 1 cupón cada N, si cumple la meta, más los
- * tickets Austral. Cada cupón lleva un código único dentro de su bolsa (R1-0001, F-0001).
+ * en esa ronda) y el Gran Sorteo Final: 1 cupón cada N, los cupones Austral y los de
+ * mejor vendedor. Cada cupón lleva un código único dentro de su bolsa (R1-0001, F-0001).
  */
 function armarBolsas_(stats, usuarios, cfg) {
   const porCedula = {};
@@ -975,17 +1016,17 @@ function armarBolsas_(stats, usuarios, cfg) {
     for (let n = 1; n <= v.cuponesFinal; n++) {
       final.cupones.push(Object.assign({ origen: 'cupones', n: n, factura: '', dia_venta: '', de: v.cuponesFinal, _orden: 0 }, base));
     }
-    if (v.australEnFinal) {
-      v.detalleAustral.forEach(function (c) {
-        final.cupones.push(Object.assign({ origen: 'austral', n: c.n, factura: c.factura, dia_venta: c.diaVenta, _orden: c.fechaCarga }, base));
-      });
-    }
+    v.detalleAustral.forEach(function (c) {
+      final.cupones.push(Object.assign({ origen: 'austral', n: c.n, factura: c.factura, dia_venta: c.diaVenta, _orden: c.fechaCarga }, base));
+    });
+    v.mejorVendedor.forEach(function (m, i) {
+      final.cupones.push(Object.assign({ origen: 'mejor_vendedor', n: i + 1, factura: '', dia_venta: '', ronda: m.nombre_ronda, _orden: m.fechaCarga }, base));
+    });
   });
 
   const todas = bolsas.concat([final]);
   todas.forEach(function (b) {
     b.cupones.sort(function (a, c) {
-      if (a.dia_venta !== c.dia_venta) return a.dia_venta < c.dia_venta ? -1 : 1;
       return (a._orden - c._orden) || compararTexto_(a.vendedor, c.vendedor) || compararTexto_(a.cedula, c.cedula) || (a.n - c.n);
     });
     const ancho = Math.max(4, String(b.cupones.length).length);
@@ -1057,8 +1098,9 @@ function ahora_() {
   return Date.now();
 }
 
-function corteDefecto_(finIso, horaCorte) {
-  return Utilities.parseDate(sumarDias_(finIso, 1) + ' ' + horaCorte, ZONA_HORARIA, 'yyyy-MM-dd HH:mm').getTime();
+/** Cierre de una ronda: el final de su último día (00:00 del día siguiente, hora de Caracas). */
+function cierreRonda_(finIso) {
+  return Utilities.parseDate(sumarDias_(finIso, 1) + ' 00:00', ZONA_HORARIA, 'yyyy-MM-dd HH:mm').getTime();
 }
 
 /** Rondas de la hoja Rondas (si está vacía o no existe, el cronograma por defecto). */
@@ -1071,7 +1113,6 @@ function leerRondas_(cfg) {
           nombre: String(f.nombre || '').trim(),
           inicio: aISO_(f.inicio),
           fin: aISO_(f.fin),
-          corte: aMillisFechaHora_(f.corte),
           sorteo: aISO_(f.sorteo),
         };
       }).filter(function (p) { return p.inicio && p.fin; });
@@ -1092,7 +1133,7 @@ function leerRondas_(cfg) {
       nombre: p.nombre || 'Ronda ' + (i + 1),
       inicio: p.inicio,
       fin: p.fin,
-      corte: p.corte || corteDefecto_(p.fin, cfg.hora_corte),
+      corte: cierreRonda_(p.fin),
       sorteo: p.sorteo || '',
       con_sorteo: conSorteo,
       numero_sorteo: conSorteo ? sorteos : 0,
@@ -1108,16 +1149,27 @@ function rondaDe_(iso, cfg) {
   return null;
 }
 
-/** Número de ronda de un día de venta (0 = fuera de las rondas). */
+/** Número de ronda de un día (0 = fuera de las rondas). */
 function rondaNumeroDe_(iso, cfg) {
   const p = rondaDe_(iso, cfg);
   return p ? p.numero : 0;
 }
 
 /**
- * Ronda "en juego": la primera cuyo corte no ha pasado. Entre el último día de una
- * ronda y su corte sigue en juego esa ronda (se pueden cargar sus ventas).
- * estado: antes · proxima · en_curso · en_corte (días terminados, esperando el corte) · terminado.
+ * Ronda de una venta según la fecha en que se registró en el portal: la primera ronda
+ * que no había cerrado. Lo registrado después del último día de una ronda pasa a la siguiente.
+ */
+function rondaDeCarga_(ms, cfg) {
+  const iso = Utilities.formatDate(new Date(ms), ZONA_HORARIA, 'yyyy-MM-dd');
+  for (let i = 0; i < cfg.rondas.length; i++) {
+    if (iso <= cfg.rondas[i].fin) return cfg.rondas[i];
+  }
+  return cfg.rondas[cfg.rondas.length - 1];
+}
+
+/**
+ * Ronda "en juego": la primera que no ha cerrado (cierra al terminar su último día).
+ * estado: antes · proxima · en_curso · terminado.
  */
 function rondaActual_(cfg) {
   const ps = cfg.rondas;
@@ -1139,17 +1191,15 @@ function rondaActual_(cfg) {
   return describir(ps[total - 1], 'terminado');
 }
 
-/** Días que se pueden elegir en el formulario de venta. */
+/**
+ * Días que se pueden elegir en el formulario de venta: cualquier día de la campaña
+ * hasta hoy. Se puede registrar mientras la campaña no haya terminado.
+ */
 function rangoCarga_(cfg) {
   const hoy = hoyISO_();
-  const ahora = ahora_();
-  const abiertas = cfg.bloquear_rondas_cerradas
-    ? cfg.rondas.filter(function (p) { return p.corte > ahora; })
-    : cfg.rondas;
-  if (!abiertas.length) return { min: '', max: '' };
-  const min = abiertas[0].inicio;
-  const max = hoy < cfg.fecha_fin ? hoy : cfg.fecha_fin;
-  return max < min ? { min: min, max: '' } : { min: min, max: max };
+  const min = cfg.fecha_inicio;
+  if (hoy > cfg.fecha_fin || hoy < min) return { min: min, max: '' };
+  return { min: min, max: hoy };
 }
 
 function hoyISO_() {
@@ -1191,15 +1241,6 @@ function aISO_(valor) {
 }
 
 /** Lee una fecha con hora de celda (Date o "dd/mm/aaaa hh:mm") y la devuelve en milisegundos. 0 = vacía. */
-function aMillisFechaHora_(valor) {
-  if (valor instanceof Date && !isNaN(valor.getTime())) return valor.getTime();
-  const t = String(valor === null || valor === undefined ? '' : valor).trim();
-  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/) || t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})/);
-  if (!m) return 0;
-  const iso = m[0].indexOf('/') > -1 ? m[3] + '-' + dos_(Number(m[2])) + '-' + dos_(Number(m[1])) : m[1] + '-' + dos_(Number(m[2])) + '-' + dos_(Number(m[3]));
-  return Utilities.parseDate(iso + ' ' + dos_(Number(m[4])) + ':' + m[5], ZONA_HORARIA, 'yyyy-MM-dd HH:mm').getTime();
-}
-
 function esISOValida_(iso) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
   const p = iso.split('-').map(Number);
@@ -1299,7 +1340,7 @@ function leerConfig_() {
       const clave = String(f.clave || '').trim();
       if (!clave) return;
       const v = f.valor;
-      if (v instanceof Date) o[clave] = clave === 'hora_corte' ? Utilities.formatDate(v, ZONA_HORARIA, 'HH:mm') : aISO_(v);
+      if (v instanceof Date) o[clave] = aISO_(v);
       else o[clave] = v;
     });
     return o;
@@ -1309,22 +1350,13 @@ function leerConfig_() {
     const v = crudo[clave];
     return v === undefined || v === null ? porDefecto : String(v).trim();
   };
-  const siONo = function (clave, porDefecto) {
-    return crudo[clave] === undefined ? porDefecto : esSi_(crudo[clave]);
-  };
-  const hora = texto('hora_corte', '15:00').match(/^(\d{1,2}):(\d{2})$/);
-
   const cfg = {
     nombre_concurso: nombreVigente_(texto('nombre_concurso', ''), 'Copa Navideña Austral - Prosein'),
     nombre_sorteo: nombreVigente_(texto('nombre_sorteo', ''), 'Copa Navideña'),
-    hora_corte: hora && Number(hora[1]) < 24 ? dos_(Number(hora[1])) + ':' + hora[2] : '15:00',
-    bloquear_rondas_cerradas: siONo('bloquear_rondas_cerradas', true),
     fecha_sorteo_final: aISO_(crudo.fecha_sorteo_final) || '2026-12-21',
     monto_por_cupon: numeroO_(crudo.monto_por_cupon, 1500),
-    porcentaje_meta_final: entre_(numeroO_(crudo.porcentaje_meta_final, 80), 0, 1000),
     cupones_por_cupon_final: Math.max(1, Math.floor(numeroO_(crudo.cupones_por_cupon_final, 10))),
-    m2_por_cupon_austral: numeroO_(crudo.m2_por_cupon_austral, 100),
-    austral_requiere_meta: siONo('austral_requiere_meta', true),
+    m2_por_cupon_austral: numeroO_(crudo.m2_por_cupon_austral, 80),
     moneda: texto('moneda', '') || 'USD',
     concurso_abierto: esSi_(crudo.concurso_abierto),
     contar_solo_aprobadas: esSi_(crudo.contar_solo_aprobadas),
@@ -1337,7 +1369,7 @@ function leerConfig_() {
   };
   cfg.monto_por_cupon_centavos = Math.round(cfg.monto_por_cupon * 100);
   if (!(cfg.monto_por_cupon_centavos > 0)) throw errorApi_('SERVER', 'monto_por_cupon en Configuracion debe ser mayor que 0.');
-  if (!(cfg.m2_por_cupon_austral > 0)) cfg.m2_por_cupon_austral = 100;
+  if (!(cfg.m2_por_cupon_austral > 0)) cfg.m2_por_cupon_austral = 80;
   cfg.m2_por_cupon_austral_centesimas = Math.round(cfg.m2_por_cupon_austral * 100);
 
   cfg.canales = leerCanales_(cfg);
@@ -1373,9 +1405,9 @@ function claveRegla_(canal, tienda) {
 }
 
 /**
- * Filas de la hoja Canales: { canal, tienda, montoCentavos, metaCentavos }.
- * Meta vacía = sin meta (cumple el requisito del sorteo final). Si la hoja no existe
- * o está vacía, se usan las tiendas por defecto con monto_por_cupon y sin meta.
+ * Filas de la hoja Canales: { canal, tienda, montoCentavos, metaCentavos, m2Centesimas }.
+ * Meta vacía = sin meta (la meta es solo informativa). m2_por_cupon_austral vacío = el de
+ * Configuracion. Si la hoja no existe o está vacía, se usan las tiendas por defecto.
  */
 function leerCanales_(cfg) {
   let filas = [];
@@ -1384,16 +1416,19 @@ function leerCanales_(cfg) {
       return fs.map(function (f) {
         const monto = parsearNumero_(f.monto_por_cupon);
         const meta = parsearNumero_(f.meta);
+        const m2 = parsearNumero_(f.m2_por_cupon_austral);
         return {
           canal: canalCanonico_(f.canal),
           tienda: String(f.tienda || '').replace(/\s+/g, ' ').trim(),
           monto: isNaN(monto) ? null : monto,
           meta: isNaN(meta) ? null : meta,
+          m2: isNaN(m2) ? null : m2,
         };
       }).filter(function (r) { return r.canal && (r.canal !== CANAL.TIENDA || r.tienda); });
     });
   }
   if (!filas.length) filas = canalesPorDefecto_(cfg.monto_por_cupon);
+  const m2Base = cfg.m2_por_cupon_austral_centesimas;
   const vistos = {};
   const lista = [];
   filas.forEach(function (f) {
@@ -1406,17 +1441,21 @@ function leerCanales_(cfg) {
       tienda: f.canal === CANAL.TIENDA ? f.tienda : '',
       montoCentavos: monto,
       metaCentavos: f.meta > 0 ? Math.round(f.meta * 100) : 0,
+      m2Centesimas: f.m2 > 0 ? Math.round(f.m2 * 100) : m2Base,
     });
   });
   [CANAL.DISTRIBUIDOR, CANAL.CORPORATIVO].forEach(function (c) {
-    if (!vistos[c]) lista.push({ canal: c, tienda: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0 });
+    if (!vistos[c]) lista.push({ canal: c, tienda: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0, m2Centesimas: c === CANAL.DISTRIBUIDOR ? M2_AUSTRAL_DISTRIBUIDOR * 100 : m2Base });
   });
   return lista;
 }
 
 function canalesPorDefecto_(monto) {
-  return SUCURSALES_POR_DEFECTO.map(function (t) { return { canal: CANAL.TIENDA, tienda: t, monto: monto, meta: null }; })
-    .concat([{ canal: CANAL.DISTRIBUIDOR, tienda: '', monto: monto, meta: null }, { canal: CANAL.CORPORATIVO, tienda: '', monto: monto, meta: null }]);
+  return SUCURSALES_POR_DEFECTO.map(function (t) { return { canal: CANAL.TIENDA, tienda: t, monto: monto, meta: null, m2: null }; })
+    .concat([
+      { canal: CANAL.DISTRIBUIDOR, tienda: '', monto: monto, meta: null, m2: M2_AUSTRAL_DISTRIBUIDOR },
+      { canal: CANAL.CORPORATIVO, tienda: '', monto: monto, meta: null, m2: null },
+    ]);
 }
 
 /**
@@ -1432,11 +1471,11 @@ function perfilUsuario_(u, cfg) {
   return { canal: canal, tienda: canal === CANAL.TIENDA ? tienda : '' };
 }
 
-/** Valor del cupón y meta de un usuario (el respaldo de Configuracion si no tiene canal). */
+/** Valor del cupón, meta y m² Austral por cupón de un usuario (el respaldo de Configuracion si no tiene canal). */
 function reglaDe_(u, cfg) {
   const perfil = perfilUsuario_(u, cfg);
   const regla = perfil ? cfg.reglas[claveRegla_(perfil.canal, perfil.tienda)] : null;
-  return regla || { canal: '', tienda: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0 };
+  return regla || { canal: '', tienda: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0, m2Centesimas: cfg.m2_por_cupon_austral_centesimas };
 }
 
 function validarPerfil_(canalTexto, tiendaTexto, cfg) {
@@ -1469,15 +1508,16 @@ function configPublica_(cfg) {
     total_rondas: cfg.rondas.length,
     total_sorteos: cfg.total_sorteos,
     ronda_actual: ronda,
-    bloquear_rondas_cerradas: cfg.bloquear_rondas_cerradas,
     dia_min_carga: carga.min,
     dia_max_carga: carga.max,
     canales: CANALES.map(function (c) { return { canal: c, etiqueta: ETIQUETA_CANAL[c] }; }),
     sucursales: cfg.sucursales,
-    porcentaje_meta_final: cfg.porcentaje_meta_final,
     cupones_por_cupon_final: cfg.cupones_por_cupon_final,
     m2_por_cupon_austral: cfg.m2_por_cupon_austral,
-    austral_requiere_meta: cfg.austral_requiere_meta,
+    m2_austral_por_canal: CANALES.map(function (c) {
+      const valores = cfg.canales.filter(function (r) { return r.canal === c; }).map(function (r) { return r.m2Centesimas / 100; });
+      return { canal: c, etiqueta: ETIQUETA_CANAL[c], m2: valores.length ? Math.min.apply(null, valores) : cfg.m2_por_cupon_austral, varia: valores.some(function (m) { return m !== valores[0]; }) };
+    }),
   };
 }
 
@@ -1700,15 +1740,8 @@ function validarDiaVenta_(valor, cfg) {
   const iso = String(valor || '').trim();
   if (!esISOValida_(iso)) throw errorCampo_('dia_venta', 'Elige el día de la venta.');
   if (iso > hoyISO_()) throw errorCampo_('dia_venta', 'La fecha no puede ser futura.');
-  const p = rondaDe_(iso, cfg);
-  if (!p) {
-    if (iso < cfg.fecha_inicio || iso > cfg.fecha_fin) {
-      throw errorCampo_('dia_venta', 'La fecha debe estar dentro de la campaña: del ' + fechaCorta_(cfg.fecha_inicio) + ' al ' + fechaCorta_(cfg.fecha_fin) + '.');
-    }
-    throw errorCampo_('dia_venta', 'Esa fecha no pertenece a ninguna ronda.');
-  }
-  if (cfg.bloquear_rondas_cerradas && p.corte <= ahora_()) {
-    throw errorCampo_('dia_venta', p.nombre + ' cerró el ' + fechaHoraTexto_(p.corte) + '. Ya no se cargan ventas de esas fechas.');
+  if (iso < cfg.fecha_inicio || iso > cfg.fecha_fin) {
+    throw errorCampo_('dia_venta', 'La fecha debe estar dentro de la campaña: del ' + fechaCorta_(cfg.fecha_inicio) + ' al ' + fechaCorta_(cfg.fecha_fin) + '.');
   }
   return iso;
 }
@@ -1739,8 +1772,8 @@ function validarMonto_(valor, cfg) {
 
 function validarM2_(valor) {
   const n = typeof valor === 'number' ? valor : parsearNumero_(valor);
-  if (!isFinite(n) || n <= 0) throw errorCampo_('m2_austral', 'Escribe los metros cuadrados de Austral (mayor que 0).');
-  if (n > 100000) throw errorCampo_('m2_austral', 'Revisa los metros cuadrados: la cifra es demasiado alta.');
+  if (!isFinite(n) || n <= 0) throw errorCampo_('m2_austral', 'Escribe los m² o piezas de Austral (mayor que 0).');
+  if (n > 100000) throw errorCampo_('m2_austral', 'Revisa los m² o piezas: la cifra es demasiado alta.');
   return Math.round(n * 100);
 }
 
@@ -2052,8 +2085,7 @@ function cuponPublico_(c, M) {
   };
 }
 
-function cuponAustralPublico_(c, cfg) {
-  const MA = cfg.m2_por_cupon_austral_centesimas;
+function cuponAustralPublico_(c, MA) {
   return {
     n: c.n,
     dia_venta: c.diaVenta,
@@ -2105,15 +2137,19 @@ function setup() {
     if (!actual) shCfg.appendRow(fila);
     else if (String(actual.descripcion || '') !== fila[2]) shCfg.getRange(actual._fila, 3).setValue(fila[2]);
   });
+  // El cupón Austral pasó de 100 a 80 m² o piezas.
+  if (vigentes.m2_por_cupon_austral && Number(vigentes.m2_por_cupon_austral.valor) === 100) {
+    shCfg.getRange(vigentes.m2_por_cupon_austral._fila, 2).setValue(80);
+  }
   shCfg.setColumnWidth(1, 210);
   shCfg.setColumnWidth(2, 260);
   shCfg.setColumnWidth(3, 620);
   const lista = function (valores) { return SpreadsheetApp.newDataValidation().requireValueInList(valores, true).setAllowInvalid(false).build(); };
-  const textoCfg = ['carpeta_fotos_id', 'ronda_ranking', 'token_api', 'hora_corte', 'nombre_sorteo', 'nombre_concurso'];
+  const textoCfg = ['carpeta_fotos_id', 'ronda_ranking', 'token_api', 'nombre_sorteo', 'nombre_concurso'];
   filasComoObjetos_(shCfg).forEach(function (f) {
     const clave = String(f.clave || '').trim();
     const celda = shCfg.getRange(f._fila, 2);
-    if (['concurso_abierto', 'contar_solo_aprobadas', 'mostrar_ranking_publico', 'bloquear_rondas_cerradas', 'austral_requiere_meta'].indexOf(clave) > -1) celda.setDataValidation(lista(['SI', 'NO']));
+    if (['concurso_abierto', 'contar_solo_aprobadas', 'mostrar_ranking_publico'].indexOf(clave) > -1) celda.setDataValidation(lista(['SI', 'NO']));
     else celda.clearDataValidations();
     if (clave.indexOf('fecha_') === 0) celda.setNumberFormat('dd/mm/yyyy');
     if (textoCfg.indexOf(clave) > -1) celda.setNumberFormat('@');
@@ -2121,25 +2157,35 @@ function setup() {
   MEMO_ = {};
   invalidarTabla_(HOJA.CONFIG);
 
-  // Rondas (acumulación, corte y sorteo)
+  // Rondas (acumulación y sorteo; cada ronda cierra al terminar su último día)
   const shRo = asegurarHoja_(ss, HOJA.RONDAS, COLUMNAS_RONDAS);
-  formatoColumnas_(shRo, COLUMNAS_RONDAS, { nombre: '@', inicio: 'ddd dd/mm/yyyy', fin: 'ddd dd/mm/yyyy', corte: 'ddd dd/mm/yyyy hh:mm', sorteo: 'ddd dd/mm/yyyy' });
-  [70, 140, 150, 150, 190, 150].forEach(function (w, i) { shRo.setColumnWidth(i + 1, w); });
-  if (shRo.getLastRow() < 2) escribirRondas_(rondasPorDefecto_(leerConfig_().hora_corte));
+  const colCorte = mapaColumnas_(shRo).corte;
+  if (colCorte) shRo.deleteColumn(colCorte); // ya no hay corte a las 3 p. m.
+  formatoColumnas_(shRo, COLUMNAS_RONDAS, { nombre: '@', inicio: 'ddd dd/mm/yyyy', fin: 'ddd dd/mm/yyyy', sorteo: 'ddd dd/mm/yyyy' });
+  [70, 140, 150, 150, 150].forEach(function (w, i) { shRo.setColumnWidth(i + 1, w); });
+  invalidarTabla_(HOJA.RONDAS);
+  if (shRo.getLastRow() < 2) escribirRondas_(RONDAS_POR_DEFECTO);
 
-  // Canales (valor del cupón y meta por tienda y por canal)
+  // Canales (valor del cupón, meta y m² o piezas Austral por tienda y por canal)
+  const existiaM2 = !!(ss.getSheetByName(HOJA.CANALES) && mapaColumnas_(ss.getSheetByName(HOJA.CANALES)).m2_por_cupon_austral);
   const shCa = asegurarHoja_(ss, HOJA.CANALES, COLUMNAS_CANALES);
-  formatoColumnas_(shCa, COLUMNAS_CANALES, { tienda: '@', monto_por_cupon: '#,##0.00', meta: '#,##0.00' });
+  formatoColumnas_(shCa, COLUMNAS_CANALES, { tienda: '@', monto_por_cupon: '#,##0.00', meta: '#,##0.00', m2_por_cupon_austral: '#,##0.##' });
   validacionColumna_(shCa, COLUMNAS_CANALES, 'canal', CANALES);
-  [130, 180, 150, 150].forEach(function (w, i) { shCa.setColumnWidth(i + 1, w); });
+  [130, 180, 150, 150, 190].forEach(function (w, i) { shCa.setColumnWidth(i + 1, w); });
   if (shCa.getLastRow() < 2) {
     const monto = leerConfig_().monto_por_cupon;
     const tiendas = sucursalesViejas.length ? sucursalesViejas : SUCURSALES_POR_DEFECTO;
-    const filas = tiendas.map(function (t) { return [CANAL.TIENDA, t, monto, '']; })
-      .concat([[CANAL.DISTRIBUIDOR, '', monto, ''], [CANAL.CORPORATIVO, '', monto, '']]);
+    const filas = tiendas.map(function (t) { return [CANAL.TIENDA, t, monto, '', '']; })
+      .concat([[CANAL.DISTRIBUIDOR, '', monto, '', M2_AUSTRAL_DISTRIBUIDOR], [CANAL.CORPORATIVO, '', monto, '', '']]);
     shCa.getRange(2, 1, filas.length, COLUMNAS_CANALES.length).setValues(filas);
-    invalidarTabla_(HOJA.CANALES);
+  } else if (!existiaM2) {
+    // Columna nueva: los distribuidores necesitan 500 m² o piezas por cupón Austral.
+    const mapa = mapaColumnas_(shCa);
+    filasComoObjetos_(shCa).forEach(function (f) {
+      if (canalCanonico_(f.canal) === CANAL.DISTRIBUIDOR) shCa.getRange(f._fila, mapa.m2_por_cupon_austral).setValue(M2_AUSTRAL_DISTRIBUIDOR);
+    });
   }
+  invalidarTabla_(HOJA.CANALES);
 
   HOJAS_OBSOLETAS.forEach(function (nombre) {
     const sh = ss.getSheetByName(nombre);
@@ -2183,14 +2229,7 @@ function setup() {
   carpetaFotos_(leerConfig_());
   invalidarTabla_(HOJA.CONFIG);
   recalcularRankings_();
-  avisar_('Copa Navideña lista', 'Hojas listas. Revisa Configuracion, las fechas de la hoja Rondas y el valor del cupón y la meta de cada tienda y canal en la hoja Canales. Luego despliega la aplicación web.');
-}
-
-/** Cronograma por defecto con el corte calculado (día siguiente al fin, a la hora_corte). */
-function rondasPorDefecto_(horaCorte) {
-  return RONDAS_POR_DEFECTO.map(function (p) {
-    return { nombre: p.nombre, inicio: p.inicio, fin: p.fin, corte: corteDefecto_(p.fin, horaCorte), sorteo: p.sorteo };
-  });
+  avisar_('Copa Navideña lista', 'Hojas listas. Revisa Configuracion, las fechas de la hoja Rondas y, en la hoja Canales, el valor del cupón, la meta y los m² o piezas de Austral de cada tienda y canal. Luego despliega la aplicación web.');
 }
 
 function escribirRondas_(lista) {
@@ -2198,7 +2237,7 @@ function escribirRondas_(lista) {
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, COLUMNAS_RONDAS.length).clearContent();
   if (lista.length) {
     sh.getRange(2, 1, lista.length, COLUMNAS_RONDAS.length).setValues(lista.map(function (p, i) {
-      return [i + 1, p.nombre, fechaDesdeISO_(p.inicio), fechaDesdeISO_(p.fin), new Date(p.corte), p.sorteo ? fechaDesdeISO_(p.sorteo) : ''];
+      return [i + 1, p.nombre, fechaDesdeISO_(p.inicio), fechaDesdeISO_(p.fin), p.sorteo ? fechaDesdeISO_(p.sorteo) : ''];
     }));
   }
   invalidarTabla_(HOJA.RONDAS);
@@ -2297,11 +2336,11 @@ function menuRestaurarRondas() {
   if (r !== ui.Button.YES) return;
   escribirRondas_([]); // primero se vacía: así funciona aunque la hoja tenga fechas solapadas
   refrescarTodo_();
-  const lista = rondasPorDefecto_(leerConfig_().hora_corte);
+  const lista = RONDAS_POR_DEFECTO;
   escribirRondas_(lista);
   let mensaje = '';
   lista.forEach(function (p) {
-    mensaje += p.nombre + ': ' + fechaCorta_(p.inicio) + ' al ' + fechaCorta_(p.fin) + ' · corte ' + fechaHoraTexto_(p.corte) + (p.sorteo ? ' · sorteo ' + fechaCorta_(p.sorteo) : ' · sin sorteo') + '\n';
+    mensaje += p.nombre + ': ' + fechaCorta_(p.inicio) + ' al ' + fechaCorta_(p.fin) + (p.sorteo ? ' · sorteo ' + fechaCorta_(p.sorteo) : ' · sin sorteo') + '\n';
   });
   ui.alert('Rondas restauradas', mensaje + '\nPuedes ajustar cualquier fecha directamente en la hoja Rondas.', ui.ButtonSet.OK);
 }
@@ -2345,13 +2384,18 @@ function menuResultadoRonda() {
   const lista = rankingRonda_(calcularEstadisticas_(leerRegistros_(), cfg, usuarios), n);
   const cupones = lista.reduce(function (t, x) { return t + x.s.cupones; }, 0);
   let mensaje = p.nombre + ' (' + fechaCorta_(p.inicio) + ' al ' + fechaCorta_(p.fin) + ')\n';
-  mensaje += p.corte <= ahora_() ? 'Cerrada el ' + fechaHoraTexto_(p.corte) + '.\n' : 'Todavía abierta: el corte es el ' + fechaHoraTexto_(p.corte) + '. Estos números pueden cambiar.\n';
+  mensaje += p.corte <= ahora_() ? 'Cerrada (terminó el ' + fechaCorta_(p.fin) + ').\n' : 'Todavía abierta hasta el final del ' + fechaCorta_(p.fin) + '. Estos números pueden cambiar.\n';
   mensaje += p.con_sorteo ? 'Sorteo: ' + fechaCorta_(p.sorteo) + ' · ' + cupones + ' cupones de ' + lista.length + ' vendedores.\n\n' : 'Sin sorteo: sus cupones suman para el Gran Sorteo Final.\n\n';
   lista.slice(0, 15).forEach(function (x, i) {
     const u = porCedula[x.v.cedula];
     mensaje += (i + 1) + '. ' + (u ? nombreCorto_(u) : x.v.cedula) + ' (' + grupoDe_(u ? perfilUsuario_(u, cfg) : null) + ') · ' + x.s.cupones + (x.s.cupones === 1 ? ' cupón' : ' cupones') + '\n';
   });
-  if (lista.length > 15) mensaje += '… y ' + (lista.length - 15) + ' más en la hoja Ranking.';
+  if (lista.length > 15) mensaje += '… y ' + (lista.length - 15) + ' más en la hoja Ranking.\n';
+  const mejores = mejoresPublicos_(calcularEstadisticas_(leerRegistros_(), cfg, usuarios), n, porCedula);
+  if (mejores.length) {
+    mensaje += '\nMejor vendedor por canal (cupón para el Gran Sorteo Final):\n';
+    mejores.forEach(function (m) { mensaje += '· ' + m.canal + ': ' + m.nombre + ' (' + m.monto + ' ' + cfg.moneda + ')\n'; });
+  }
   ui.alert('Resultado de la ronda', mensaje, ui.ButtonSet.OK);
 }
 
@@ -2361,13 +2405,11 @@ function menuResumenSorteo() {
   const usuarios = leerUsuarios_();
   const stats = calcularEstadisticas_(leerRegistros_(), cfg, usuarios);
   const bolsas = armarBolsas_(stats, usuarios, cfg).map(resumenBolsa_);
-  const vendedores = valores_(stats.vendedores);
-  const cumplen = vendedores.filter(function (v) { return v.cumpleMeta && v.totalCentavos > 0; }).length;
   let mensaje = cfg.nombre_sorteo + '\n\n';
   bolsas.forEach(function (b) {
     mensaje += '· ' + b.nombre + (b.fecha ? ' (' + fechaCorta_(b.fecha) + ')' : '') + ': ' + b.cupones + ' cupones de ' + b.vendedores + ' vendedores' + (b.corte > ahora_() ? ' · provisional' : '') + '\n';
   });
-  mensaje += '\nGran Sorteo Final: ' + cumplen + ' de ' + vendedores.length + ' vendedores con ventas cumplen el ' + cfg.porcentaje_meta_final + ' % de su meta. 1 cupón final por cada ' + cfg.cupones_por_cupon_final + ' cupones.';
+  mensaje += '\nGran Sorteo Final: 1 cupón por cada ' + cfg.cupones_por_cupon_final + ' cupones, más los cupones Austral y los de mejor vendedor de cada ronda.';
   SpreadsheetApp.getUi().alert('Sorteos', mensaje, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -2389,18 +2431,18 @@ function recalcularRankings_() {
 
   const bloques = [];
   bloques.push({
-    titulo: 'Ranking general · Gran Sorteo Final (1 cupón final cada ' + cfg.cupones_por_cupon_final + ' cupones, con ' + cfg.porcentaje_meta_final + ' % de la meta)',
-    encabezados: ['Pos', 'Cédula', 'Vendedor', 'Tienda o canal', 'Valor cupón', 'Total vendido', 'Cupones', 'Meta', '% de la meta', 'Cumple', 'Cupones final', 'm² Austral', 'Tickets Austral'],
+    titulo: 'Ranking general · Gran Sorteo Final (1 cupón cada ' + cfg.cupones_por_cupon_final + ' cupones + Austral + mejor vendedor)',
+    encabezados: ['Pos', 'Cédula', 'Vendedor', 'Tienda o canal', 'Valor cupón', 'Total vendido', 'Cupones', 'Meta', '% de la meta', 'Cupones final (cada 10)', 'm² o piezas Austral', 'Cupones Austral', 'Mejor vendedor', 'Total Gran Sorteo Final'],
     filas: rankingGeneral_(stats).map(function (v, i) {
       return [i + 1, v.cedula, nombre(v.cedula), grupo(v.cedula), v.montoPorCuponCentavos / 100, v.totalCentavos / 100, v.cupones,
-        v.metaCentavos ? v.metaCentavos / 100 : 'sin meta', v.metaCentavos ? v.totalCentavos / v.metaCentavos : '', v.cumpleMeta ? 'SI' : 'NO',
-        v.cuponesFinal, v.m2Centesimas / 100, v.cuponesAustral];
+        v.metaCentavos ? v.metaCentavos / 100 : 'sin meta', v.metaCentavos ? v.totalCentavos / v.metaCentavos : '',
+        v.cuponesFinal, v.m2Centesimas / 100, v.cuponesAustral, v.ticketsMejorVendedor, v.ticketsFinal];
     }),
     texto: [1],
-    formatos: { 4: '#,##0.00', 5: '#,##0.00', 7: '#,##0.00', 8: '0%', 11: '#,##0.00' },
+    formatos: { 4: '#,##0.00', 5: '#,##0.00', 7: '#,##0.00', 8: '0%', 10: '#,##0.00' },
   });
   bloques.push({
-    titulo: p ? p.nombre + ' (' + fechaCorta_(p.inicio) + ' al ' + fechaCorta_(p.fin) + ' · corte ' + fechaHoraTexto_(p.corte) + (p.sorteo ? ' · sorteo ' + fechaCorta_(p.sorteo) : ' · sin sorteo') + ')' : 'Ronda',
+    titulo: p ? p.nombre + ' (' + fechaCorta_(p.inicio) + ' al ' + fechaCorta_(p.fin) + (p.sorteo ? ' · sorteo ' + fechaCorta_(p.sorteo) : ' · sin sorteo') + ')' : 'Ronda',
     encabezados: ['Pos', 'Cédula', 'Vendedor', 'Tienda o canal', 'Cupones ronda', 'Vendido ronda'],
     filas: ronda ? rankingRonda_(stats, ronda).map(function (x, i) {
       return [i + 1, x.v.cedula, nombre(x.v.cedula), grupo(x.v.cedula), x.s.cupones, x.s.montoCentavos / 100];
@@ -2409,10 +2451,10 @@ function recalcularRankings_() {
     formatos: { 5: '#,##0.00' },
   });
   bloques.push({
-    titulo: 'Tickets Austral para el Gran Sorteo Final (1 cada ' + cfg.m2_por_cupon_austral + ' m²)',
-    encabezados: ['Pos', 'Cédula', 'Vendedor', 'm² Austral', 'Tickets Austral', 'Entran al final'],
+    titulo: 'Cupones Austral para el Gran Sorteo Final (1 cada ' + cfg.m2_por_cupon_austral + ' m² o piezas; distribuidores según la hoja Canales)',
+    encabezados: ['Pos', 'Cédula', 'Vendedor', 'm² o piezas Austral', 'Cupones Austral', 'm² o piezas por cupón'],
     filas: rankingAustral_(stats).map(function (v, i) {
-      return [i + 1, v.cedula, nombre(v.cedula), v.m2Centesimas / 100, v.cuponesAustral, v.australEnFinal && v.cuponesAustral > 0 ? 'SI' : 'NO'];
+      return [i + 1, v.cedula, nombre(v.cedula), v.m2Centesimas / 100, v.cuponesAustral, v.m2PorCuponCentesimas / 100];
     }),
     texto: [1],
     formatos: { 3: '#,##0.00' },
@@ -2529,7 +2571,7 @@ function cargarDatosPrueba_() {
         const austral = azar() < 0.4;
         filas.push(filaRegistro_({
           id: 'CP-' + ('00000' + siguiente++).slice(-6),
-          fechaCarga: Date.now() - Math.floor(azar() * 86400000),
+          fechaCarga: Math.min(ahora_(), Utilities.parseDate(dia + ' 09:00', ZONA_HORARIA, 'yyyy-MM-dd HH:mm').getTime() + Math.floor(azar() * 10 * 3600000)),
           cedula: cedula, nombre: n[0] + ' ' + n[1], diaVenta: dia,
           factura: 'P' + cedula.slice(-2) + '-' + (1000 + k), facturaNorm: '',
           montoCentavos: monto, austral: austral, m2Centesimas: austral ? Math.round((20 + azar() * 160) * 100) : 0,

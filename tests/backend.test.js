@@ -21,7 +21,8 @@ const caracas = (iso, hh = 0, mm = 0) => {
 /**
  * Campaña de prueba que empezó hace `inicioHaceDias` días.
  * Rondas por defecto (días): Ronda 1 [0–6], Ronda 2 [7–13], Ronda 3 [14–27] y La Ñapa [28–41] sin sorteo.
- * Por defecto no se bloquean las rondas cerradas (las pruebas de cortes lo activan).
+ * La ronda de una venta es la del día en que se registra: e.vender acepta `registro`
+ * (día de la campaña, o ms) para simular cuándo se registró.
  */
 function entorno(opciones = {}) {
   const { inicioHaceDias = 10, config = {}, rondas } = opciones;
@@ -29,12 +30,11 @@ function entorno(opciones = {}) {
   e.gas.setup();
   const hoy = e.gas.hoyISO_();
   const inicio = e.gas.sumarDias_(hoy, -inicioHaceDias);
-  e.gas.escribirConfig_('bloquear_rondas_cerradas', 'NO');
   Object.keys(config).forEach((k) => e.gas.escribirConfig_(k, config[k]));
   const dia = (n) => e.gas.sumarDias_(inicio, n);
   const tramos = rondas || [['Ronda 1', 0, 6, true], ['Ronda 2', 7, 13, true], ['Ronda 3', 14, 27, true], ['La Ñapa', 28, 41, false]];
   e.gas.escribirRondas_(tramos.map(([nombre, a, b, sorteo]) => ({
-    nombre, inicio: dia(a), fin: dia(b), corte: e.gas.corteDefecto_(dia(b), '15:00'), sorteo: sorteo ? dia(b + 4) : '',
+    nombre, inicio: dia(a), fin: dia(b), sorteo: sorteo ? dia(b + 4) : '',
   })));
   e.servicios.cache._vaciar();
   e.hoy = hoy;
@@ -47,15 +47,26 @@ function entorno(opciones = {}) {
     assert.equal(r.ok, true, JSON.stringify(r));
     return r.data.token;
   };
-  e.vender = (token, datos) => e.api('addSale', {
-    token,
-    dia_venta: datos.dia,
-    numero_factura: datos.factura,
-    monto: datos.monto,
-    vendio_austral: !!datos.m2,
-    m2_austral: datos.m2,
-    foto: datos.foto || JPEG,
-  });
+  e.vender = (token, datos) => {
+    const reloj = e.gas.ahora_;
+    if (datos.registro !== undefined) {
+      const ms = datos.registro > 1e9 ? datos.registro : caracas(dia(datos.registro), 12);
+      e.gas.ahora_ = () => ms;
+    }
+    try {
+      return e.api('addSale', {
+        token,
+        dia_venta: datos.dia,
+        numero_factura: datos.factura,
+        monto: datos.monto,
+        vendio_austral: !!datos.m2,
+        m2_austral: datos.m2,
+        foto: datos.foto || JPEG,
+      });
+    } finally {
+      e.gas.ahora_ = reloj;
+    }
+  };
   const editar = (hojaNombre, buscada, columna, valor) => {
     const sh = e.servicios.ss.getSheetByName(hojaNombre);
     const encabezados = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
@@ -76,6 +87,7 @@ function entorno(opciones = {}) {
     assert.ok(i > 0, 'no existe ' + canal + ' ' + tienda);
     if ('monto' in cambios) sh.getRange(i + 1, 3).setValue(cambios.monto);
     if ('meta' in cambios) sh.getRange(i + 1, 4).setValue(cambios.meta);
+    if ('m2' in cambios) sh.getRange(i + 1, 5).setValue(cambios.m2);
     e.servicios.cache._vaciar();
   };
   /** Agrega una fila a Usuarios a mano, como lo haría el admin en el Sheet. */
@@ -103,8 +115,9 @@ test('setup crea las 6 hojas, el cronograma de rondas y los canales, y se puede 
   const cfgFilas = e.servicios.ss.getSheetByName('Configuracion').getDataRange().getValues().slice(1);
   const claves = cfgFilas.map((f) => f[0]);
   assert.equal(new Set(claves).size, claves.length);
-  ['nombre_sorteo', 'porcentaje_meta_final', 'cupones_por_cupon_final', 'fecha_sorteo_final', 'm2_por_cupon_austral', 'hora_corte'].forEach((k) => assert.ok(claves.includes(k), k));
-  assert.equal(cfgFilas.find((f) => f[0] === 'hora_corte')[1], '15:00', 'la hora queda como texto');
+  ['nombre_sorteo', 'cupones_por_cupon_final', 'fecha_sorteo_final', 'm2_por_cupon_austral'].forEach((k) => assert.ok(claves.includes(k), k));
+  ['hora_corte', 'bloquear_rondas_cerradas', 'porcentaje_meta_final', 'austral_requiere_meta'].forEach((k) => assert.ok(!claves.includes(k), k + ' ya no existe'));
+  assert.equal(cfgFilas.find((f) => f[0] === 'm2_por_cupon_austral')[1], 80);
   assert.ok(cfgFilas.find((f) => f[0] === 'carpeta_fotos_id')[1], 'carpeta de fotos creada');
   assert.equal(e.servicios.DriveApp._carpetas.size, 1, 'no crea carpetas repetidas');
 
@@ -116,14 +129,16 @@ test('setup crea las 6 hojas, el cronograma de rondas y los canales, y se puede 
     ['Ronda 3', '2026-11-27', '2026-12-10', '2026-12-14', true],
     ['La Ñapa', '2026-12-11', '2026-12-19', '', false],
   ]);
-  assert.equal(cfg.rondas[0].corte, caracas('2026-11-06', 15), 'corte de la Ronda 1: viernes 6/11 a las 3 p. m.');
+  assert.equal(cfg.rondas[0].corte, caracas('2026-11-06', 0), 'la Ronda 1 cierra al terminar el jueves 5/11');
+  assert.deepEqual(plano(e.servicios.ss.getSheetByName('Rondas').getRange(1, 1, 1, 5).getValues()[0]), ['ronda', 'nombre', 'inicio', 'fin', 'sorteo']);
   assert.equal(cfg.total_sorteos, 3);
   assert.equal(cfg.fecha_sorteo_final, '2026-12-21');
   assert.equal(e.servicios.ss.getSheetByName('Rondas').getLastRow(), 5, 'una fila por ronda');
 
   const canales = e.servicios.ss.getSheetByName('Canales').getDataRange().getValues().slice(1);
   assert.equal(canales.length, 11, '9 tiendas + Distribuidor + Corporativo');
-  assert.deepEqual(canales.slice(-2).map((f) => f[0]), ['Distribuidor', 'Corporativo']);
+  assert.deepEqual(canales.slice(-2).map((f) => [f[0], f[4]]), [['Distribuidor', 500], ['Corporativo', '']]);
+  assert.deepEqual(plano(cfg.canales.slice(-3).map((r) => [r.canal, r.m2Centesimas / 100])), [['Tienda', 80], ['Distribuidor', 500], ['Corporativo', 80]]);
   assert.deepEqual(plano(cfg.sucursales), ['Boleíta', 'La Castellana', 'Los Naranjos', 'El Bosque', 'Las Mercedes', 'San Martín', 'Maracaibo', 'Acarigua', 'Barquisimeto']);
 });
 
@@ -167,6 +182,36 @@ test('setup actualiza un Sheet de la versión anterior sin perder ventas ni usua
   assert.equal(ana.data.usuario.necesita_canal, false);
   const luis = e.api('login', { cedula: '12345679', password: 'secreto1' });
   assert.equal(luis.data.usuario.necesita_canal, true, 'sin tienda válida debe elegir canal');
+});
+
+test('setup migra la versión con corte a las 3 p. m., meta del 80 % y Austral de 100 m²', () => {
+  const e = crearEntorno({ silencioso: true });
+  const ss = e.servicios.ss;
+  const cfg = ss.insertSheet('Configuracion');
+  cfg.appendRow(['clave', 'valor', 'descripcion']);
+  [['hora_corte', '15:00'], ['bloquear_rondas_cerradas', 'SI'], ['porcentaje_meta_final', 80], ['austral_requiere_meta', 'SI'], ['m2_por_cupon_austral', 100], ['concurso_abierto', 'SI']]
+    .forEach(([k, v]) => cfg.appendRow([k, v, 'vieja']));
+  const ro = ss.insertSheet('Rondas');
+  ro.appendRow(['ronda', 'nombre', 'inicio', 'fin', 'corte', 'sorteo']);
+  ro.appendRow([1, 'Ronda 1', e.gas.fechaDesdeISO_('2026-10-15'), e.gas.fechaDesdeISO_('2026-11-05'), '06/11/2026 15:00', e.gas.fechaDesdeISO_('2026-11-09')]);
+  ro.appendRow([2, 'Ronda 2', e.gas.fechaDesdeISO_('2026-11-06'), e.gas.fechaDesdeISO_('2026-11-26'), '27/11/2026 15:00', e.gas.fechaDesdeISO_('2026-11-30')]);
+  const ca = ss.insertSheet('Canales');
+  ca.appendRow(['canal', 'tienda', 'monto_por_cupon', 'meta']);
+  ca.appendRow(['Tienda', 'Boleíta', 1500, 20000]);
+  ca.appendRow(['Distribuidor', '', 3000, '']);
+  ca.appendRow(['Corporativo', '', 2000, '']);
+
+  e.gas.setup();
+  const claves = cfg.getDataRange().getValues().map((f) => f[0]);
+  ['hora_corte', 'bloquear_rondas_cerradas', 'porcentaje_meta_final', 'austral_requiere_meta'].forEach((k) => assert.ok(!claves.includes(k), 'quita ' + k));
+  assert.equal(cfg.getDataRange().getValues().find((f) => f[0] === 'm2_por_cupon_austral')[1], 80, 'Austral pasa de 100 a 80');
+  assert.deepEqual(plano(ro.getDataRange().getValues()[0]), ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'], 'se quita la columna corte');
+  assert.equal(e.gas.leerConfig_().rondas[1].sorteo, '2026-11-30', 'los sorteos quedan en su lugar');
+  assert.deepEqual(plano(ca.getDataRange().getValues().map((f) => [f[0], f[4]])), [['canal', 'm2_por_cupon_austral'], ['Tienda', ''], ['Distribuidor', 500], ['Corporativo', '']]);
+  e.gas.setup();
+  ca.getRange(3, 5).setValue('');
+  e.gas.setup();
+  assert.equal(ca.getRange(3, 5).getValue(), '', 'no vuelve a llenar la columna si ya existía');
 });
 
 // ------------------------------------------------------------
@@ -326,10 +371,10 @@ test('cupones acumulados: el sobrante pasa de una ronda a la otra', () => {
   const e = entorno({ inicioHaceDias: 10 });
   const t = e.registrar('20111222');
   // Ronda 1: $4.000 → 2 cupones, sobran $1.000.
-  assert.equal(e.vender(t, { dia: e.dia(0), factura: 'A-1', monto: 2500 }).ok, true);
-  assert.equal(e.vender(t, { dia: e.dia(3), factura: 'A-2', monto: 1500 }).ok, true);
+  assert.equal(e.vender(t, { dia: e.dia(0), factura: 'A-1', monto: 2500, registro: 0 }).ok, true);
+  assert.equal(e.vender(t, { dia: e.dia(3), factura: 'A-2', monto: 1500, registro: 3 }).ok, true);
   // Ronda 2: $600 → los $1.000 sobrantes + $600 completan 1 cupón; sobran $100.
-  const r = e.vender(t, { dia: e.dia(8), factura: 'A-3', monto: 600 });
+  const r = e.vender(t, { dia: e.dia(8), factura: 'A-3', monto: 600, registro: 8 });
   assert.equal(r.ok, true, JSON.stringify(r));
   assert.equal(r.data.cupones_antes, 2);
   assert.equal(r.data.cupones_despues, 3);
@@ -384,19 +429,26 @@ test('cada cupón trae lo necesario para volver a ver su ticket', () => {
   assert.ok(c[0].fecha_carga > 0);
 });
 
-test('una venta cargada tarde en la ronda 1 no cambia la ronda 2 si no cruza el umbral', () => {
+test('la ronda la decide la fecha de registro: lo registrado después del último día pasa a la siguiente', () => {
   const e = entorno({ inicioHaceDias: 10 });
   const t = e.registrar('20111223');
-  e.vender(t, { dia: e.dia(1), factura: 'B-1', monto: 1000 });
-  e.vender(t, { dia: e.dia(8), factura: 'B-2', monto: 1000 });
-  let v = e.stats().vendedores['20111223'];
+  e.vender(t, { dia: e.dia(1), factura: 'B-1', monto: 1000, registro: 1 });
+  // Factura del día 5 (Ronda 1) registrada el día 8 (Ronda 2): completa el cupón en la Ronda 2.
+  const r = e.vender(t, { dia: e.dia(5), factura: 'B-2', monto: 1000, registro: 8 });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.data.ronda.nombre, 'Ronda 2');
+  assert.equal(r.data.cupones_ronda, 1);
+  const v = e.stats().vendedores['20111223'];
   assert.equal(v.rondas[1].cupones, 0);
   assert.equal(v.rondas[2].cupones, 1);
-  const r = e.vender(t, { dia: e.dia(2), factura: 'B-3', monto: 600 });
-  assert.equal(r.data.cupones_nuevos, 0, '$2.600 sigue siendo 1 cupón');
-  v = e.stats().vendedores['20111223'];
-  assert.equal(v.rondas[1].cupones, 1);
-  assert.equal(v.rondas[2].cupones, 0);
+  assert.equal(v.rondas[2].montoCentavos, 100000, 'el monto también cuenta en la ronda en que se registró');
+
+  // Borde: hasta las 11:59 p. m. del último día es Ronda 1; a las 12:00 a. m. ya es Ronda 2.
+  const t2 = e.registrar('20111224');
+  assert.equal(e.vender(t2, { dia: e.dia(6), factura: 'B-8', monto: 1500, registro: caracas(e.dia(6), 23, 59) }).data.ronda.numero, 1);
+  assert.equal(e.vender(t2, { dia: e.dia(6), factura: 'B-9', monto: 1500, registro: caracas(e.dia(7), 0, 0) }).data.ronda.numero, 2);
+  const admin = e.gas.calcularEstadisticas_(e.gas.leerRegistros_({ fresco: true }), e.gas.leerConfig_(), e.gas.leerUsuarios_({ fresco: true })).vendedores['20111224'];
+  assert.deepEqual(plano(admin.detalleCupones.map((c) => c.ronda)), [1, 2]);
 });
 
 test('addSale devuelve lo necesario para imprimir los tickets', () => {
@@ -421,25 +473,34 @@ test('addSale devuelve lo necesario para imprimir los tickets', () => {
   assert.match(archivo.getName(), /^30111222_2_\d+\.jpg$/);
 });
 
-test('tickets Austral: 1 por cada 100 m², el sobrante se acumula', () => {
+test('cupones Austral: 1 por cada 80 m² o piezas (500 para distribuidores), el sobrante se acumula', () => {
   const e = entorno();
   const t = e.registrar('31111222');
   const a = e.vender(t, { dia: e.hoy, factura: 'AU-1', monto: 900, m2: 60 });
   assert.equal(a.data.austral_nuevos, 0);
-  assert.equal(a.data.m2_falta, 40);
+  assert.equal(a.data.m2_falta, 20);
+  assert.equal(a.data.m2_por_cupon, 80);
   const b = e.vender(t, { dia: e.hoy, factura: 'AU-2', monto: 900, m2: 145.5 });
-  assert.equal(b.data.austral_despues, 2, '60 + 145,5 = 205,5 m² → 2 cupones');
+  assert.equal(b.data.austral_despues, 2, '60 + 145,5 = 205,5 → 2 cupones');
   assert.deepEqual(b.data.nuevos_cupones_austral.map((c) => [c.n, c.factura, c.m2, c.m2_acumulado]), [[1, 'AU-2', 145.5, 205.5], [2, 'AU-2', 145.5, 205.5]]);
-  assert.equal(b.data.m2_sobrante, 5.5);
-  assert.equal(b.data.m2_falta, 94.5);
+  assert.equal(b.data.m2_sobrante, 45.5);
+  assert.equal(b.data.m2_falta, 34.5);
   assert.equal(b.data.cupones_nuevos, 1, 'el monto también suma cupones normales');
 
   const d = e.api('getDashboard', { token: t }).data;
   assert.equal(d.resumen.austral.cupones, 2);
-  assert.equal(d.resumen.austral.participa, true, 'sin meta definida, los tickets entran al final');
+  assert.equal(d.resumen.austral.m2_por_cupon, 80);
   assert.equal(d.resumen.final.austral, 2);
-  assert.equal(d.resumen.final.total, 2, '0 cupones finales + 2 tickets Austral');
-  assert.equal(d.cupones_austral[0].m2_falta, 94.5);
+  assert.equal(d.resumen.final.total, 2, '0 cupones finales + 2 cupones Austral');
+  assert.equal(d.cupones_austral[0].m2_falta, 34.5);
+
+  const td = e.registrar('31111223', { canal: 'Distribuidor', sucursal: '' });
+  const x = e.vender(td, { dia: e.hoy, factura: 'AU-D', monto: 10, m2: 600 });
+  assert.equal(x.data.austral_nuevos, 1, 'distribuidor: 600 → 1 cupón de 500');
+  assert.equal(x.data.m2_falta, 400);
+  assert.equal(x.data.m2_por_cupon, 500);
+  e.canal('Distribuidor', '', { m2: 300 });
+  assert.equal(e.api('getDashboard', { token: td }).data.resumen.austral.cupones, 2, 'se cambia en la hoja Canales');
 
   const e2 = entorno({ config: { m2_por_cupon_austral: 50 } });
   const t2 = e2.registrar('31111333');
@@ -487,7 +548,7 @@ test('valida fecha (futura, fuera de la campaña, inexistente), monto y foto', (
   assert.equal(e.servicios.DriveApp._archivos.size, 1, 'las ventas inválidas no suben fotos');
 });
 
-test('cortes del cronograma real: cada ronda cierra al día siguiente a las 3 p. m.', () => {
+test('cronograma real: cada ronda cierra al terminar su último día y se registra hasta el 19/12', () => {
   const e = crearEntorno({ silencioso: true });
   e.gas.setup();
   const reloj = (ms) => { e.gas.ahora_ = () => ms; };
@@ -500,20 +561,20 @@ test('cortes del cronograma real: cada ronda cierra al día siguiente a las 3 p.
   assert.equal(actual().estado, 'antes');
   assert.match(vender(t, '2026-10-10', 'Q0').message, /dentro de la campaña/);
 
-  // Viernes 6/11 en la mañana: la Ronda 1 (15/10–5/11) sigue en juego hasta el corte.
-  reloj(caracas('2026-11-06', 10));
+  // Jueves 5/11 en la noche: todavía Ronda 1.
+  reloj(caracas('2026-11-05', 22));
   let s = actual();
-  assert.deepEqual([s.numero, s.nombre, s.estado], [1, 'Ronda 1', 'en_corte']);
-  assert.equal(vender(t, '2026-11-05', 'Q1').ok, true, 'antes del corte sí');
-  assert.equal(vender(t, '2026-11-06', 'Q2').ok, true, 'el viernes ya es Ronda 2');
+  assert.deepEqual([s.numero, s.nombre, s.estado], [1, 'Ronda 1', 'en_curso']);
+  assert.equal(vender(t, '2026-11-05', 'Q1').data.ronda.numero, 1);
 
-  reloj(caracas('2026-11-06', 15));
-  const tarde = vender(t, '2026-11-05', 'Q3');
-  assert.equal(tarde.campo, 'dia_venta');
-  assert.match(tarde.message, /Ronda 1 cerró el 06\/11\/2026 a las 15:00/);
+  // Viernes 6/11: ya es Ronda 2, y una factura del 5/11 registrada hoy cuenta para la Ronda 2.
+  reloj(caracas('2026-11-06', 8));
   s = actual();
   assert.deepEqual([s.numero, s.estado, s.sorteo], [2, 'en_curso', '2026-11-30']);
-  assert.equal(e.api('config').data.dia_min_carga, '2026-11-06');
+  const tarde = vender(t, '2026-11-05', 'Q3');
+  assert.equal(tarde.ok, true, JSON.stringify(tarde));
+  assert.equal(tarde.data.ronda.numero, 2);
+  assert.equal(e.api('config').data.dia_min_carga, '2026-10-15', 'se puede elegir cualquier día de la campaña');
 
   // La Ñapa: sin sorteo, sigue sumando.
   reloj(caracas('2026-12-15', 12));
@@ -521,22 +582,21 @@ test('cortes del cronograma real: cada ronda cierra al día siguiente a las 3 p.
   assert.deepEqual([s.numero, s.nombre, s.con_sorteo], [4, 'La Ñapa', false]);
   assert.equal(vender(t, '2026-12-15', 'Q4').ok, true);
 
-  // Después del corte final ya no se carga nada.
-  reloj(caracas('2026-12-20', 16));
+  // Después del 19/12 ya no se registra nada.
+  reloj(caracas('2026-12-20', 9));
   assert.equal(actual().estado, 'terminado');
-  assert.match(vender(t, '2026-12-19', 'Q5').message, /La Ñapa cerró/);
+  const cerrada = vender(t, '2026-12-19', 'Q5');
+  assert.equal(cerrada.code, 'CLOSED');
+  assert.match(cerrada.message, /terminó el 19\/12\/2026/);
   assert.equal(e.api('config').data.dia_max_carga, '');
-  e.gas.escribirConfig_('bloquear_rondas_cerradas', 'NO');
-  assert.equal(vender(t, '2026-12-19', 'Q5').ok, true, 'con bloquear_rondas_cerradas = NO se aceptan ventas tardías');
 });
 
-test('la hoja Rondas manda: fechas, cortes y nombres se editan a mano', () => {
+test('la hoja Rondas manda: fechas y nombres se editan a mano', () => {
   const e = crearEntorno({ silencioso: true });
   e.gas.setup();
   const sh = e.servicios.ss.getSheetByName('Rondas');
-  // La Ronda 2 se alarga hasta el 27/11 y su corte pasa al sábado 28 a las 10:00.
+  // La Ronda 2 se alarga hasta el 27/11: cierra al terminar ese día.
   sh.getRange(3, 4).setValue(e.gas.fechaDesdeISO_('2026-11-27'));
-  sh.getRange(3, 5).setValue('28/11/2026 10:00');
   sh.getRange(4, 3).setValue(e.gas.fechaDesdeISO_('2026-11-28'));
   sh.getRange(5, 2).setValue('La Ñapa navideña');
   e.servicios.cache._vaciar();
@@ -544,7 +604,7 @@ test('la hoja Rondas manda: fechas, cortes y nombres se editan a mano', () => {
   const cfg = e.gas.leerConfig_();
   assert.equal(e.gas.rondaNumeroDe_('2026-11-27', cfg), 2);
   assert.equal(e.gas.rondaNumeroDe_('2026-11-28', cfg), 3);
-  assert.equal(cfg.rondas[1].corte, caracas('2026-11-28', 10));
+  assert.equal(cfg.rondas[1].corte, caracas('2026-11-28', 0));
   assert.equal(cfg.rondas[3].nombre, 'La Ñapa navideña');
 
   sh.getRange(4, 3).setValue(e.gas.fechaDesdeISO_('2026-11-20'));
@@ -615,67 +675,94 @@ test('neutraliza inyección de fórmulas en Sheets', () => {
 // Metas, Gran Sorteo Final y bolsas
 // ------------------------------------------------------------
 
-test('Gran Sorteo Final: 1 cupón cada 10, solo con el 80 % de la meta de su tienda o canal', () => {
+test('Gran Sorteo Final: 1 cupón cada 10, sin requisito de meta (la meta es informativa)', () => {
   const e = entorno();
   e.canal('Tienda', 'Boleíta', { meta: 20000 });
   const a = e.registrar('20300001');
   const sinMeta = e.registrar('20300002', { canal: 'Corporativo', sucursal: '' });
 
-  // $15.000 = 10 cupones, pero es el 75 % de la meta: no entra al final todavía.
+  // $15.000 = 10 cupones, el 75 % de la meta: igual entra al final.
   e.vender(a, { dia: e.hoy, factura: 'GF1', monto: 15000 });
   let r = e.api('getDashboard', { token: a }).data.resumen;
   assert.equal(r.cupones, 10);
-  assert.deepEqual(plano(r.meta), { definida: true, meta: 20000, vendido: 15000, avance: 0.75, porcentaje_requerido: 80, requerido: 16000, falta: 1000, cumple: false });
-  assert.deepEqual(plano(r.final), { cupones: 0, austral: 0, total: 0, posibles: 1, por_cada: 10, faltan_para_proximo: 10, cumple: false });
+  assert.deepEqual(plano(r.meta), { definida: true, meta: 20000, vendido: 15000, avance: 0.75 });
+  assert.deepEqual(plano(r.final), { cupones: 1, austral: 0, mejor_vendedor: 0, rondas_mejor_vendedor: [], total: 1, por_cada: 10, faltan_para_proximo: 10 });
 
-  // $1.000 más llega al 80 %.
   const v = e.vender(a, { dia: e.hoy, factura: 'GF2', monto: 1000 });
-  assert.equal(v.data.cupones_final_antes, 0);
   assert.equal(v.data.cupones_final_despues, 1);
-  assert.equal(v.data.meta.cumple, true);
-  r = e.api('getDashboard', { token: a }).data.resumen;
-  assert.equal(r.final.cupones, 1);
-  assert.equal(r.final.faltan_para_proximo, 10, '10 cupones exactos: le faltan 10 para el siguiente');
+  assert.equal(v.data.meta.avance, 0.8);
 
-  // Sin meta definida en Canales: cumple.
   e.vender(sinMeta, { dia: e.hoy, factura: 'GF3', monto: 30000 });
   r = e.api('getDashboard', { token: sinMeta }).data.resumen;
   assert.equal(r.meta.definida, false);
   assert.equal(r.final.cupones, 2);
 
-  // Las reglas se cambian en Configuracion.
   e.gas.escribirConfig_('cupones_por_cupon_final', 5);
-  e.gas.escribirConfig_('porcentaje_meta_final', 90);
   e.servicios.cache._vaciar();
   r = e.api('getDashboard', { token: a }).data.resumen;
-  assert.equal(r.meta.cumple, false, '$16.000 es el 80 %, no llega al 90 %');
-  assert.equal(r.final.posibles, 2);
+  assert.equal(r.final.cupones, 2, 'la regla se cambia en Configuracion');
 });
 
-test('bolsas: cada ronda con sus cupones, La Ñapa sin sorteo y el final con los tickets Austral', () => {
+test('mejor vendedor: el que más vende en cada ronda con sorteo, por canal, gana 1 cupón para el final', () => {
+  const e = entorno({ inicioHaceDias: 16 });
+  const ana = e.registrar('20500001', { nombre: 'Ana', apellido: 'Uno' });
+  const beto = e.registrar('20500002', { nombre: 'Beto', apellido: 'Dos', sucursal: 'Maracaibo' });
+  const caro = e.registrar('20500003', { nombre: 'Caro', apellido: 'Tres', canal: 'Distribuidor', sucursal: '' });
+  const dani = e.registrar('20500004', { nombre: 'Dani', apellido: 'Cuatro', canal: 'Corporativo', sucursal: '' });
+  // Ronda 1 (cerrada): en Tiendas gana Beto (de otra tienda) por monto; Caro en Distribuidores; Dani en Corporativo.
+  e.vender(ana, { dia: e.dia(1), factura: 'M1', monto: 3000, registro: 1 });
+  e.vender(beto, { dia: e.dia(2), factura: 'M2', monto: 3200, registro: 2 });
+  e.vender(caro, { dia: e.dia(2), factura: 'M3', monto: 100, registro: 2 });
+  e.vender(dani, { dia: e.dia(3), factura: 'M4', monto: 50, registro: 3 });
+  // Empate en la Ronda 2 (cerrada): gana quien llegó primero.
+  e.vender(ana, { dia: e.dia(8), factura: 'M5', monto: 1000, registro: 8 });
+  e.vender(beto, { dia: e.dia(9), factura: 'M6', monto: 1000, registro: 9 });
+  // Ronda 3 en juego: todavía no hay ganador.
+  e.vender(beto, { dia: e.dia(15), factura: 'M7', monto: 9000, registro: 15 });
+
+  const stats = e.stats();
+  assert.deepEqual(plano(stats.mejores.map((m) => [m.ronda, m.canal, m.cedula])), [
+    [1, 'Tienda', '20500002'], [1, 'Distribuidor', '20500003'], [1, 'Corporativo', '20500004'],
+    [2, 'Tienda', '20500001'],
+  ]);
+  let r = e.api('getDashboard', { token: beto }).data.resumen.final;
+  assert.deepEqual([r.mejor_vendedor, plano(r.rondas_mejor_vendedor), r.total], [1, ['Ronda 1'], 1], '8 cupones aún no dan cupón final');
+
+  const final = plano(e.gas.armarBolsas_(stats, e.gas.leerUsuarios_(), e.gas.leerConfig_())).at(-1);
+  assert.equal(final.cupones.filter((c) => c.origen === 'mejor_vendedor').length, 4);
+
+  // Al cerrar la Ronda 3, Beto también la gana.
+  e.reloj(caracas(e.dia(28), 9));
+  r = e.api('getDashboard', { token: beto }).data.resumen.final;
+  assert.deepEqual(plano(r.rondas_mejor_vendedor), ['Ronda 1', 'Ronda 3']);
+
+  const admin = e.api('login', { cedula: '20500001', password: 'secreto1' });
+  assert.equal(admin.ok, true);
+});
+
+test('bolsas: cada ronda con sus cupones, La Ñapa sin sorteo y el final con los cupones Austral', () => {
   const e = entorno({ inicioHaceDias: 30 });
   e.canal('Tienda', 'Boleíta', { meta: 10000 });
   const a = e.registrar('20400001', { nombre: 'Ana', apellido: 'Uno' });
-  const b = e.registrar('20400002', { nombre: 'Beto', apellido: 'Dos' });
-  e.vender(a, { dia: e.dia(1), factura: 'BA1', monto: 4500, m2: 230 }); // ronda 1: 3 cupones y 2 tickets Austral
-  e.vender(a, { dia: e.dia(8), factura: 'BA2', monto: 1500 }); // ronda 2: 1
-  e.vender(a, { dia: e.dia(29), factura: 'BA3', monto: 9000 }); // La Ñapa: 6 → 10 en total
-  e.vender(b, { dia: e.dia(15), factura: 'BB1', monto: 3000, m2: 100 }); // ronda 3: 2 y 1 ticket, no llega a la meta
+  const b = e.registrar('20400002', { nombre: 'Beto', apellido: 'Dos', canal: 'Corporativo', sucursal: '' });
+  e.vender(a, { dia: e.dia(1), factura: 'BA1', monto: 4500, m2: 230, registro: 1 }); // ronda 1: 3 cupones y 2 Austral
+  e.vender(a, { dia: e.dia(8), factura: 'BA2', monto: 1500, registro: 8 }); // ronda 2: 1
+  e.vender(a, { dia: e.dia(29), factura: 'BA3', monto: 9000, registro: 29 }); // La Ñapa: 6 → 10 en total
+  e.vender(b, { dia: e.dia(15), factura: 'BB1', monto: 3000, m2: 100, registro: 15 }); // ronda 3: 2 y 1 Austral
 
   const bolsas = plano(e.gas.armarBolsas_(e.stats(), e.gas.leerUsuarios_(), e.gas.leerConfig_()));
   assert.deepEqual(bolsas.map((x) => [x.id, x.nombre, x.cupones.length]), [
-    ['r1', 'Ronda 1', 3], ['r2', 'Ronda 2', 1], ['r3', 'Ronda 3', 2], ['final', 'Gran Sorteo Final', 3],
+    ['r1', 'Ronda 1', 3], ['r2', 'Ronda 2', 1], ['r3', 'Ronda 3', 2], ['final', 'Gran Sorteo Final', 7],
   ]);
   assert.equal(bolsas[0].cupones[0].codigo, 'R1-0001');
   assert.equal(bolsas[0].cupones[0].sucursal, 'Boleíta');
-  assert.deepEqual(bolsas[3].cupones.map((c) => [c.codigo, c.cedula, c.origen]), [
-    ['F-0001', '20400001', 'cupones'], ['F-0002', '20400001', 'austral'], ['F-0003', '20400001', 'austral'],
-  ], '1 cupón final (10 cupones) + 2 tickets Austral; Beto no llega al 80 % de su meta');
+  const origenes = {};
+  bolsas[3].cupones.forEach((c) => { const k = c.cedula + ' ' + c.origen; origenes[k] = (origenes[k] || 0) + 1; });
+  assert.deepEqual(origenes, {
+    '20400001 cupones': 1, '20400001 austral': 2, '20400001 mejor_vendedor': 2,
+    '20400002 austral': 1, '20400002 mejor_vendedor': 1,
+  }, 'Ana: 1 por sus 10 cupones + 2 Austral + mejor de Tiendas en Ronda 1 y 2; Beto: 1 Austral + mejor de Corporativo en Ronda 3');
   assert.equal(bolsas[0].fecha, e.dia(10), 'cada bolsa trae la fecha de su sorteo');
-
-  e.gas.escribirConfig_('austral_requiere_meta', 'NO');
-  const final = plano(e.gas.armarBolsas_(e.stats(), e.gas.leerUsuarios_(), e.gas.leerConfig_())).at(-1);
-  assert.equal(final.cupones.length, 4, 'con austral_requiere_meta = NO, el ticket de Beto también entra');
 });
 
 test('ranking de la ronda en el portal, sin cédulas', () => {
@@ -695,8 +782,8 @@ test('ranking de la ronda en el portal, sin cédulas', () => {
 test('menús: cupones para sorteo en la hoja Ranking, resultado de una ronda y resumen', () => {
   const e = entorno({ inicioHaceDias: 10 });
   const t = e.registrar('20500001', { nombre: 'Rosa', apellido: 'Ríos' });
-  e.vender(t, { dia: e.dia(1), factura: 'M1', monto: 4500 });
-  e.vender(t, { dia: e.dia(8), factura: 'M2', monto: 1500, m2: 120 });
+  e.vender(t, { dia: e.dia(1), factura: 'M1', monto: 4500, registro: 1 });
+  e.vender(t, { dia: e.dia(8), factura: 'M2', monto: 1500, m2: 120, registro: 8 });
   e.gas.menuGenerarCupones();
   const ranking = e.servicios.ss.getSheetByName('Ranking').getDataRange().getValues();
   const col = ranking[2].indexOf('Código');
@@ -704,19 +791,20 @@ test('menús: cupones para sorteo en la hoja Ranking, resultado de una ronda y r
   assert.equal(ranking[3][col - 1], 'Ronda 1');
   assert.equal(ranking[3][col], 'R1-0001');
   assert.equal(typeof ranking[3][col + 2], 'string', 'la cédula queda como texto');
-  assert.match(e.servicios.ui.alertas.at(-1).msg, /5 cupones/);
+  assert.match(e.servicios.ui.alertas.at(-1).msg, /6 cupones/, '3 + 1 de las rondas y 2 del final (Austral y mejor vendedor de la Ronda 1)');
 
   e.servicios.ui.respuestasPrompt.push({ boton: 'OK', texto: '1' });
   e.gas.menuResultadoRonda();
   const msg = e.servicios.ui.alertas.at(-1).msg;
   assert.match(msg, /Ronda 1/);
   assert.match(msg, /1\. Rosa Ríos \(Boleíta\) · 3 cupones/);
+  assert.match(msg, /Mejor vendedor por canal[\s\S]*Tiendas: Rosa Ríos/);
 
   e.gas.menuResumenSorteo();
   const resumen = e.servicios.ui.alertas.at(-1).msg;
   assert.match(resumen, /Copa Navideña/);
   assert.match(resumen, /Ronda 2 \([^)]*\): 1 cupones de 1 vendedores/);
-  assert.match(resumen, /Gran Sorteo Final[^\n]*: 1 cupones/);
+  assert.match(resumen, /Gran Sorteo Final[^\n]*: 2 cupones/);
 });
 
 // ------------------------------------------------------------
@@ -727,9 +815,9 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   const e = entorno({ inicioHaceDias: 10 });
   e.canal('Tienda', 'Boleíta', { meta: 5000 });
   const tokens = [0, 1, 2].map((i) => e.registrar('7000001' + i, { canal: i === 2 ? 'Distribuidor' : 'Tienda', sucursal: i === 2 ? '' : 'Boleíta' }));
-  e.vender(tokens[0], { dia: e.dia(1), factura: 'AD0', monto: 15000, m2: 200 });
-  e.vender(tokens[1], { dia: e.dia(8), factura: 'AD1', monto: 3000 });
-  e.vender(tokens[2], { dia: e.dia(8), factura: 'AD2', monto: 1500 });
+  e.vender(tokens[0], { dia: e.dia(1), factura: 'AD0', monto: 15000, m2: 200, registro: 1 });
+  e.vender(tokens[1], { dia: e.dia(8), factura: 'AD1', monto: 3000, registro: 8 });
+  e.vender(tokens[2], { dia: e.dia(8), factura: 'AD2', monto: 1500, registro: 8 });
 
   e.agregarUsuarioAMano({ cedula: "'10200300", nombre: 'Carmen', apellido: 'Auditora', telefono: "'04121112233", rol: 'admin', estado: 'activo' });
   assert.equal(e.api('login', { cedula: '10200300', password: 'cualquiera' }).code, 'RESET_REQUIRED');
@@ -743,18 +831,20 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   assert.equal(res.ok, true, JSON.stringify(res).slice(0, 300));
   assert.equal(res.data.totales.vendedores_registrados, 3, 'el admin no cuenta como vendedor');
   assert.equal(res.data.totales.cupones, 13);
-  assert.equal(res.data.totales.cumplen_meta, 2, '$15.000 cumple; $3.000 no llega al 80 % de $5.000; Distribuidor sin meta cumple');
+  assert.equal(res.data.totales.cupones_mejor_vendedor, 1, 'la Ronda 1 ya cerró: su mejor vendedor de Tiendas');
+  assert.deepEqual(plano(res.data.rondas[0].mejores.map((m) => [m.canal, m.cedula])), [['Tiendas', '70000010']]);
   assert.equal(res.data.totales.cupones_final, 1);
   assert.equal(res.data.rondas.length, 4);
   assert.deepEqual(plano(res.data.bolsas.map((b) => b.id)), ['r1', 'r2', 'r3', 'final']);
   const boleita = res.data.canales.find((c) => c.nombre === 'Boleíta');
-  assert.deepEqual([boleita.vendedores, boleita.meta, boleita.cumplen, boleita.monto_por_cupon], [2, 5000, 1, 1500]);
-  assert.equal(res.data.canales.find((c) => c.nombre === 'Distribuidores').vendedores, 1);
+  assert.deepEqual([boleita.vendedores, boleita.meta, boleita.monto_por_cupon, boleita.m2_por_cupon_austral], [2, 5000, 1500, 80]);
+  const dist = res.data.canales.find((c) => c.nombre === 'Distribuidores');
+  assert.deepEqual([dist.vendedores, dist.m2_por_cupon_austral], [1, 500]);
 
   const vend = e.api('adminVendedores', { token: admin }).data.vendedores;
   assert.equal(vend.length, 3);
   assert.equal(vend[0].cedula, '70000010', 'el admin ve la cédula completa');
-  assert.deepEqual([vend[0].grupo, vend[0].meta, vend[0].cumple, vend[0].cupones_final], ['Boleíta', 5000, true, 1]);
+  assert.deepEqual([vend[0].grupo, vend[0].meta, vend[0].cupones_final, vend[0].cupones_austral, vend[0].cupones_mejor_vendedor, vend[0].tickets_final], ['Boleíta', 5000, 1, 2, 1, 4]);
   assert.equal(vend.find((v) => v.cedula === '70000011').avance, 0.6);
 
   const ventas = e.api('adminVentas', { token: admin }).data;
@@ -765,6 +855,7 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   const ronda = e.api('adminRonda', { token: admin, ronda: 2 }).data;
   assert.equal(ronda.nombre, 'Ronda 2');
   assert.deepEqual(plano(ronda.lista.map((x) => [x.cedula, x.cupones])), [['70000011', 2], ['70000012', 1]]);
+  assert.equal(ronda.mejores.length, 0, 'la Ronda 2 sigue abierta');
 
   const bolsa = e.api('adminCupones', { token: admin, bolsa: 'r1' }).data;
   assert.equal(bolsa.bolsas.length, 1);

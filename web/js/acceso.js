@@ -2,8 +2,10 @@
 import { llamar, sesion } from './api.js';
 import { $, $$, h, mostrarErrores, cargando } from './dom.js';
 import { fechaLarga } from './formato.js';
+import { mostrarIntro, mostrarIntroSiFalta } from './copa.js';
 
 let alEntrar = null;
+let configAcceso = null;
 
 export function iniciarAcceso({ entrar }) {
   alEntrar = entrar;
@@ -50,6 +52,7 @@ export function iniciarAcceso({ entrar }) {
   $('#form-registro').addEventListener('submit', registrar);
   $('#form-nueva-clave').addEventListener('submit', nuevaClave);
 
+  $('#acceso-ver-copa').addEventListener('click', () => { if (configAcceso) mostrarIntro(configAcceso); });
   cargarFechas();
 }
 
@@ -77,6 +80,9 @@ async function cargarFechas() {
   const r = await llamar('config', {}, { timeout: 15000 });
   if (!r.ok) return;
   const c = r.data;
+  configAcceso = c;
+  $('#acceso-ver-copa').hidden = false;
+  if (!$('#vista-acceso').hidden) mostrarIntroSiFalta(c);
   $('#acceso-fechas').textContent = `Del ${fechaLarga(c.fecha_inicio)} al ${fechaLarga(c.fecha_fin)} · ${c.total_sorteos} sorteos y el Gran Sorteo Final el ${fechaLarga(c.fecha_sorteo_final)}`;
   llenarSucursales(c.sucursales);
 }

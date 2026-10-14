@@ -11,6 +11,7 @@ import { mostrarImpresora, mensajeMarcador, mensajeViaje } from './js/ticket.js'
 import { verCupon } from './js/cupon.js';
 import { iniciarInstalacion } from './js/instalar.js';
 import { iniciarAdmin, mostrarAdmin, salirAdmin } from './js/admin.js';
+import { mostrarIntroSiFalta } from './js/copa.js';
 import {
   pintarCabecera, pintarResumen, pintarEsqueleto, pintarErrorCarga, pintarAccion,
   pintarCupones, pintarViaje, pintarVentas, pintarRanking, pintarReglas,
@@ -100,6 +101,7 @@ async function cargarPanel({ silencioso = false } = {}) {
     pedirSucursal();
     return;
   }
+  if (!silencioso) await mostrarIntroSiFalta(datos.concurso, { monto_por_cupon: datos.resumen.monto_por_cupon, m2_austral: datos.resumen.austral.m2_por_cupon });
   revisarCuponesNuevos(vistos, vistosViaje);
 }
 
@@ -133,14 +135,14 @@ async function revisarCuponesNuevos(vistos, vistosViaje) {
     const nuevos = d.cupones_austral.slice(vistosViaje);
     await mostrarImpresora({
       variante: 'austral',
-      etiqueta: 'Tickets Austral',
-      titulo: nuevos.length === 1 ? 'Tienes un ticket Austral nuevo' : `Tienes ${nuevos.length} tickets Austral nuevos`,
+      etiqueta: 'Cupones Austral',
+      titulo: nuevos.length === 1 ? 'Tienes un cupón Austral nuevo' : `Tienes ${nuevos.length} cupones Austral nuevos`,
       tickets: nuevos.map((c) => datosTicketViaje(c, d)),
       cuponesAntes: vistosViaje,
       cuponesDespues: totalViaje,
       progresoAntes: 0,
       progresoDespues: r.austral.progreso,
-      mensaje: mensajeViaje({ nuevos: nuevos.length, falta: r.austral.falta, participa: r.austral.participa, porcentaje: r.meta.porcentaje_requerido }),
+      mensaje: mensajeViaje({ nuevos: nuevos.length, falta: r.austral.falta }),
     });
   }
   if ((hayNuevos || hayNuevosViaje) && datos === d) {
@@ -192,14 +194,14 @@ async function alRegistrar(res) {
         mensaje: mensajeMarcador({ nuevos: 0, falta: res.falta_para_proximo }),
       });
     }
-    // Segunda pasada: los tickets Austral (para el Gran Sorteo Final) salen en papel azul.
+    // Segunda pasada: los cupones Austral (para el Gran Sorteo Final) salen en papel azul.
     if (res.austral_nuevos > 0) {
-      const mensaje = mensajeViaje({ nuevos: res.austral_nuevos, falta: res.m2_falta, participa: res.meta.cumple || !d.concurso.austral_requiere_meta, porcentaje: res.meta.porcentaje_requerido });
+      const mensaje = mensajeViaje({ nuevos: res.austral_nuevos, falta: res.m2_falta });
       if (!(res.cupones_nuevos > 0)) mensaje.push(h('br'), 'Y te faltan ', h('strong', {}, dinero(res.falta_para_proximo, { compacto: true })), ' en ventas para tu próximo cupón.');
       await mostrarImpresora({
         variante: 'austral',
-        etiqueta: 'Tickets Austral',
-        titulo: res.austral_nuevos === 1 ? 'Ticket Austral nuevo' : `${res.austral_nuevos} tickets Austral nuevos`,
+        etiqueta: 'Cupones Austral',
+        titulo: res.austral_nuevos === 1 ? 'Cupón Austral nuevo' : `${res.austral_nuevos} cupones Austral nuevos`,
         tickets: res.nuevos_cupones_austral.map((c) => datosTicketViaje(c, d)),
         cuponesAntes: res.austral_antes,
         cuponesDespues: res.austral_despues,

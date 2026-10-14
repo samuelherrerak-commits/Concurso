@@ -19,6 +19,9 @@ const errores = [];
 const paso = (t) => console.log('·', t);
 const comprobar = (cond, mensaje) => { if (!cond) errores.push('fallo: ' + mensaje); };
 
+/** Para los demás contextos: las tarjetas de bienvenida ya se vieron. */
+const INTRO_VISTA = () => { try { localStorage.setItem('copa-prosein:intro-vista', 'true'); } catch { /* sin acción */ } };
+
 async function captura(page, nombre, opciones = {}) {
   await page.screenshot({ path: path.join(OUT, nombre + '.png'), ...opciones });
 }
@@ -73,9 +76,27 @@ async function continuarImpresora(page) {
   const page = await ctx.newPage();
   vigilar(page, 'móvil');
 
-  paso('Acceso');
+  paso('Tarjetas de bienvenida (primera vez)');
   await page.goto(BASE);
+  await page.waitForSelector('#dlg-intro[data-abierto]');
+  await page.waitForTimeout(500);
+  const tarjetas = await page.locator('#intro-pista .tarjeta-intro').count();
+  comprobar(tarjetas === 7, 'son 7 tarjetas: ' + tarjetas);
+  await captura(page, '00-intro-1');
+  for (let i = 2; i <= tarjetas; i++) {
+    await page.click('#intro-siguiente');
+    await page.waitForTimeout(650);
+    await captura(page, `00-intro-${i}`);
+  }
+  comprobar((await page.textContent('#intro-siguiente')).includes('Empezar'), 'la última tarjeta dice ¡Empezar!');
+  await page.click('#intro-siguiente');
+  await page.waitForSelector('#dlg-intro', { state: 'hidden' });
+  await page.reload();
   await page.waitForSelector('#vista-acceso:not([hidden])');
+  await page.waitForTimeout(600);
+  comprobar(!(await page.locator('#dlg-intro[open]').count()), 'las tarjetas salen solo la primera vez');
+
+  paso('Acceso');
   await page.waitForFunction(() => document.querySelector('#acceso-fechas').textContent.length > 0);
   await page.waitForTimeout(400);
   await captura(page, '01-acceso');
@@ -153,7 +174,7 @@ async function continuarImpresora(page) {
   await captura(page, '10-sobria');
   await continuarImpresora(page);
 
-  paso('Venta con varios cupones y un ticket Austral');
+  paso('Venta con varios cupones y un cupón Austral');
   await registrarVenta(page, { factura: 'B-2001', monto: 6100, m2: 80 });
   await enviarVenta(page);
   await page.waitForSelector('#dlg-impresora[open]');
@@ -161,12 +182,12 @@ async function continuarImpresora(page) {
   await captura(page, '11-varios-a');
   await page.waitForTimeout(2200);
   await captura(page, '11-varios-b');
-  // Al continuar, la misma impresora vuelve a abrirse con el papel azul del ticket Austral.
+  // Al continuar, la misma impresora vuelve a abrirse con el papel azul del cupón Austral.
   await page.waitForSelector('#impresora-continuar:not([disabled])');
   await page.click('#impresora-continuar');
   await page.waitForSelector('#dlg-impresora.impresora--austral[data-abierto]');
   await page.waitForTimeout(2600);
-  comprobar((await page.textContent('#impresora-etiqueta')) === 'Tickets Austral', 'contador de tickets Austral');
+  comprobar((await page.textContent('#impresora-etiqueta')) === 'Cupones Austral', 'contador de cupones Austral');
   await captura(page, '11-austral');
   await continuarImpresora(page);
   await page.waitForTimeout(500);
@@ -242,6 +263,7 @@ async function continuarImpresora(page) {
 
   paso('Escritorio');
   const escritorio = await navegador.newContext({ viewport: { width: 1366, height: 900 }, locale: 'es-VE', timezoneId: 'America/Caracas' });
+  await escritorio.addInitScript(INTRO_VISTA);
   const p2 = await escritorio.newPage();
   vigilar(p2, 'escritorio');
   await ingresar(p2, '18765432', 'clave123');
@@ -255,6 +277,7 @@ async function continuarImpresora(page) {
 
   paso('Administrador');
   const admin = await navegador.newContext({ viewport: { width: 1366, height: 900 }, locale: 'es-VE', timezoneId: 'America/Caracas', acceptDownloads: true });
+  await admin.addInitScript(INTRO_VISTA);
   const pa = await admin.newPage();
   vigilar(pa, 'admin');
   await ingresar(pa, '11111111', 'admin123');
@@ -308,6 +331,7 @@ async function continuarImpresora(page) {
 
   paso('Movimiento reducido');
   const reducido = await navegador.newContext({ ...devices['iPhone 13'], reducedMotion: 'reduce', locale: 'es-VE' });
+  await reducido.addInitScript(INTRO_VISTA);
   const p3 = await reducido.newPage();
   vigilar(p3, 'reducido');
   await ingresar(p3, '18765432', 'clave123');

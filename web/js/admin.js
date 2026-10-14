@@ -4,7 +4,7 @@
  */
 import { llamar, sesion } from './api.js';
 import { $, $$, h, icono, avisar } from './dom.js';
-import { dinero, decimal, fechaCorta, fechaHora, rango, plural, iniciales, momento, fechaConDia, enCaracas, conPunto } from './formato.js';
+import { dinero, decimal, fechaCorta, fechaHora, rango, plural, iniciales, fechaConDia, enCaracas, conPunto } from './formato.js';
 import { textoRonda, textoCorte } from './panel.js';
 
 const VISTAS = ['resumen', 'vendedores', 'ventas', 'rondas', 'sorteo'];
@@ -134,7 +134,7 @@ function chipEstado(estado) {
 
 function chipMeta(v) {
   if (!v.meta) return h('span', { class: 'texto-tenue' }, 'sin meta');
-  return h('span', { class: 'chip ' + (v.cumple ? 'chip--Aprobada' : 'chip--Pendiente') }, `${Math.floor(v.avance * 100)} %`);
+  return h('span', { class: 'chip ' + (v.avance >= 1 ? 'chip--Aprobada' : 'chip--neutro') }, `${Math.floor(v.avance * 100)} %`);
 }
 
 function opciones(lista, elegida, todos) {
@@ -192,7 +192,7 @@ function vistaResumen(d) {
   const t = d.totales;
   const c = d.concurso;
   const s = c.ronda_actual;
-  const enJuego = s.estado === 'en_curso' || s.estado === 'en_corte' || s.estado === 'proxima';
+  const enJuego = s.estado === 'en_curso' || s.estado === 'proxima';
   const ronda = h('div', { class: 'superficie admin__semana' },
     h('div', {}, h('strong', {}, textoRonda(c)), enJuego ? h('span', {}, textoCorte(c)) : null),
     h('span', { class: 'chip ' + (c.concurso_abierto ? 'chip--Aprobada' : 'chip--Rechazada') }, c.concurso_abierto ? 'Carga abierta' : 'Carga cerrada'));
@@ -202,23 +202,24 @@ function vistaResumen(d) {
     dato('Facturas', String(t.ventas), `${t.pendientes} pend. · ${t.rechazadas} rech.`),
     dato('Vendido', dinero(t.monto, { compacto: true }), c.contar_solo_aprobadas ? 'solo aprobadas' : 'sin rechazadas'),
     dato('Cupones', String(t.cupones), 'acumulados'),
-    dato(`Cumplen ${decimal(c.porcentaje_meta_final)} % de la meta`, String(t.cumplen_meta), `de ${t.vendedores_con_ventas} con ventas`),
-    dato('Tickets Gran Final', String(t.cupones_final + t.tickets_austral_final), `${t.cupones_final} por cupones + ${t.tickets_austral_final} Austral`),
-    dato('Austral', `${decimal(t.m2)} m²`, 'vendidos'),
-    dato('Tickets Austral', String(t.cupones_austral), `1 cada ${decimal(c.m2_por_cupon_austral)} m²`));
+    dato('Cupones Gran Final', String(t.cupones_final + t.tickets_austral_final + t.cupones_mejor_vendedor), `${t.cupones_final} por cupones + ${t.tickets_austral_final} Austral + ${t.cupones_mejor_vendedor} mejor vendedor`),
+    dato('Mejor vendedor', String(t.cupones_mejor_vendedor), 'cupones por ronda y canal'),
+    dato('Austral', `${decimal(t.m2)} m²/pzs`, 'vendidos'),
+    dato('Cupones Austral', String(t.cupones_austral), `1 cada ${decimal(c.m2_por_cupon_austral)} m²/pzs (según canal)`));
 
   const canales = h('section', { class: 'admin__bloque' },
     h('h3', {}, 'Tiendas y canales'),
-    h('p', { class: 'admin__nota' }, 'El valor del cupón y la meta de cada tienda y canal se cambian en la hoja Canales. Sin meta, el vendedor entra al Gran Sorteo Final con cada ', String(c.cupones_por_cupon_final), ' cupones.'),
+    h('p', { class: 'admin__nota' }, 'El valor del cupón, la meta (informativa) y los m² o piezas de Austral por cupón de cada tienda y canal se cambian en la hoja Canales.'),
     tabla(
-      [{ t: 'Tienda o canal' }, { t: 'Valor cupón', num: true }, { t: 'Meta', num: true }, { t: 'Vendedores', num: true }, { t: 'Facturas', num: true }, { t: 'Vendido', num: true }, { t: 'Cupones', num: true }, { t: `Cumplen ${decimal(c.porcentaje_meta_final)} %`, num: true }, { t: 'Cupones final', num: true }],
+      [{ t: 'Tienda o canal' }, { t: 'Valor cupón', num: true }, { t: 'Meta', num: true }, { t: 'Austral por cupón', num: true }, { t: 'Vendedores', num: true }, { t: 'Facturas', num: true }, { t: 'Vendido', num: true }, { t: 'Cupones', num: true }, { t: 'Cupones final', num: true }],
       d.canales.map((x) => h('tr', {},
         celda([h('strong', {}, x.nombre), x.canal && x.canal !== 'Tienda' ? null : h('small', {}, x.canal ? 'Tienda' : 'sin canal')]),
         celda(x.monto_por_cupon ? dinero(x.monto_por_cupon, { compacto: true }) : '—', true),
         celda(x.meta ? dinero(x.meta, { compacto: true }) : h('span', { class: 'texto-tenue' }, 'sin meta'), true),
+        celda(x.m2_por_cupon_austral ? `${decimal(x.m2_por_cupon_austral, 0)} m²/pzs` : '—', true),
         celda(String(x.vendedores), true), celda(String(x.ventas), true),
         celda(dinero(x.monto, { compacto: true }), true), celda(String(x.cupones), true),
-        celda(`${x.cumplen} de ${x.con_ventas}`, true), celda(String(x.cupones_final), true))),
+        celda(String(x.cupones_final), true))),
       { clase: 'tabla--canales' }));
 
   return [
@@ -226,7 +227,7 @@ function vistaResumen(d) {
     ronda,
     cifras,
     canales,
-    h('p', { class: 'admin__nota admin__nota--pie' }, 'Este panel es de solo lectura. Para aprobar o rechazar facturas, cambia la columna estado en la hoja Registros; las reglas se cambian en Configuracion, las fechas en Rondas y los valores y metas en Canales.'),
+    h('p', { class: 'admin__nota admin__nota--pie' }, 'Este panel es de solo lectura. Para aprobar o rechazar facturas, cambia la columna estado en la hoja Registros; las reglas se cambian en Configuracion, las fechas en Rondas y los valores, metas y m² Austral en Canales.'),
   ];
 }
 
@@ -240,8 +241,7 @@ function vistaVendedores(d, resumen) {
 
   const filtrar = () => d.vendedores.filter((v) => {
     if (f.grupo && v.grupo !== f.grupo) return false;
-    if (f.meta === 'si' && !v.cumple) return false;
-    if (f.meta === 'no' && v.cumple) return false;
+    if (f.meta === 'si' && !(v.cupones_mejor_vendedor > 0)) return false;
     if (f.q && !normal(`${v.nombre} ${v.cedula} ${v.telefono}`).includes(normal(f.q))) return false;
     return true;
   });
@@ -251,7 +251,7 @@ function vistaVendedores(d, resumen) {
     contenedor.replaceChildren(
       h('p', { class: 'admin__conteo' }, `${plural(lista.length, 'vendedor', 'vendedores')} · ${plural(lista.reduce((t, v) => t + v.cupones, 0), 'cupón', 'cupones')} · ${lista.reduce((t, v) => t + v.cupones_final, 0)} para el Gran Sorteo Final`),
       lista.length ? tabla(
-        [{ t: 'Vendedor' }, { t: 'Tienda o canal' }, { t: 'Cupones', num: true }, { t: 'En la ronda', num: true }, { t: 'Vendido', num: true }, { t: 'Meta' }, { t: 'Gran Final', num: true }, { t: 'm² Austral', num: true }, { t: 'Tickets Austral', num: true }, { t: 'Facturas', num: true }],
+        [{ t: 'Vendedor' }, { t: 'Tienda o canal' }, { t: 'Cupones', num: true }, { t: 'En la ronda', num: true }, { t: 'Vendido', num: true }, { t: 'Meta' }, { t: 'Gran Final', num: true }, { t: 'm² Austral', num: true }, { t: 'Cupones Austral', num: true }, { t: 'Facturas', num: true }],
         lista.map((v) => h('tr', {},
           celda([h('strong', {}, v.nombre), h('small', {}, `C.I. ${v.cedula}${v.telefono ? ' · ' + v.telefono : ''}`), v.estado !== 'activo' ? h('small', { class: 'texto-error' }, v.estado) : null]),
           celda([v.grupo === 'Sin canal' ? h('span', { class: 'texto-error' }, 'Sin canal') : v.grupo, h('small', {}, `cupón de ${dinero(v.monto_por_cupon, { compacto: true })}`)]),
@@ -259,17 +259,17 @@ function vistaVendedores(d, resumen) {
           celda(String(v.cupones_ronda), true),
           celda(dinero(v.total, { compacto: true }), true),
           celda([chipMeta(v), v.meta ? h('small', {}, `de ${dinero(v.meta, { compacto: true })}`) : null]),
-          celda(String(v.tickets_final), true),
-          celda(v.m2 ? `${decimal(v.m2)} m²` : '—', true),
-          celda(v.cupones_austral ? [String(v.cupones_austral), v.austral_en_final ? null : h('small', {}, 'no entran')] : '—', true),
+          celda([String(v.tickets_final), v.cupones_mejor_vendedor ? h('small', {}, `${v.cupones_mejor_vendedor} mejor vendedor`) : null], true),
+          celda(v.m2 ? `${decimal(v.m2)} m²/pzs` : '—', true),
+          celda(v.cupones_austral ? [String(v.cupones_austral), h('small', {}, `1 cada ${decimal(v.m2_por_cupon_austral, 0)}`)] : '—', true),
           celda([String(v.ventas), v.pendientes || v.rechazadas ? h('small', {}, [v.pendientes ? `${v.pendientes} pend.` : '', v.rechazadas ? `${v.rechazadas} rech.` : ''].filter(Boolean).join(' · ')) : null], true))),
         { clase: 'tabla--vendedores' })
         : h('div', { class: 'superficie vacio' }, h('strong', {}, 'Nadie coincide con el filtro'), 'Cambia la búsqueda, la tienda o la meta.'));
   };
 
   const exportar = () => descargarCsv('vendedores-copa-navidena.csv', [
-    ['Cédula', 'Nombre', 'Teléfono', 'Canal', 'Tienda o canal', 'Estado', 'Valor cupón', 'Cupones', 'Cupones ronda actual', 'Total vendido', 'Meta', '% de la meta', 'Cumple', 'Cupones Gran Final', 'Tickets Gran Final', 'm² Austral', 'Tickets Austral', 'Austral entra al final', 'Facturas', 'Pendientes', 'Rechazadas'],
-    ...filtrar().map((v) => [v.cedula, v.nombre, v.telefono, v.canal, v.grupo, v.estado, v.monto_por_cupon, v.cupones, v.cupones_ronda, v.total, v.meta || '', v.meta ? Math.round(v.avance * 1000) / 10 : '', v.cumple ? 'SI' : 'NO', v.cupones_final, v.tickets_final, v.m2, v.cupones_austral, v.austral_en_final ? 'SI' : 'NO', v.ventas, v.pendientes, v.rechazadas]),
+    ['Cédula', 'Nombre', 'Teléfono', 'Canal', 'Tienda o canal', 'Estado', 'Valor cupón', 'Cupones', 'Cupones ronda actual', 'Total vendido', 'Meta', '% de la meta', 'Cupones final (cada 10)', 'm² o piezas Austral', 'Cupones Austral', 'Cupones mejor vendedor', 'Total Gran Sorteo Final', 'Facturas', 'Pendientes', 'Rechazadas'],
+    ...filtrar().map((v) => [v.cedula, v.nombre, v.telefono, v.canal, v.grupo, v.estado, v.monto_por_cupon, v.cupones, v.cupones_ronda, v.total, v.meta || '', v.meta ? Math.round(v.avance * 1000) / 10 : '', v.cupones_final, v.m2, v.cupones_austral, v.cupones_mejor_vendedor, v.tickets_final, v.ventas, v.pendientes, v.rechazadas]),
   ]);
 
   pintar();
@@ -278,7 +278,7 @@ function vistaVendedores(d, resumen) {
     h('div', { class: 'filtros' },
       buscador('Buscar nombre, cédula o teléfono', f.q, (v) => { f.q = v; pintar(); }),
       selector('Tienda o canal', grupos, f.grupo, 'Todas las tiendas y canales', (v) => { f.grupo = v; pintar(); }),
-      selector('Meta', [['si', `Cumplen el ${decimal(c.porcentaje_meta_final)} %`], ['no', 'No cumplen todavía']], f.meta, 'Meta: todos', (v) => { f.meta = v; pintar(); })),
+      selector('Mejor vendedor', [['si', 'Ganaron mejor vendedor']], f.meta, 'Todos', (v) => { f.meta = v; pintar(); })),
     contenedor,
   ];
 }
@@ -313,7 +313,7 @@ function vistaVentas(d) {
           celda([v.vendedor, h('small', {}, `C.I. ${v.cedula} · ${v.grupo}`)]),
           celda(nombreRonda(v.ronda)),
           celda(dinero(v.monto), true),
-          celda(v.vendio_austral ? `${decimal(v.m2_austral)} m²` : '—', true),
+          celda(v.vendio_austral ? `${decimal(v.m2_austral)} m²/pzs` : '—', true),
           celda(chipEstado(v.estado)),
           celda(v.tiene_foto ? h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: () => verFotoCb && verFotoCb(v) }, 'Foto') : null, true))),
         { clase: 'tabla--ventas' })
@@ -345,9 +345,9 @@ function vistaVentas(d) {
 
 const ESTADO_RONDA = { cerrada: ['Cerrada', 'chip--Aprobada'], en_juego: ['En juego', 'chip--Pendiente'], pendiente: ['Por empezar', 'chip--neutro'] };
 
-function horaCorta(ms) {
-  const c = enCaracas(ms);
-  return `${fechaCorta(c.iso).slice(0, 5)} ${c.hora}`;
+/** El cierre es las 12:00 a. m. del día siguiente al último: se muestra el último día. */
+function diaCierre(ms) {
+  return fechaConDia(enCaracas(ms - 60000).iso);
 }
 
 function vistaRondas(resumen) {
@@ -376,7 +376,7 @@ function vistaRondas(resumen) {
     return h('tr', { dataset: { ronda: String(p.numero) }, 'data-elegida': p.numero === rondaElegida },
       celda(h('strong', {}, p.nombre)),
       celda(rango(p.inicio, p.fin)),
-      celda(horaCorta(p.corte)),
+      celda(fechaConDia(p.fin)),
       celda(p.con_sorteo ? fechaConDia(p.sorteo) : h('span', { class: 'texto-tenue' }, 'sin sorteo')),
       celda(h('span', { class: 'chip ' + clase }, texto)),
       celda(String(p.participantes), true),
@@ -387,8 +387,8 @@ function vistaRondas(resumen) {
   setTimeout(() => elegir(rondaElegida), 0);
   return [
     cabeza('Rondas'),
-    h('p', { class: 'admin__nota' }, 'Las fechas salen de la hoja Rondas. A cada sorteo entran los cupones completados en su ronda; lo que sobra en $ pasa a la siguiente. La Ñapa no tiene sorteo.'),
-    tabla([{ t: 'Ronda' }, { t: 'Ventas del' }, { t: 'Corte' }, { t: 'Sorteo' }, { t: 'Estado' }, { t: 'Vendedores', num: true }, { t: 'Cupones', num: true }, { t: '' }], filas, { clase: 'tabla--semanas' }),
+    h('p', { class: 'admin__nota' }, 'Las fechas salen de la hoja Rondas. Cada ronda cierra al terminar su último día: lo que se registra después cuenta para la siguiente. A cada sorteo entran los cupones completados en su ronda; lo que sobra en $ pasa a la siguiente. La Ñapa no tiene sorteo.'),
+    tabla([{ t: 'Ronda' }, { t: 'Registros del' }, { t: 'Cierra' }, { t: 'Sorteo' }, { t: 'Estado' }, { t: 'Vendedores', num: true }, { t: 'Cupones', num: true }, { t: '' }], filas, { clase: 'tabla--semanas' }),
     detalle,
   ];
 }
@@ -404,9 +404,14 @@ function detalleRonda(d) {
       h('h3', {}, `${d.nombre} · ${rango(d.inicio, d.fin)}`),
       h('div', { class: 'admin__acciones' }, d.lista.length ? botonCsv(exportar) : null)),
     h('p', { class: 'admin__nota' }, [
-      d.cerrada ? conPunto(`Cerró el ${momento(d.corte)}`) : `Provisional hasta el corte (${momento(d.corte)}).`,
+      d.cerrada ? conPunto(`Cerró el ${fechaConDia(d.fin)}`) : conPunto(`Provisional: cierra al terminar el ${fechaConDia(d.fin)}`),
       d.con_sorteo ? ` ${plural(cupones, 'cupón', 'cupones')} de ${plural(d.lista.length, 'vendedor', 'vendedores')} para el sorteo del ${conPunto(fechaConDia(d.sorteo))}` : ' Sin sorteo: estos cupones suman para el Gran Sorteo Final.',
     ].join('')),
+    d.con_sorteo ? h('div', { class: 'superficie admin__mejores' },
+      h('strong', {}, 'Mejor vendedor por canal (1 cupón para el Gran Sorteo Final)'),
+      d.mejores.length
+        ? h('ul', {}, d.mejores.map((m) => h('li', {}, h('span', {}, m.canal), h('strong', {}, m.nombre), h('span', {}, dinero(m.monto, { compacto: true })))))
+        : h('p', { class: 'texto-tenue' }, d.cerrada ? 'Nadie vendió en esta ronda.' : 'Se define cuando cierre la ronda.')) : null,
     d.lista.length
       ? tabla([{ t: '#' }, { t: 'Vendedor' }, { t: 'Tienda o canal' }, { t: 'Cupones', num: true }, { t: 'Vendido', num: true }],
         d.lista.map((x) => h('tr', {},
@@ -428,7 +433,7 @@ function vistaSorteo(resumen) {
   const total = resumen.bolsas.reduce((t, b) => t + b.cupones, 0);
   const enlace = (bolsa, texto, clase) => h('a', { class: 'btn ' + clase, href: `cupones.html?bolsa=${bolsa}`, target: '_blank', rel: 'noopener' }, icono('imprimir'), texto);
   const sub = (b) => {
-    if (b.tipo === 'final') return `1 cupón cada ${c.cupones_por_cupon_final} con el ${decimal(c.porcentaje_meta_final)} % de la meta, más los tickets Austral`;
+    if (b.tipo === 'final') return `1 cupón cada ${c.cupones_por_cupon_final}, los cupones Austral y los de mejor vendedor`;
     return 'cupones completados en la ronda';
   };
 
@@ -440,14 +445,14 @@ function vistaSorteo(resumen) {
         h('span', {}, b.fecha ? fechaConDia(b.fecha) : '')),
       h('p', { class: 'urna__cifra' }, h('strong', {}, String(b.cupones)), b.cupones === 1 ? ' cupón' : ' cupones'),
       h('p', { class: 'urna__sub' }, `${plural(b.vendedores, 'vendedor', 'vendedores')} · ${sub(b)}`),
-      b.corte > ahora ? h('p', { class: 'urna__sub urna__provisional' }, `Provisional · corte ${horaCorta(b.corte)}`) : null,
+      b.corte > ahora ? h('p', { class: 'urna__sub urna__provisional' }, `Provisional · cierra al terminar el ${diaCierre(b.corte)}`) : null,
       b.cupones ? enlace(b.id, 'Imprimir cupones', 'btn--secundario btn--chico') : h('p', { class: 'urna__sub' }, 'Sin cupones todavía.')))),
     h('section', { class: 'admin__bloque' },
       h('h3', {}, 'Cómo armar cada bolsa'),
       h('ol', { class: 'admin__pasos superficie' },
-        h('li', {}, `Imprime después del corte de cada ronda, en papel carta y a escala 100 % (${plural(total, 'cupón', 'cupones')} hoy, 24 por hoja). Cada sorteo empieza en una hoja nueva.`),
+        h('li', {}, `Imprime después del cierre de cada ronda, en papel carta y a escala 100 % (${plural(total, 'cupón', 'cupones')} hoy, 24 por hoja). Cada sorteo empieza en una hoja nueva.`),
         h('li', {}, 'Recorta por las líneas punteadas, dobla cada cupón y ponlo en la bolsa de su sorteo.'),
-        h('li', {}, 'Los cupones del Gran Sorteo Final llevan una banda roja; los tickets Austral van en la misma bolsa con una banda negra.'),
+        h('li', {}, 'Los cupones del Gran Sorteo Final llevan una banda roja; los cupones Austral van en la misma bolsa con una banda negra, y los de mejor vendedor con una banda dorada.'),
         h('li', {}, 'Al sacar un cupón, verifica su código (por ejemplo R1-0007) en la hoja Ranking → “Cupones para sorteo”, o en Vendedores.'))),
   ];
 }
