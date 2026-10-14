@@ -297,6 +297,8 @@
       </div>
       <div class="hoja__cuerpo">
         <div class="aviso" role="alert" data-aviso></div>
+        <div id="v-campos">
+        <p class="aviso-valida"><svg class="icono" aria-hidden="true"><use href="#i-alerta"/></svg>Valida bien los datos de la venta: deben coincidir con la factura.</p>
         <div class="fila-2">
           <div class="campo">
             <label class="etiqueta" for="v-dia">Día de la venta</label>
@@ -357,8 +359,21 @@
             </div>
           </div>
         </div>
+        </div>
+        <section class="revision" id="v-revision" hidden aria-labelledby="v-revision-titulo" tabindex="-1">
+          <div class="revision__aviso">
+            <svg class="icono" aria-hidden="true"><use href="#i-alerta"/></svg>
+            <div>
+              <h3 id="v-revision-titulo">Valida bien los datos de la venta</h3>
+              <p>Compáralos con la factura. Una vez registrada, la venta no se puede cambiar.</p>
+            </div>
+          </div>
+          <dl class="revision__lista" id="v-revision-lista"></dl>
+          <div class="revision__foto" id="v-revision-foto"></div>
+        </section>
       </div>
       <div class="hoja__pie">
+        <button class="btn btn--secundario btn--grande btn--bloque" type="button" id="v-corregir" hidden>Corregir datos</button>
         <button class="btn btn--primario btn--grande btn--bloque" type="submit" id="v-enviar"><span class="girador" aria-hidden="true"></span><span data-texto>Registrar venta</span></button>
       </div>
     </form>

@@ -44,6 +44,14 @@ async function registrarVenta(page, { factura, monto, m2, foto = true }) {
   }
 }
 
+/** Envía el formulario de venta y confirma en el paso "Valida bien los datos de la venta". */
+async function enviarVenta(page, capturaRevision) {
+  await page.click('#v-enviar');
+  await page.waitForSelector('#v-revision:not([hidden])');
+  if (capturaRevision) await captura(page, capturaRevision);
+  await page.click('#v-enviar');
+}
+
 async function ingresar(page, cedula, clave) {
   await page.goto(BASE);
   await page.waitForSelector('#vista-acceso:not([hidden])');
@@ -115,7 +123,7 @@ async function continuarImpresora(page) {
   await registrarVenta(page, { factura: '000123', monto: '2.300,50', m2: 42.5 });
   await page.waitForTimeout(150);
   await captura(page, '06-form-listo');
-  await page.click('#v-enviar');
+  await enviarVenta(page, '06b-revision');
   await page.waitForSelector('#dlg-impresora[open]');
   let transcurrido = 0;
   for (const ms of [250, 850, 1700, 2600]) {
@@ -128,7 +136,7 @@ async function continuarImpresora(page) {
 
   paso('Factura duplicada');
   await registrarVenta(page, { factura: '123', monto: 500 });
-  await page.click('#v-enviar');
+  await enviarVenta(page);
   await page.waitForSelector('[data-error="numero_factura"]:not(:empty)');
   await captura(page, '09-duplicada');
   await page.click('#dlg-venta [data-cerrar]');
@@ -139,7 +147,7 @@ async function continuarImpresora(page) {
   await page.waitForSelector('#dlg-venta[data-abierto]');
   await page.fill('#v-factura', 'A-77');
   await page.fill('#v-monto', '150');
-  await page.click('#v-enviar');
+  await enviarVenta(page);
   await page.waitForSelector('#dlg-impresora[open]');
   await page.waitForTimeout(1300);
   await captura(page, '10-sobria');
@@ -147,7 +155,7 @@ async function continuarImpresora(page) {
 
   paso('Venta con varios cupones y un ticket Austral');
   await registrarVenta(page, { factura: 'B-2001', monto: 6100, m2: 80 });
-  await page.click('#v-enviar');
+  await enviarVenta(page);
   await page.waitForSelector('#dlg-impresora[open]');
   await page.waitForTimeout(900);
   await captura(page, '11-varios-a');
@@ -305,7 +313,7 @@ async function continuarImpresora(page) {
   await ingresar(p3, '18765432', 'clave123');
   await p3.waitForSelector('#resumen[aria-busy=false]');
   await registrarVenta(p3, { factura: 'RM-1', monto: 1500 });
-  await p3.click('#v-enviar');
+  await enviarVenta(p3);
   await p3.waitForSelector('#dlg-impresora[open]');
   await p3.waitForTimeout(450);
   await p3.screenshot({ path: path.join(OUT, '19-reducido.png') });

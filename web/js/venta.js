@@ -2,7 +2,7 @@
 import { CONFIG } from '../config.js';
 import { llamar } from './api.js';
 import { $, $$, prepararDialogo, mostrarErrores, cargando, avisar } from './dom.js';
-import { dinero, parsearDecimal, pesoArchivo, plural, fechaCorta } from './formato.js';
+import { dinero, parsearDecimal, pesoArchivo, plural, fechaCorta, fechaConDia, decimal } from './formato.js';
 import { comprimirImagen } from './imagen.js';
 
 let contexto = null;
@@ -12,6 +12,8 @@ let dialogo = null;
 let alRegistrarCb = null;
 let alNecesitarSucursalCb = null;
 let limpio = true;
+/** Paso de revisión: los datos se muestran para validarlos antes de enviar. */
+let revisando = false;
 
 export function iniciarVenta({ alRegistrar, alNecesitarSucursal }) {
   alRegistrarCb = alRegistrar;
@@ -43,6 +45,7 @@ export function iniciarVenta({ alRegistrar, alNecesitarSucursal }) {
   $$('[data-foto]', form).forEach((input) => input.addEventListener('change', () => elegirFoto(input)));
   form.addEventListener('input', () => { limpio = false; });
   form.addEventListener('submit', enviar);
+  $('#v-corregir').addEventListener('click', () => mostrarRevision(false));
 }
 
 export function abrirVenta(datos) {
@@ -55,6 +58,7 @@ export function abrirVenta(datos) {
   dia.max = c.dia_max_carga;
   if (limpio || !dia.value || dia.value < dia.min || dia.value > dia.max) dia.value = c.dia_max_carga;
   mostrarErrores(form, {});
+  mostrarRevision(false);
   actualizarAyudaMonto();
   dialogo.abrir();
 }
@@ -69,7 +73,40 @@ function reiniciar() {
   $('#v-austral-bloque').removeAttribute('data-abierto');
   form.elements.m2_austral.disabled = true;
   limpio = true;
+  mostrarRevision(false);
   mostrarErrores(form, {});
+}
+
+/** Muestra (o esconde) el resumen de la venta para validarlo antes de registrarla. */
+function mostrarRevision(activa, valores) {
+  revisando = activa;
+  $('#v-campos').hidden = activa;
+  $('#v-revision').hidden = !activa;
+  $('#v-corregir').hidden = !activa;
+  $('#v-enviar').querySelector('[data-texto]').textContent = activa ? 'Sí, los datos están bien' : 'Registrar venta';
+  if (!activa) return;
+  const dato = (titulo, valor) => {
+    const fila = document.createElement('div');
+    const dt = document.createElement('dt');
+    const dd = document.createElement('dd');
+    dt.textContent = titulo;
+    dd.textContent = valor;
+    fila.append(dt, dd);
+    return fila;
+  };
+  $('#v-revision-lista').replaceChildren(
+    dato('Día de la venta', fechaConDia(valores.dia_venta)),
+    dato('N° de factura', valores.numero_factura),
+    dato('Monto', dinero(valores.monto)),
+    dato('Austral', valores.vendio_austral ? `${decimal(valores.m2_austral)} m²` : 'No'),
+  );
+  const img = new Image();
+  img.alt = 'Foto de la factura';
+  img.src = foto.dataUrl;
+  $('#v-revision-foto').replaceChildren(img);
+  const caja = $('#v-revision');
+  caja.focus({ preventScroll: true });
+  caja.scrollIntoView({ block: 'start' });
 }
 
 function limpiarError(form, campo) {
@@ -160,6 +197,11 @@ async function enviar(ev) {
     return;
   }
   mostrarErrores(form, {});
+  // Doble chequeo: primero se muestran los datos para validarlos con la factura.
+  if (!revisando) {
+    mostrarRevision(true, valores);
+    return;
+  }
   enviando = true;
   const boton = $('#v-enviar');
   cargando(boton, true, 'Subiendo foto…');
@@ -167,7 +209,7 @@ async function enviar(ev) {
   const r = await llamar('addSale', { ...valores, foto: foto.dataUrl }, { timeout: 90000 });
   clearTimeout(lento);
   enviando = false;
-  cargando(boton, false, 'Registrar venta');
+  cargando(boton, false, revisando ? 'Sí, los datos están bien' : 'Registrar venta');
 
   if (!r.ok) {
     if (r.code === 'AUTH') { dialogo.cerrar(); return; }
@@ -177,6 +219,7 @@ async function enviar(ev) {
       alNecesitarSucursalCb();
       return;
     }
+    if (r.campo) mostrarRevision(false);
     if (r.campo) mostrarErrores(form, { [r.campo]: r.message });
     else mostrarErrores(form, {}, r.message);
     if (r.code === 'NETWORK' || r.code === 'TIMEOUT') avisar('Tu venta no se envió. Tus datos siguen aquí: intenta de nuevo.', { tipo: 'error' });
