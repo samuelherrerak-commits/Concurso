@@ -1,0 +1,14 @@
+# Netlify: publica la carpeta web tal cual (no hay que compilar nada).
+[build]
+  publish = "web"
+  command = ""
+
+# El service worker y el manifiesto no se guardan en caché, así los teléfonos reciben los cambios.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
