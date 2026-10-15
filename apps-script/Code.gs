@@ -56,6 +56,7 @@ const COLUMNAS_USUARIOS = [
 const COLUMNAS_REGISTROS = [
   'id', 'fecha_carga', 'cedula', 'nombre', 'dia_venta', 'numero_factura',
   'monto', 'vendio_austral', 'm2_austral', 'url_foto', 'estado', 'nota_admin',
+  'monto_factura', 'monto_excluido',
 ];
 
 const COLUMNAS_RONDAS = ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'];
@@ -113,7 +114,7 @@ function configuracionPorDefecto_() {
     ['nombre_sorteo', 'Copa Navideña', 'Nombre de los sorteos.'],
     ['fecha_sorteo_final', fechaDesdeISO_('2026-12-21'), 'Fecha del Gran Sorteo Final.'],
     ['monto_por_cupon', 1500, 'Valor del cupón para quien no tenga valor en la hoja Canales (respaldo).'],
-    ['cupones_por_cupon_final', 10, 'Cada N cupones acumulados en toda la campaña = 1 cupón para el Gran Sorteo Final.'],
+    ['cupones_por_cupon_final', 8, 'Cada N cupones acumulados en toda la campaña = 1 cupón para el Gran Sorteo Final.'],
     ['m2_por_cupon_austral', 80, 'm² o piezas de Austral que dan 1 cupón adicional para el Gran Sorteo Final, si la hoja Canales no trae otro valor para la tienda o el canal.'],
     ['moneda', 'USD', 'Moneda de los montos.'],
     ['concurso_abierto', 'SI', 'SI = los vendedores pueden cargar ventas.'],
@@ -473,7 +474,12 @@ function apiAgregarVenta_(req) {
 
   const diaVenta = validarDiaVenta_(req.dia_venta, cfg);
   const factura = validarFactura_(req.numero_factura);
-  const montoCentavos = validarMonto_(req.monto, cfg);
+  // El monto de la factura es sin IVA. Lo vendido en pavimento o revestimiento importado de
+  // proveedores nacionales no participa: se resta y cuenta solo el resto.
+  const montoFacturaCentavos = validarMonto_(req.monto, cfg);
+  const excluye = req.vendio_excluido === true || req.vendio_excluido === 'SI';
+  const montoExcluidoCentavos = excluye ? validarMontoExcluido_(req.monto_excluido, montoFacturaCentavos) : 0;
+  const montoCentavos = montoFacturaCentavos - montoExcluidoCentavos;
   const vendioAustral = req.vendio_austral === true || req.vendio_austral === 'SI';
   const m2Centesimas = vendioAustral ? validarM2_(req.m2_austral) : 0;
   const foto = validarFoto_(req.foto);
@@ -502,6 +508,8 @@ function apiAgregarVenta_(req) {
         factura: factura.texto,
         facturaNorm: factura.normalizada,
         montoCentavos: montoCentavos,
+        montoFacturaCentavos: montoExcluidoCentavos ? montoFacturaCentavos : undefined,
+        montoExcluidoCentavos: montoExcluidoCentavos || undefined,
         austral: vendioAustral,
         m2Centesimas: m2Centesimas,
         urlFoto: archivo.getUrl(),
@@ -1355,7 +1363,7 @@ function leerConfig_() {
     nombre_sorteo: nombreVigente_(texto('nombre_sorteo', ''), 'Copa Navideña'),
     fecha_sorteo_final: aISO_(crudo.fecha_sorteo_final) || '2026-12-21',
     monto_por_cupon: numeroO_(crudo.monto_por_cupon, 1500),
-    cupones_por_cupon_final: Math.max(1, Math.floor(numeroO_(crudo.cupones_por_cupon_final, 10))),
+    cupones_por_cupon_final: Math.max(1, Math.floor(numeroO_(crudo.cupones_por_cupon_final, 8))),
     m2_por_cupon_austral: numeroO_(crudo.m2_por_cupon_austral, 80),
     moneda: texto('moneda', '') || 'USD',
     concurso_abierto: esSi_(crudo.concurso_abierto),
@@ -1584,6 +1592,8 @@ function leerRegistros_(opciones) {
         : estadoTexto.indexOf('rechaz') === 0 ? ESTADO.RECHAZADA : ESTADO.PENDIENTE;
       const factura = String(f.numero_factura || '').trim();
       const monto = parsearNumero_(f.monto);
+      const montoFactura = parsearNumero_(f.monto_factura);
+      const montoExcluido = parsearNumero_(f.monto_excluido);
       const m2 = parsearNumero_(f.m2_austral);
       return {
         fila: f._fila,
@@ -1595,6 +1605,9 @@ function leerRegistros_(opciones) {
         factura: factura,
         facturaNorm: normalizarFactura_(factura),
         montoCentavos: isNaN(monto) ? 0 : Math.round(monto * 100),
+        // Solo si hubo monto excluido (así el caché no crece con datos repetidos).
+        montoFacturaCentavos: montoExcluido > 0 && !isNaN(montoFactura) ? Math.round(montoFactura * 100) : undefined,
+        montoExcluidoCentavos: montoExcluido > 0 ? Math.round(montoExcluido * 100) : undefined,
         austral: esSi_(f.vendio_austral),
         m2Centesimas: isNaN(m2) ? 0 : Math.round(m2 * 100),
         urlFoto: String(f.url_foto || '').trim(),
@@ -1614,6 +1627,8 @@ function filaRegistro_(r) {
     dia_venta: fechaDesdeISO_(r.diaVenta),
     numero_factura: r.factura,
     monto: r.montoCentavos / 100,
+    monto_factura: (r.montoFacturaCentavos || r.montoCentavos) / 100,
+    monto_excluido: (r.montoExcluidoCentavos || 0) / 100,
     vendio_austral: r.austral ? 'SI' : 'NO',
     m2_austral: r.m2Centesimas / 100,
     url_foto: r.urlFoto,
@@ -1768,6 +1783,15 @@ function validarMonto_(valor, cfg) {
     throw errorCampo_('monto', 'El monto supera el máximo por factura (' + cfg.monto_maximo_venta + ' ' + cfg.moneda + '). Revisa la cifra.');
   }
   return Math.round(n * 100);
+}
+
+/** Monto de pavimento o revestimiento importado de proveedores nacionales (no participa). */
+function validarMontoExcluido_(valor, montoFacturaCentavos) {
+  const n = typeof valor === 'number' ? valor : parsearNumero_(valor);
+  if (!isFinite(n) || n <= 0) throw errorCampo_('monto_excluido', 'Escribe el monto en dólares de pavimento o revestimiento importado de proveedor nacional.');
+  const c = Math.round(n * 100);
+  if (c > montoFacturaCentavos) throw errorCampo_('monto_excluido', 'No puede ser mayor que el monto de la factura.');
+  return c;
 }
 
 function validarM2_(valor) {
@@ -2063,6 +2087,8 @@ function registroPublico_(r) {
     dia_venta: r.diaVenta,
     numero_factura: r.factura,
     monto: centavosADolares_(r.montoCentavos),
+    monto_factura: centavosADolares_(r.montoFacturaCentavos || r.montoCentavos),
+    monto_excluido: centavosADolares_(r.montoExcluidoCentavos || 0),
     vendio_austral: r.austral,
     m2_austral: r.m2Centesimas / 100,
     estado: r.estado,
@@ -2137,6 +2163,10 @@ function setup() {
     if (!actual) shCfg.appendRow(fila);
     else if (String(actual.descripcion || '') !== fila[2]) shCfg.getRange(actual._fila, 3).setValue(fila[2]);
   });
+  // El cupón final pasó de 10 a 8 cupones.
+  if (vigentes.cupones_por_cupon_final && Number(vigentes.cupones_por_cupon_final.valor) === 10) {
+    shCfg.getRange(vigentes.cupones_por_cupon_final._fila, 2).setValue(8);
+  }
   // El cupón Austral pasó de 100 a 80 m² o piezas.
   if (vigentes.m2_por_cupon_austral && Number(vigentes.m2_por_cupon_austral.valor) === 100) {
     shCfg.getRange(vigentes.m2_por_cupon_austral._fila, 2).setValue(80);
@@ -2209,7 +2239,7 @@ function setup() {
   formatoColumnas_(shR, COLUMNAS_REGISTROS, {
     id: '@', cedula: '@', numero_factura: '@',
     fecha_carga: 'dd/mm/yyyy hh:mm', dia_venta: 'dd/mm/yyyy',
-    monto: '#,##0.00', m2_austral: '#,##0.00',
+    monto: '#,##0.00', m2_austral: '#,##0.00', monto_factura: '#,##0.00', monto_excluido: '#,##0.00',
   });
   validacionColumna_(shR, COLUMNAS_REGISTROS, 'estado', [ESTADO.PENDIENTE, ESTADO.APROBADA, ESTADO.RECHAZADA]);
   validacionColumna_(shR, COLUMNAS_REGISTROS, 'vendio_austral', ['SI', 'NO']);

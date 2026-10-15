@@ -280,7 +280,7 @@ input[type='date'].entrada::-webkit-date-and-time-value { text-align: left; }
 .revision__lista { margin-top: var(--s4); border-top: 1px solid var(--linea-suave); }
 .revision__lista > div { display: flex; justify-content: space-between; gap: var(--s4); padding: var(--s3) 0; border-bottom: 1px solid var(--linea-suave); }
 .revision__lista dt { font-size: 14px; color: var(--tinta-2); }
-.revision__lista dd { font-size: 16px; font-weight: 700; color: var(--carbon); text-align: right; overflow-wrap: anywhere; }
+.revision__lista dd { font-size: 16px; font-weight: 700; color: var(--carbon); text-align: right; white-space: nowrap; }
 .revision__foto { margin-top: var(--s4); }
 .revision__foto img { display: block; width: 100%; max-height: 260px; object-fit: contain; border-radius: var(--radio-sm); background: #F2F2F2; }
 .hoja__pie { display: grid; gap: var(--s2); }
@@ -715,6 +715,7 @@ button.mini:active { transform: scale(0.96); }
 .venta__monto { font-weight: 600; color: var(--carbon); text-align: right; white-space: nowrap; }
 .venta__chips { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .venta__accion { grid-column: 2; align-self: end; justify-self: end; }
+.venta__excluido { display: block; font-size: 12px; color: var(--tinta-2); }
 .venta__nota { grid-column: 1 / -1; font-size: 13px; color: var(--error); }
 
 .chip {
@@ -808,6 +809,7 @@ button.mini:active { transform: scale(0.96); }
 .reglas__bloque p { line-height: 1.5; }
 .reglas__kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rojo); }
 .reglas__titulo { font-size: 17px; font-weight: 700; line-height: 1.25; color: var(--carbon); }
+.reglas__titulo--copa { font-size: 19px; }
 .reglas__ronda, .reglas__condicion { line-height: 1.5; white-space: pre-wrap; }
 .reglas__condicion strong { color: var(--rojo); }
 

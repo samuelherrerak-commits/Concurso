@@ -312,7 +312,7 @@ function vistaVentas(d) {
           celda([h('strong', {}, v.numero_factura), v.nota_admin ? h('small', { class: 'texto-error' }, v.nota_admin) : null]),
           celda([v.vendedor, h('small', {}, `C.I. ${v.cedula} · ${v.grupo}`)]),
           celda(nombreRonda(v.ronda)),
-          celda(dinero(v.monto), true),
+          celda([dinero(v.monto), v.monto_excluido > 0 ? h('small', {}, `factura ${dinero(v.monto_factura, { compacto: true })} − ${dinero(v.monto_excluido, { compacto: true })} excluido`) : null], true),
           celda(v.vendio_austral ? `${decimal(v.m2_austral)} m²/pzs` : '—', true),
           celda(chipEstado(v.estado)),
           celda(v.tiene_foto ? h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: () => verFotoCb && verFotoCb(v) }, 'Foto') : null, true))),
@@ -325,8 +325,8 @@ function vistaVentas(d) {
 
   const cambiar = (clave) => (v) => { f[clave] = v; f.limite = POR_PAGINA; pintar(); };
   const exportar = () => descargarCsv('ventas-copa-navidena.csv', [
-    ['ID', 'Día de venta', 'Cargada', 'Factura', 'Cédula', 'Vendedor', 'Tienda o canal', 'Ronda', 'Monto', 'Austral', 'm² Austral', 'Estado', 'Cuenta', 'Nota'],
-    ...filtrar().map((v) => [v.id, fechaCorta(v.dia_venta), fechaHora(v.fecha_carga), v.numero_factura, v.cedula, v.vendedor, v.grupo, nombreRonda(v.ronda), v.monto, v.vendio_austral ? 'SI' : 'NO', v.m2_austral, v.estado, v.cuenta ? 'SI' : 'NO', v.nota_admin || '']),
+    ['ID', 'Día de venta', 'Cargada', 'Factura', 'Cédula', 'Vendedor', 'Tienda o canal', 'Ronda', 'Monto factura (sin IVA)', 'Excluido (pavimento/revestimiento)', 'Monto que cuenta', 'Austral', 'm² Austral', 'Estado', 'Cuenta', 'Nota'],
+    ...filtrar().map((v) => [v.id, fechaCorta(v.dia_venta), fechaHora(v.fecha_carga), v.numero_factura, v.cedula, v.vendedor, v.grupo, nombreRonda(v.ronda), v.monto_factura, v.monto_excluido, v.monto, v.vendio_austral ? 'SI' : 'NO', v.m2_austral, v.estado, v.cuenta ? 'SI' : 'NO', v.nota_admin || '']),
   ]);
 
   pintar();

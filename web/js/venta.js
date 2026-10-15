@@ -31,6 +31,20 @@ export function iniciarVenta({ alRegistrar, alNecesitarSucursal }) {
     t.setSelectionRange(pos, pos);
   });
 
+  // Pavimento o revestimiento importado de proveedor nacional: no participa, se resta.
+  const excluido = $('#v-excluido');
+  excluido.addEventListener('change', () => {
+    const abierto = excluido.checked;
+    $('#v-excluido-bloque').toggleAttribute('data-abierto', abierto);
+    const campo = form.elements.monto_excluido;
+    campo.disabled = !abierto;
+    campo.required = abierto;
+    if (abierto) setTimeout(() => campo.focus({ preventScroll: true }), 120);
+    else limpiarError(form, 'monto_excluido');
+    actualizarAyudaMonto();
+  });
+  form.elements.monto_excluido.addEventListener('input', actualizarAyudaMonto);
+
   const austral = $('#v-austral');
   austral.addEventListener('change', () => {
     const abierto = austral.checked;
@@ -72,6 +86,8 @@ function reiniciar() {
   $('#v-foto-miniatura').replaceChildren();
   $('#v-austral-bloque').removeAttribute('data-abierto');
   form.elements.m2_austral.disabled = true;
+  $('#v-excluido-bloque').removeAttribute('data-abierto');
+  form.elements.monto_excluido.disabled = true;
   limpio = true;
   mostrarRevision(false);
   mostrarErrores(form, {});
@@ -97,7 +113,11 @@ function mostrarRevision(activa, valores) {
   $('#v-revision-lista').replaceChildren(
     dato('Día de la venta', fechaConDia(valores.dia_venta)),
     dato('N° de factura', valores.numero_factura),
-    dato('Monto', dinero(valores.monto)),
+    dato('Monto de la factura (sin IVA)', dinero(valores.monto)),
+    ...(valores.vendio_excluido ? [
+      dato('Revestimiento o pavimento importado (no participa)', `− ${dinero(valores.monto_excluido)}`),
+      dato('Monto que cuenta para la Copa', dinero(valores.monto - valores.monto_excluido)),
+    ] : [dato('Revestimiento o pavimento importado', 'No')]),
     dato('Austral', valores.vendio_austral ? `${decimal(valores.m2_austral)} m²/pzs` : 'No'),
   );
   const img = new Image();
@@ -116,15 +136,23 @@ function limpiarError(form, campo) {
   if (control) control.removeAttribute('aria-invalid');
 }
 
+/** Lo que cuenta para la Copa: la factura sin IVA menos el pavimento o revestimiento excluido. */
+function montoQueCuenta(form) {
+  const monto = parsearDecimal(form.elements.monto.value);
+  const excluido = $('#v-excluido').checked ? parsearDecimal(form.elements.monto_excluido.value) : 0;
+  return { monto, excluido: excluido > 0 ? excluido : 0, cuenta: monto - (excluido > 0 ? excluido : 0) };
+}
+
 function actualizarAyudaMonto() {
   const ayuda = $('#v-monto-ayuda');
-  const monto = parsearDecimal($('#form-venta').elements.monto.value);
-  if (!contexto || !(monto > 0)) { ayuda.textContent = ''; return; }
+  const { monto: total, excluido, cuenta: monto } = montoQueCuenta($('#form-venta'));
+  if (!contexto || !(total > 0)) { ayuda.textContent = ''; return; }
+  if (!(monto > 0)) { ayuda.textContent = excluido > total ? 'El monto excluido no puede ser mayor que la factura.' : 'Con lo excluido, esta factura no suma para cupones.'; return; }
   const M = contexto.resumen.monto_por_cupon;
   const sobrante = contexto.resumen.sobrante;
   const completa = Math.floor((sobrante + monto) / M);
   const falta = M - ((sobrante + monto) % M);
-  ayuda.replaceChildren(`${dinero(monto)} · `);
+  ayuda.replaceChildren(excluido > 0 ? `Cuentan ${dinero(monto)} (sin el revestimiento o pavimento) · ` : `${dinero(monto)} · `);
   if (contexto.concurso.contar_solo_aprobadas) {
     ayuda.append(completa > 0 ? `completará ${plural(completa, 'cupón', 'cupones')} cuando aprueben la factura` : `quedarás a ${dinero(falta, { compacto: true })} de tu próximo cupón`);
   } else if (completa > 0) {
@@ -175,7 +203,12 @@ function validar(form) {
   else if (!/^[A-Za-z0-9][A-Za-z0-9 .\/-]{0,29}$/.test(factura)) e.numero_factura = 'Usa solo letras, números y guiones.';
 
   const monto = parsearDecimal(form.elements.monto.value);
-  if (!(monto > 0)) e.monto = 'Escribe el monto de la venta.';
+  if (!(monto > 0)) e.monto = 'Escribe el monto total de la factura (sin IVA).';
+
+  const excluye = $('#v-excluido').checked;
+  const excluido = parsearDecimal(form.elements.monto_excluido.value);
+  if (excluye && !(excluido > 0)) e.monto_excluido = 'Escribe el monto en dólares del revestimiento o pavimento.';
+  else if (excluye && monto > 0 && excluido > monto) e.monto_excluido = 'No puede ser mayor que el monto de la factura.';
 
   if (!foto) e.foto = 'Agrega la foto de la factura.';
 
@@ -183,7 +216,14 @@ function validar(form) {
   const m2 = parsearDecimal(form.elements.m2_austral.value);
   if (austral && !(m2 > 0)) e.m2_austral = 'Escribe cuántos m² o piezas de Austral vendiste.';
 
-  return { errores: e, valores: { dia_venta: dia, numero_factura: factura.toUpperCase(), monto, vendio_austral: austral, m2_austral: austral ? m2 : 0 } };
+  return {
+    errores: e,
+    valores: {
+      dia_venta: dia, numero_factura: factura.toUpperCase(), monto,
+      vendio_excluido: excluye, monto_excluido: excluye ? excluido : 0,
+      vendio_austral: austral, m2_austral: austral ? m2 : 0,
+    },
+  };
 }
 
 async function enviar(ev) {

@@ -189,7 +189,7 @@ test('setup migra la versión con corte a las 3 p. m., meta del 80 % y Austral d
   const ss = e.servicios.ss;
   const cfg = ss.insertSheet('Configuracion');
   cfg.appendRow(['clave', 'valor', 'descripcion']);
-  [['hora_corte', '15:00'], ['bloquear_rondas_cerradas', 'SI'], ['porcentaje_meta_final', 80], ['austral_requiere_meta', 'SI'], ['m2_por_cupon_austral', 100], ['concurso_abierto', 'SI']]
+  [['hora_corte', '15:00'], ['bloquear_rondas_cerradas', 'SI'], ['porcentaje_meta_final', 80], ['austral_requiere_meta', 'SI'], ['m2_por_cupon_austral', 100], ['cupones_por_cupon_final', 10], ['concurso_abierto', 'SI']]
     .forEach(([k, v]) => cfg.appendRow([k, v, 'vieja']));
   const ro = ss.insertSheet('Rondas');
   ro.appendRow(['ronda', 'nombre', 'inicio', 'fin', 'corte', 'sorteo']);
@@ -205,6 +205,7 @@ test('setup migra la versión con corte a las 3 p. m., meta del 80 % y Austral d
   const claves = cfg.getDataRange().getValues().map((f) => f[0]);
   ['hora_corte', 'bloquear_rondas_cerradas', 'porcentaje_meta_final', 'austral_requiere_meta'].forEach((k) => assert.ok(!claves.includes(k), 'quita ' + k));
   assert.equal(cfg.getDataRange().getValues().find((f) => f[0] === 'm2_por_cupon_austral')[1], 80, 'Austral pasa de 100 a 80');
+  assert.equal(cfg.getDataRange().getValues().find((f) => f[0] === 'cupones_por_cupon_final')[1], 8, 'el cupón final pasa de cada 10 a cada 8');
   assert.deepEqual(plano(ro.getDataRange().getValues()[0]), ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'], 'se quita la columna corte');
   assert.equal(e.gas.leerConfig_().rondas[1].sorteo, '2026-11-30', 'los sorteos quedan en su lugar');
   assert.deepEqual(plano(ca.getDataRange().getValues().map((f) => [f[0], f[4]])), [['canal', 'm2_por_cupon_austral'], ['Tienda', ''], ['Distribuidor', 500], ['Corporativo', '']]);
@@ -468,7 +469,7 @@ test('addSale devuelve lo necesario para imprimir los tickets', () => {
   assert.equal(b.data.sobrante_antes, 1000);
   assert.equal(b.data.registro.estado, 'Pendiente');
   assert.match(b.data.registro.id, /^CP-\d{6}$/);
-  assert.equal(b.data.final.faltan_para_proximo, 8, 'cuántos cupones faltan para el próximo cupón final');
+  assert.equal(b.data.final.faltan_para_proximo, 6, 'cuántos cupones faltan para el próximo cupón final (cada 8)');
   const archivo = [...e.servicios.DriveApp._archivos.values()][1];
   assert.match(archivo.getName(), /^30111222_2_\d+\.jpg$/);
 });
@@ -505,6 +506,26 @@ test('cupones Austral: 1 por cada 80 m² o piezas (500 para distribuidores), el 
   const e2 = entorno({ config: { m2_por_cupon_austral: 50 } });
   const t2 = e2.registrar('31111333');
   assert.equal(e2.vender(t2, { dia: e2.hoy, factura: 'AU-9', monto: 10, m2: 120 }).data.austral_nuevos, 2, 'la regla se cambia en Configuracion');
+});
+
+test('pavimento o revestimiento importado de proveedor nacional: su monto se resta de la factura', () => {
+  const e = entorno();
+  const t = e.registrar('31111444');
+  const venta = (datos) => e.api('addSale', { token: t, dia_venta: e.hoy, foto: JPEG, vendio_austral: false, ...datos });
+  const r = venta({ numero_factura: 'EX-1', monto: 2000, vendio_excluido: true, monto_excluido: '800' });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.deepEqual([r.data.registro.monto, r.data.registro.monto_factura, r.data.registro.monto_excluido], [1200, 2000, 800]);
+  assert.equal(r.data.acumulado, 1200, 'solo cuenta lo que participa');
+  assert.equal(r.data.cupones_nuevos, 0);
+  const fila = e.servicios.ss.getSheetByName('Registros').getDataRange().getValues();
+  const enc = fila[0];
+  assert.deepEqual([fila[1][enc.indexOf('monto')], fila[1][enc.indexOf('monto_factura')], fila[1][enc.indexOf('monto_excluido')]], [1200, 2000, 800]);
+
+  assert.equal(venta({ numero_factura: 'EX-2', monto: 500, vendio_excluido: true }).campo, 'monto_excluido', 'si marca la casilla, el monto es obligatorio');
+  assert.equal(venta({ numero_factura: 'EX-3', monto: 500, vendio_excluido: true, monto_excluido: 600 }).campo, 'monto_excluido', 'no puede pasar el total');
+  const sin = venta({ numero_factura: 'EX-4', monto: 300 });
+  assert.deepEqual([sin.data.registro.monto, sin.data.registro.monto_factura, sin.data.registro.monto_excluido], [300, 300, 0]);
+  assert.equal(sin.data.cupones_nuevos, 1, '$1.200 + $300 = 1 cupón');
 });
 
 test('si vendió Austral, los m² son obligatorios', () => {
@@ -675,7 +696,7 @@ test('neutraliza inyección de fórmulas en Sheets', () => {
 // Metas, Gran Sorteo Final y bolsas
 // ------------------------------------------------------------
 
-test('Gran Sorteo Final: 1 cupón cada 10, sin requisito de meta (la meta es informativa)', () => {
+test('Gran Sorteo Final: 1 cupón cada 8, sin requisito de meta (la meta es informativa)', () => {
   const e = entorno();
   e.canal('Tienda', 'Boleíta', { meta: 20000 });
   const a = e.registrar('20300001');
@@ -686,7 +707,7 @@ test('Gran Sorteo Final: 1 cupón cada 10, sin requisito de meta (la meta es inf
   let r = e.api('getDashboard', { token: a }).data.resumen;
   assert.equal(r.cupones, 10);
   assert.deepEqual(plano(r.meta), { definida: true, meta: 20000, vendido: 15000, avance: 0.75 });
-  assert.deepEqual(plano(r.final), { cupones: 1, austral: 0, mejor_vendedor: 0, rondas_mejor_vendedor: [], total: 1, por_cada: 10, faltan_para_proximo: 10 });
+  assert.deepEqual(plano(r.final), { cupones: 1, austral: 0, mejor_vendedor: 0, rondas_mejor_vendedor: [], total: 1, por_cada: 8, faltan_para_proximo: 6 });
 
   const v = e.vender(a, { dia: e.hoy, factura: 'GF2', monto: 1000 });
   assert.equal(v.data.cupones_final_despues, 1);
@@ -695,7 +716,7 @@ test('Gran Sorteo Final: 1 cupón cada 10, sin requisito de meta (la meta es inf
   e.vender(sinMeta, { dia: e.hoy, factura: 'GF3', monto: 30000 });
   r = e.api('getDashboard', { token: sinMeta }).data.resumen;
   assert.equal(r.meta.definida, false);
-  assert.equal(r.final.cupones, 2);
+  assert.equal(r.final.cupones, 2, '20 cupones → 2 cupones finales');
 
   e.gas.escribirConfig_('cupones_por_cupon_final', 5);
   e.servicios.cache._vaciar();
@@ -726,7 +747,7 @@ test('mejor vendedor: el que más vende en cada ronda con sorteo, por canal, gan
     [2, 'Tienda', '20500001'],
   ]);
   let r = e.api('getDashboard', { token: beto }).data.resumen.final;
-  assert.deepEqual([r.mejor_vendedor, plano(r.rondas_mejor_vendedor), r.total], [1, ['Ronda 1'], 1], '8 cupones aún no dan cupón final');
+  assert.deepEqual([r.mejor_vendedor, plano(r.rondas_mejor_vendedor), r.total], [1, ['Ronda 1'], 2], '8 cupones = 1 cupón final + 1 de mejor vendedor');
 
   const final = plano(e.gas.armarBolsas_(stats, e.gas.leerUsuarios_(), e.gas.leerConfig_())).at(-1);
   assert.equal(final.cupones.filter((c) => c.origen === 'mejor_vendedor').length, 4);

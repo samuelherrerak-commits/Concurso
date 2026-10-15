@@ -224,6 +224,11 @@ function chipAustral(m2) {
   return h('span', { class: 'chip chip--austral' }, `Austral ${decimal(m2)} m²/pzs`);
 }
 
+/** Factura con revestimiento o pavimento importado: cuenta solo el resto. */
+function chipExcluido(v) {
+  return v.monto_excluido > 0 ? h('span', { class: 'chip chip--neutro' }, `Factura ${dinero(v.monto_factura, { compacto: true })} − ${dinero(v.monto_excluido, { compacto: true })} excluido`) : null;
+}
+
 export function pintarVentas(datos, { verFoto }) {
   const ventas = datos.registros;
   $('#ventas-cuenta').textContent = ventas.length ? plural(ventas.length, 'factura', 'facturas') : '';
@@ -239,7 +244,7 @@ export function pintarVentas(datos, { verFoto }) {
   const lista = h('ul', { class: 'ventas' }, ventas.map((v) => h('li', { class: 'venta' },
     h('div', {}, h('div', { class: 'venta__factura' }, `Factura ${v.numero_factura}`), h('div', { class: 'venta__fecha' }, fechaMedia(v.dia_venta))),
     h('div', { class: 'venta__monto' }, dinero(v.monto)),
-    h('div', { class: 'venta__chips' }, chipEstado(v.estado), v.vendio_austral ? chipAustral(v.m2_austral) : null),
+    h('div', { class: 'venta__chips' }, chipEstado(v.estado), v.vendio_austral ? chipAustral(v.m2_austral) : null, chipExcluido(v)),
     h('div', { class: 'venta__accion' }, botonFoto(v)),
     v.estado === 'Rechazada' && v.nota_admin ? h('p', { class: 'venta__nota' }, `Motivo: ${v.nota_admin}`) : null)));
 
@@ -250,7 +255,7 @@ export function pintarVentas(datos, { verFoto }) {
       h('td', {}, v.numero_factura, v.estado === 'Rechazada' && v.nota_admin ? h('span', { class: 'nota' }, v.nota_admin) : null),
       h('td', {}, chipEstado(v.estado)),
       h('td', {}, v.vendio_austral ? `${decimal(v.m2_austral)} m²/pzs` : '—'),
-      h('td', { class: 'num' }, dinero(v.monto)),
+      h('td', { class: 'num' }, dinero(v.monto), v.monto_excluido > 0 ? h('small', { class: 'venta__excluido' }, `de ${dinero(v.monto_factura, { compacto: true })}`) : null),
       h('td', { class: 'num' }, botonFoto(v))))));
 
   caja.replaceChildren(lista, tabla);

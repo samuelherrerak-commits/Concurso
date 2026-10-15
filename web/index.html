@@ -327,13 +327,32 @@
           </div>
         </div>
         <div class="campo">
-          <label class="etiqueta" for="v-monto">Monto de la venta</label>
+          <label class="etiqueta" for="v-monto">Monto total de la factura (sin IVA)</label>
           <div class="entrada-grupo">
             <span class="prefijo">$</span>
             <input class="entrada" id="v-monto" name="monto" inputmode="decimal" autocomplete="off" placeholder="0,00" required>
           </div>
           <p class="ayuda" id="v-monto-ayuda" aria-live="polite"></p>
           <p class="error-campo" data-error="monto"></p>
+        </div>
+        <div class="campo">
+          <label class="interruptor">
+            <span class="interruptor__texto">¿Vendiste revestimiento o pavimento importado de proveedor nacional?</span>
+            <input type="checkbox" role="switch" id="v-excluido" name="vendio_excluido">
+          </label>
+          <div class="desplegable" id="v-excluido-bloque">
+            <div>
+              <div class="desplegable__interior">
+                <label class="etiqueta" for="v-excluido-monto">Monto en dólares de ese revestimiento o pavimento (sin IVA)</label>
+                <div class="entrada-grupo" style="margin-top:6px">
+                  <span class="prefijo">$</span>
+                  <input class="entrada" id="v-excluido-monto" name="monto_excluido" inputmode="decimal" autocomplete="off" placeholder="0,00" disabled>
+                </div>
+                <p class="ayuda">No participa en la Copa: se resta del monto de la factura.</p>
+                <p class="error-campo" data-error="monto_excluido" style="margin-top:6px"></p>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="campo">
           <span class="etiqueta" id="v-foto-etiqueta">Foto de la factura</span>

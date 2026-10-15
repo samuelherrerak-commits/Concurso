@@ -193,6 +193,21 @@ async function continuarImpresora(page) {
   await page.waitForTimeout(500);
   await captura(page, '12-panel-final', { fullPage: true });
 
+  paso('Venta con revestimiento o pavimento importado (se resta)');
+  await registrarVenta(page, { factura: 'EX-1', monto: 1000 });
+  await page.check('#v-excluido');
+  await page.fill('#v-excluido-monto', '400');
+  await page.waitForTimeout(300);
+  comprobar((await page.textContent('#v-monto-ayuda')).includes('Cuentan $600'), 'la ayuda muestra lo que cuenta: ' + await page.textContent('#v-monto-ayuda'));
+  await captura(page, '11c-excluido-form');
+  await page.click('#v-enviar');
+  await page.waitForSelector('#v-revision:not([hidden])');
+  comprobar((await page.textContent('#v-revision-lista')).includes('Monto que cuenta para la Copa'), 'la revisión muestra el monto que cuenta');
+  await captura(page, '11d-excluido-revision');
+  await page.click('#v-enviar');
+  await page.waitForSelector('#dlg-impresora[open]');
+  await continuarImpresora(page);
+
   paso('Ver un cupón otra vez y descargarlo');
   const minis = page.locator('#cupones button.mini');
   comprobar(await minis.count() === 5, 'hay 5 cupones (' + await minis.count() + ')');

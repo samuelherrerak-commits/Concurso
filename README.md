@@ -3,7 +3,7 @@
 Portal web para el concurso interno de ventas de Prosein (fin de año 2026), publicado en **https://bolsa-de-los-deseos-2026.onrender.com/**. Cada vendedor:
 
 - se registra con su **cédula**, una contraseña y su **canal de ventas** (Tiendas, Distribuidores o Corporativo; en Tiendas también elige su tienda),
-- carga sus ventas (día, número de factura, monto, **foto de la factura** y, si vendió Austral, los **m²**),
+- carga sus ventas (día, número de factura, **monto total de la factura sin IVA**, **foto de la factura**; si vendió **revestimiento o pavimento importado de proveedor nacional**, ese monto en dólares, que se resta porque no participa; y si vendió Austral, los **m² o piezas**),
 - ve sus **cupones** de cada ronda, el avance de su **meta**, sus cupones para el **Gran Sorteo Final**, sus **cupones Austral** y el ranking.
 
 La primera vez que se abre el portal salen unas **tarjetas de bienvenida** que se deslizan (bienvenida, premios, sorteos, ñapa y condiciones A–J). Se pueden volver a ver desde **"¿Cómo funciona la Copa?"** en la pantalla de acceso o en la sección **Cómo funciona la Copa** del panel. Sus textos están en `web/js/copa.js`; las fechas, el valor del cupón y los m² o piezas de Austral salen de las hojas.
@@ -40,11 +40,11 @@ Los números se cambian en la hoja **Configuracion**, las fechas en **Rondas** y
 | Regla | Cómo se calcula |
 |---|---|
 | **Canales** | Cada vendedor es de **Tiendas** (con su tienda), **Distribuidores** o **Corporativo**. Cada tienda y cada canal tiene su **valor de cupón**, su **meta** (informativa) y sus **m² o piezas de Austral por cupón** (hoja Canales). |
-| **Cupones** | `cupones = piso(total vendido acumulado ÷ valor del cupón de su tienda o canal)`. Con $1.500: $4.600 = 3 cupones. El sobrante nunca se pierde. |
+| **Cupones** | `cupones = piso(total vendido acumulado ÷ valor del cupón de su tienda o canal)`. Con $1.500: $4.600 = 3 cupones. El sobrante nunca se pierde. El monto es **sin IVA** y **no cuenta** el pavimento y revestimiento importado de proveedores nacionales: el vendedor lo indica y se resta de la factura. |
 | **Rondas** | Ronda 1: 15/10 al 5/11, sorteo **lun 9/11**. Ronda 2: 6/11 al 26/11, sorteo **lun 30/11**. Ronda 3: 27/11 al 10/12, sorteo **lun 14/12**. **La Ñapa**: 11/12 al 19/12, **sin sorteo** (solo suma para el final). |
 | **Cierre de cada ronda** | Cada ronda cierra al **terminar su último día** (11:59 p. m.). La ronda de una venta es la del **día en que se registra**: si una factura del 5/11 se registra el 6/11, cuenta para la Ronda 2. Se registra hasta el 19/12. |
 | **Sorteo de cada ronda** | A la bolsa entran **solo los cupones completados en esa ronda**: `piso(acumulado al cierre ÷ M) − piso(acumulado al cierre de la ronda anterior ÷ M)`. El sobrante en $ pasa a la siguiente ronda. La ronda la define el **día de registro**. |
-| **Gran Sorteo Final** | **Lun 21/12**. Cada **10 cupones** acumulados en toda la campaña (incluida La Ñapa) = **1 cupón final**. No hay requisito de meta: la meta es solo informativa. |
+| **Gran Sorteo Final** | **Lun 21/12**. Cada **8 cupones** acumulados en toda la campaña (incluida La Ñapa) = **1 cupón final**. No hay requisito de meta: la meta es solo informativa. |
 | **Cupones Austral** | Cada **80 m² o piezas de Austral** = **1 cupón adicional para el Gran Sorteo Final** (el sobrante se acumula). En **Distribuidores** cada **500**, porque venden mercancía Austral. |
 | **Mejor vendedor** | Al cerrar cada ronda con sorteo, quien **más vendió (monto) en su canal** (Tiendas, Distribuidores, Corporativo) gana **1 cupón para el Gran Sorteo Final**. Empate: quien llegó primero a ese monto. La Ñapa no da mejor vendedor. |
 
@@ -80,7 +80,7 @@ Cada fila tiene su explicación en la columna **descripción**:
 |---|---|---|
 | `nombre_sorteo` | Copa Navideña | Nombre de los sorteos en el portal. Si la hoja aún dice "La bolsa de los deseos" o "Copa Prosein", se usa el nombre nuevo. |
 | `fecha_sorteo_final` | 21/12/2026 | Gran Sorteo Final. |
-| `cupones_por_cupon_final` | 10 | Cada N cupones = 1 cupón final. |
+| `cupones_por_cupon_final` | 8 | Cada N cupones = 1 cupón final (si la hoja aún dice 10, `setup()` lo cambia a 8). |
 | `monto_por_cupon` | 1500 | Valor de respaldo, si una tienda o canal no tiene valor en Canales. |
 | `m2_por_cupon_austral` | 80 | m² o piezas de Austral por cupón adicional para el Gran Sorteo Final, si la hoja Canales no trae otro valor (Distribuidores: 500 en Canales). |
 | `concurso_abierto` | SI | Con NO nadie puede cargar ventas. |
@@ -187,6 +187,8 @@ En **Sorteos → Imprimir** se abre `cupones.html`:
 
 En **Registros** cada venta llega como **Pendiente**. Revisa la foto (columna `url_foto`) y cambia `estado` a **Aprobada** o **Rechazada**. En `nota_admin` puedes escribir el motivo: el vendedor lo ve en su historial.
 
+Columnas de monto: `monto_factura` es el total de la factura sin IVA, `monto_excluido` lo vendido en pavimento o revestimiento importado de proveedores nacionales y `monto` lo que cuenta para la Copa (factura menos excluido). Si corriges una factura a mano, cambia `monto`: es la que se usa para los cupones.
+
 - Con `contar_solo_aprobadas = NO`: las Pendientes y Aprobadas suman; las Rechazadas no.
 - Con `contar_solo_aprobadas = SI`: solo suman las Aprobadas. Cuando apruebas, el vendedor ve su ticket la próxima vez que entra.
 - Los cambios se ven en el portal en unos **20 segundos** (hay un caché corto para que el portal sea rápido).
@@ -266,7 +268,7 @@ Otros casos en **Usuarios**:
 Requiere [Node.js](https://nodejs.org) 18 o superior. No hace falta instalar nada más.
 
 ```bash
-npm test          # 39 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
+npm test          # 40 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
 npm run dev       # portal en http://localhost:5173 con datos de prueba y un administrador
 ```
 

@@ -229,19 +229,24 @@ function conAustral(texto) {
 }
 
 /**
- * Texto exacto que envió Prosein para "Cómo funciona la Copa", sin reescribir.
+ * Texto exacto (definitivo) que envió Prosein para "Cómo funciona la Copa", sin reescribir.
  * Solo "(XXXX)" se cambia por el valor del cupón del vendedor.
  */
 export function pintarComoFunciona(c, yo, { alVerTarjetas } = {}) {
   const valor = yo && yo.monto_por_cupon ? dinero(yo.monto_por_cupon, { compacto: true }) : 'XXXX';
   const titulo = (t) => h('h3', { class: 'reglas__titulo' }, t);
-  const linea = (t) => h('p', {}, conAustral(t));
+  const linea = (t, clase) => h('p', clase ? { class: clase } : {}, conAustral(t));
   const ronda = (nombre, resto) => h('p', { class: 'reglas__ronda' }, h('strong', {}, nombre), '  ', resto);
   const letra = (t) => {
-    const m = t.match(/^([A-J]\.-)(.*)$/);
+    const m = t.match(/^([A-L]\.-)([\s\S]*)$/);
     return h('p', { class: 'reglas__condicion' }, h('strong', {}, m[1]), conAustral(m[2]));
   };
   $('#reglas-contenido').replaceChildren(
+    h('section', { class: 'reglas__bloque' },
+      h('h3', { class: 'reglas__titulo reglas__titulo--copa' }, 'COPA NAVIDEÑA ', h('span', { class: 'austral-texto' }, 'AUSTRAL'), '-PROSEIN'),
+      linea('Bienvenidos a esta Copa Navideña, estamos contentos de unirnos para que ganes más en esta Navidad.'),
+      linea('Desde el 15 de octubre hasta el 19 de diciembre por impulsar nuestros productos de Austral y vender en Prosein tendrás la oportunidad para que ganes premios.'),
+      linea('¡Siempre podrás ganar!', 'copa__grito')),
     h('section', { class: 'reglas__bloque' },
       titulo('¿En qué consiste la COPA?'),
       linea('Tres sorteos + una ñapa para que puedas: Ir a Margarita por dos días en pareja, ganarte un reloj Cubit, complementos para un mercado de tus hallacas y algunas sorpresas más.')),
@@ -256,15 +261,17 @@ export function pintarComoFunciona(c, yo, { alVerTarjetas } = {}) {
       linea('Para que puedas tener más oportunidad de llegar con cupones al sorteo final, te damos del 11 al 19 de dic. para seguir ganando puntos.')),
     h('section', { class: 'reglas__bloque' },
       titulo('3.- CONDICIONES'),
-      letra('A.- Ganas un cupón por el logro de un monto específico de venta asociado a tu canal.'),
-      letra(`B.- Cada (${valor}) en ventas te da 01 cupón (es el valor del cupón de tu canal). Lo que sobra no se pierde, se suma para tus próximas ventas y para generar más cupones.`),
-      letra('C.- A cada sorteo entran los cupones que completes en esa ronda.'),
-      letra('D.- Las rondas cierran el día previsto. Si registras después de ese último día, queda para la siguiente ronda.'),
-      letra('E.- Por cada10 cupones de todas las rondas tienes 01 cupón que cuenta desde el inicio de la Copa para el Sorteo final. (Desde el inicio hasta el final puedes acumular cupones)'),
-      letra('F.- Gran Sorteo Final será con cupones que ganaste cada 10 cupones acumulados en toda la campaña.'),
-      letra('G.- Cada 80 m² / piezas de Austral te dan 1 cupón adicional para el Gran Sorteo Final.'),
-      letra('H.- El mejor vendedor de cada ronda por canal, gana un cupón para el Gran Sorteo Final.'),
-      letra('I.- Registra cada factura con su foto. Una factura solo se registra una vez, y el coordinador puede rechazar las que no se lean bien.'),
-      letra('J.- En caso de ganar y la información no concordar con el sistema, quedas eliminado de cualquiera de los sorteos.')),
+      letra('A.- Participan todos nuestros productos MENOS el pavimento y revestimiento importado de proveedores nacionales.'),
+      letra('B.- Ganas un cupón por el logro de un monto específico de venta asociado a tu canal.'),
+      letra(`C.- Cada (${valor}) en ventas te da 01 cupón (es el valor del cupón de tu canal). Lo que sobra no se pierde, se suma para tus próximas ventas y para generar más cupones.`),
+      letra('D.- A cada sorteo entran los cupones que completes en esa ronda.'),
+      letra('E.- Las rondas cierran el día previsto. Si registras después de ese último día, queda para la siguiente ronda.'),
+      letra('F.- Por cada 08 cupones de todas las rondas tienes 01 cupón que cuenta desde el inicio de la Copa para el Sorteo final.'),
+      letra('G.- Gran Sorteo Final será con cupones especiales que hayas acumulado a lo largo de las rondas más el tiempo de ñapa.'),
+      letra('H.- Cada 80 m² / piezas de Austral te dan 1 cupón adicional para el Gran Sorteo Final.'),
+      letra('I.- El mejor vendedor de cada ronda por canal, gana un cupón para el Gran Sorteo Final.'),
+      letra('J.- Registra cada factura con su foto. Una factura solo se registra una vez, y el coordinador puede rechazar las que no se lean bien. Coloca los datos solicitados.'),
+      letra('K.- En caso de ganar y la información no concordar con el sistema, quedas eliminado de cualquiera de los sorteos.'),
+      letra('L.- Recuerda que las facturas deben estar registradas por ti como vendedor. No cuentan ventas que hayas realizado en nombre de gerentes.')),
     h('button', { type: 'button', class: 'btn btn--secundario btn--chico', onclick: alVerTarjetas }, 'Ver las tarjetas de bienvenida'));
 }
