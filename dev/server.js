@@ -9,6 +9,7 @@
  *   node dev/server.js --dia=5    → hoy es el día 5 de la campaña (negativo: empieza dentro de N días)
  *   node dev/server.js --real     → las fechas reales del cronograma (15/10 al 19/12/2026)
  *   node dev/server.js --metas    → metas de ejemplo en la hoja Canales
+ *   node dev/server.js --austral500 → 500 m² Austral en todas las filas de Canales (el portal usa sus valores fijos)
  *   PORT=8080 node dev/server.js --latencia=800
  *
  * Los datos viven en memoria: se pierden al cerrar el servidor.
@@ -48,6 +49,11 @@ if (args.includes('--metas')) {
     if (f[0] === 'Distribuidor') sh.getRange(i + 1, 4).setValue(12000);
     if (f[1] === 'Maracaibo') sh.getRange(i + 1, 3).setValue(1000);
   });
+}
+if (args.includes('--austral500')) {
+  // Simula una hoja Canales mal llenada (500 en todas las filas): el portal igual usa 80/500 fijos.
+  const sh = e.servicios.ss.getSheetByName('Canales');
+  for (let f = 2; f <= sh.getLastRow(); f++) sh.getRange(f, 5).setValue(500);
 }
 e.servicios.cache._vaciar();
 if (args.includes('--demo')) e.gas.cargarDatosPrueba_();

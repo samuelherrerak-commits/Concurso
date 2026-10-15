@@ -6,6 +6,7 @@
 import { $, $$, h, prepararDialogo } from './dom.js';
 import { dinero, decimal, fechaLarga, fechaConDia, conPunto } from './formato.js';
 import { recuerdo } from './api.js';
+import { M2_AUSTRAL_POR_CANAL } from './austral.js';
 
 const CLAVE_VISTA = 'intro-vista';
 let dialogo = null;
@@ -33,10 +34,8 @@ function delAl(inicio, fin) {
 /** "Cada 80 m² o piezas (Distribuidores: 500)". */
 function textoAustral(c, propio) {
   if (propio) return `${decimal(propio, 0)} m² o piezas`;
-  const lista = c.m2_austral_por_canal || [];
-  const base = lista.find((x) => x.canal === 'Tienda') || { m2: c.m2_por_cupon_austral };
-  const distintos = lista.filter((x) => x.m2 !== base.m2);
-  return `${decimal(base.m2, 0)} m² o piezas` + (distintos.length ? ` (${distintos.map((x) => `${x.etiqueta}: ${decimal(x.m2, 0)}`).join('; ')})` : '');
+  // Valores fijos (web/js/austral.js): 80 tiendas y corporativo, 500 distribuidores.
+  return `${decimal(M2_AUSTRAL_POR_CANAL.Tienda, 0)} m² o piezas (Distribuidores: ${decimal(M2_AUSTRAL_POR_CANAL.Distribuidor, 0)})`;
 }
 
 /**

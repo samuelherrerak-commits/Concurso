@@ -12,6 +12,7 @@ import { verCupon } from './js/cupon.js';
 import { iniciarInstalacion } from './js/instalar.js';
 import { iniciarAdmin, mostrarAdmin, salirAdmin } from './js/admin.js';
 import { mostrarIntroSiFalta } from './js/copa.js';
+import { aplicarAustral, aplicarAustralVenta } from './js/austral.js';
 import {
   pintarCabecera, pintarResumen, pintarEsqueleto, pintarErrorCarga, pintarAccion,
   pintarCupones, pintarViaje, pintarVentas, pintarRanking, pintarReglas,
@@ -88,7 +89,7 @@ async function cargarPanel({ silencioso = false } = {}) {
     return;
   }
   if (r.data.usuario.rol === 'admin') { entrarAdmin(); return; }
-  datos = r.data;
+  datos = aplicarAustral(r.data);
   document.title = `Copa Navideña · ${datos.usuario.nombre.split(' ')[0]}`;
   const vistos = recuerdo.leer(claveVistos());
   const vistosViaje = recuerdo.leer(claveVistosViaje());
@@ -153,6 +154,7 @@ async function revisarCuponesNuevos(vistos, vistosViaje) {
 
 async function alRegistrar(res) {
   const d = datos;
+  aplicarAustralVenta(res, d.registros, d.usuario, d.concurso);
   const M = res.monto_por_cupon;
   const MA = res.m2_por_cupon;
   recuerdo.guardar(claveVistos(), res.cupones_despues);
