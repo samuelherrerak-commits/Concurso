@@ -678,6 +678,37 @@ test('si la hoja aún tiene los nombres anteriores, se usa Copa Navideña Austra
   assert.equal(otro.nombre_concurso, 'Mi concurso');
 });
 
+test('Configuracion se lee aunque la hoja se haya ordenado y el encabezado no esté en la fila 1', () => {
+  const e = entorno({ config: { concurso_abierto: 'SI', monto_por_cupon: 2000, token_api: 'secreta' } });
+  const sh = e.servicios.ss.getSheetByName('Configuracion');
+  const filas = sh.getDataRange().getValues();
+  // Simula "ordenar hoja A→Z" con el encabezado incluido: la fila clave/valor queda en medio.
+  const ordenadas = filas.slice().sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+  sh.getRange(1, 2, filas.length, 1).clearDataValidations();
+  sh.getRange(1, 1, ordenadas.length, ordenadas[0].length).setValues(ordenadas);
+  e.servicios.cache._vaciar();
+  e.gas.invalidarTabla_('Configuracion');
+  const cfg = e.gas.leerConfig_();
+  assert.equal(cfg.concurso_abierto, true);
+  assert.equal(cfg.monto_por_cupon, 2000);
+  assert.equal(cfg.token_api, 'secreta');
+  assert.equal(e.api('config').code, 'FORBIDDEN_API', 'la clave del portal (secreta) se sigue exigiendo');
+});
+
+test('concurso_abierto: vacío o ausente = abierto; acepta Sí, si, SI', () => {
+  const e = entorno();
+  const sh = e.servicios.ss.getSheetByName('Configuracion');
+  sh.getRange(1, 2, sh.getLastRow(), 1).clearDataValidations();
+  const abierto = (v) => {
+    e.gas.escribirConfig_('concurso_abierto', v);
+    e.servicios.cache._vaciar();
+    e.gas.invalidarTabla_('Configuracion');
+    return e.gas.leerConfig_().concurso_abierto;
+  };
+  ['Sí', 'si', ' SI ', 'TRUE', ''].forEach((v) => assert.equal(abierto(v), true, JSON.stringify(v)));
+  assert.equal(abierto('NO'), false);
+});
+
 test('concurso cerrado: no se cargan ventas', () => {
   const e = entorno({ config: { concurso_abierto: 'NO' } });
   const t = e.registrar('61111222');

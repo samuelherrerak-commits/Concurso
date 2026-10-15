@@ -1342,19 +1342,44 @@ function entre_(n, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+/**
+ * Lee la hoja Configuracion como pares clave → valor. No depende del encabezado: busca la
+ * columna donde están las claves conocidas (concurso_abierto, monto_por_cupon…) y toma el
+ * valor de la columna de al lado. Así sigue funcionando aunque la hoja se haya ordenado y la
+ * fila de encabezados se haya movido. Si una clave aparece dos veces, vale la primera con valor.
+ */
+function leerConfigCrudo_() {
+  if (MEMO_[HOJA.CONFIG]) return MEMO_[HOJA.CONFIG];
+  const enCache = cacheLeerJson_('tbl_' + HOJA.CONFIG);
+  if (enCache) return (MEMO_[HOJA.CONFIG] = enCache);
+  const valores = hoja_(HOJA.CONFIG).getDataRange().getValues();
+  const conocidas = {};
+  configuracionPorDefecto_().forEach(function (f) { conocidas[f[0]] = true; });
+  let col = 0;
+  let mejor = -1;
+  const ancho = valores.length ? valores[0].length : 0;
+  for (let c = 0; c < ancho - 1; c++) {
+    let n = 0;
+    valores.forEach(function (fila) { if (conocidas[String(fila[c] || '').trim()]) n++; });
+    if (n > mejor) { mejor = n; col = c; }
+  }
+  const o = {};
+  valores.forEach(function (fila) {
+    const clave = String(fila[col] || '').trim();
+    if (!clave || clave.toLowerCase() === 'clave') return;
+    const v = fila[col + 1];
+    const vacio = v === '' || v === null || v === undefined;
+    if (o[clave] !== undefined && o[clave] !== '') return;
+    o[clave] = vacio ? '' : v instanceof Date ? aISO_(v) : v;
+  });
+  MEMO_[HOJA.CONFIG] = o;
+  cachePonerJson_('tbl_' + HOJA.CONFIG, o, CACHE_SEGUNDOS);
+  return o;
+}
+
 function leerConfig_() {
   if (MEMO_.cfg) return MEMO_.cfg;
-  const crudo = leerTablaConCache_(HOJA.CONFIG, function (filas) {
-    const o = {};
-    filas.forEach(function (f) {
-      const clave = String(f.clave || '').trim();
-      if (!clave) return;
-      const v = f.valor;
-      if (v instanceof Date) o[clave] = aISO_(v);
-      else o[clave] = v;
-    });
-    return o;
-  });
+  const crudo = leerConfigCrudo_();
 
   const texto = function (clave, porDefecto) {
     const v = crudo[clave];
@@ -1368,9 +1393,10 @@ function leerConfig_() {
     cupones_por_cupon_final: Math.max(1, Math.floor(numeroO_(crudo.cupones_por_cupon_final, 8))),
     m2_por_cupon_austral: numeroO_(crudo.m2_por_cupon_austral, 80),
     moneda: texto('moneda', '') || 'USD',
-    concurso_abierto: esSi_(crudo.concurso_abierto),
-    contar_solo_aprobadas: esSi_(crudo.contar_solo_aprobadas),
-    mostrar_ranking_publico: esSi_(crudo.mostrar_ranking_publico),
+    // Si falta la fila (o está vacía) vale lo de fábrica: abierto y con ranking.
+    concurso_abierto: siONo_(crudo.concurso_abierto, true),
+    contar_solo_aprobadas: siONo_(crudo.contar_solo_aprobadas, false),
+    mostrar_ranking_publico: siONo_(crudo.mostrar_ranking_publico, true),
     carpeta_fotos_id: texto('carpeta_fotos_id', ''),
     ronda_ranking: parseInt(crudo.ronda_ranking, 10) || 0,
     dias_sesion: Math.max(1, numeroO_(crudo.dias_sesion, 7)),
@@ -1879,10 +1905,16 @@ function parsearNumero_(valor) {
   return Number(t);
 }
 
+/** SI/NO de Configuracion; vacío o ausente = porDefecto. */
+function siONo_(valor, porDefecto) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') return porDefecto;
+  return esSi_(valor);
+}
+
 function esSi_(valor) {
   if (valor === true) return true;
-  const t = String(valor || '').trim().toUpperCase();
-  return t === 'SI' || t === 'SÍ' || t === 'TRUE' || t === 'X';
+  const t = sinAcentos_(valor).toUpperCase();
+  return t === 'SI' || t === 'S' || t === 'TRUE' || t === 'VERDADERO' || t === 'X' || t === 'YES' || t === '1';
 }
 
 // ------------------------------------------------------------
