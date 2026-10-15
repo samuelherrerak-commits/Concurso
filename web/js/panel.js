@@ -23,7 +23,7 @@ export function pintarCabecera(datos) {
   $('#saludo-corte').textContent = textoCorte(concurso);
   $('#avatar-iniciales').textContent = iniciales(usuario.nombre, usuario.apellido).toUpperCase();
   $('#menu-nombre').textContent = `${usuario.nombre} ${usuario.apellido}`;
-  const donde = usuario.canal === 'Tienda' ? usuario.sucursal : usuario.canal_etiqueta;
+  const donde = usuario.canal === 'Tienda' ? usuario.sucursal : [usuario.canal_etiqueta, usuario.nivel].filter(Boolean).join(' ');
   $('#menu-cedula').textContent = `C.I. ${usuario.cedula_mask}` + (donde ? ` · ${donde}` : '');
 }
 

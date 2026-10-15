@@ -136,9 +136,9 @@ test('setup crea las 6 hojas, el cronograma de rondas y los canales, y se puede 
   assert.equal(e.servicios.ss.getSheetByName('Rondas').getLastRow(), 5, 'una fila por ronda');
 
   const canales = e.servicios.ss.getSheetByName('Canales').getDataRange().getValues().slice(1);
-  assert.equal(canales.length, 11, '9 tiendas + Distribuidor + Corporativo');
-  assert.deepEqual(canales.slice(-2).map((f) => [f[0], f[4]]), [['Distribuidor', 500], ['Corporativo', '']]);
-  assert.deepEqual(plano(cfg.canales.slice(-3).map((r) => [r.canal, r.m2Centesimas / 100])), [['Tienda', 80], ['Distribuidor', 500], ['Corporativo', 80]]);
+  assert.equal(canales.length, 13, '9 tiendas + Distribuidor + Corporativo (sin nivel, Junior y Senior)');
+  assert.deepEqual(canales.slice(-4).map((f) => [f[0], f[4], f[5]]), [['Distribuidor', 500, ''], ['Corporativo', '', ''], ['Corporativo', '', 'Junior'], ['Corporativo', '', 'Senior']]);
+  assert.deepEqual(plano(cfg.canales.slice(-5).map((r) => [r.canal, r.nivel, r.m2Centesimas / 100])), [['Tienda', '', 80], ['Distribuidor', '', 500], ['Corporativo', '', 80], ['Corporativo', 'Junior', 80], ['Corporativo', 'Senior', 80]]);
   assert.deepEqual(plano(cfg.sucursales), ['Boleíta', 'La Castellana', 'Los Naranjos', 'El Bosque', 'Las Mercedes', 'San Martín', 'Maracaibo', 'Acarigua', 'Barquisimeto']);
 });
 
@@ -174,7 +174,7 @@ test('setup actualiza un Sheet de la versión anterior sin perder ventas ni usua
   assert.equal(ss.getSheetByName('Periodos'), null, 'borra la hoja Periodos');
   assert.equal(us.getRange(1, 13).getValue(), 'canal', 'agrega la columna canal al final');
   const canales = ss.getSheetByName('Canales').getDataRange().getValues().slice(1);
-  assert.deepEqual(canales.map((f) => [f[0], f[1], f[2]]), [['Tienda', 'Boleíta', 2000], ['Tienda', 'Valencia', 2000], ['Distribuidor', '', 2000], ['Corporativo', '', 2000]], 'las tiendas viejas pasan a Canales con su valor de cupón');
+  assert.deepEqual(canales.map((f) => [f[0], f[1], f[2]]), [['Tienda', 'Boleíta', 2000], ['Tienda', 'Valencia', 2000], ['Distribuidor', '', 2000], ['Corporativo', '', 2000], ['Corporativo', '', 2000], ['Corporativo', '', 2000]], 'las tiendas viejas pasan a Canales con su valor de cupón');
 
   const ana = e.api('login', { cedula: '12345678', password: 'secreto1' });
   assert.equal(ana.ok, true, JSON.stringify(ana));
@@ -208,7 +208,8 @@ test('setup migra la versión con corte a las 3 p. m., meta del 80 % y Austral d
   assert.equal(cfg.getDataRange().getValues().find((f) => f[0] === 'cupones_por_cupon_final')[1], 8, 'el cupón final pasa de cada 10 a cada 8');
   assert.deepEqual(plano(ro.getDataRange().getValues()[0]), ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'], 'se quita la columna corte');
   assert.equal(e.gas.leerConfig_().rondas[1].sorteo, '2026-11-30', 'los sorteos quedan en su lugar');
-  assert.deepEqual(plano(ca.getDataRange().getValues().map((f) => [f[0], f[4]])), [['canal', 'm2_por_cupon_austral'], ['Tienda', ''], ['Distribuidor', 500], ['Corporativo', '']]);
+  assert.deepEqual(plano(ca.getDataRange().getValues().map((f) => [f[0], f[4]])), [['canal', 'm2_por_cupon_austral'], ['Tienda', ''], ['Distribuidor', 500], ['Corporativo', ''], ['Corporativo', ''], ['Corporativo', '']]);
+  assert.deepEqual(plano(ca.getDataRange().getValues().slice(-2).map((f) => [f[0], f[2], f[5]])), [['Corporativo', 2000, 'Junior'], ['Corporativo', 2000, 'Senior']], 'agrega Junior y Senior copiando el Corporativo');
   e.gas.setup();
   ca.getRange(3, 5).setValue('');
   e.gas.setup();
@@ -398,6 +399,35 @@ test('cupones acumulados: el sobrante pasa de una ronda a la otra', () => {
   assert.equal(Math.round(d.resumen.progreso * 1000), 67);
   assert.deepEqual(d.cupones.map((c) => [c.n, c.factura, c.ronda]), [[1, 'A-1', 1], [2, 'A-2', 1], [3, 'A-3', 2]]);
   assert.deepEqual(d.registros.map((x) => x.numero_factura), ['A-3', 'A-2', 'A-1'], 'historial del más reciente al más viejo');
+});
+
+test('Corporativo Junior y Senior: el admin pone el nivel en Usuarios y cambia el valor del cupón', () => {
+  const e = entorno();
+  const sh = e.servicios.ss.getSheetByName('Canales');
+  const filas = sh.getDataRange().getValues();
+  const fila = (nivel) => filas.findIndex((f) => f[0] === 'Corporativo' && f[5] === nivel) + 1;
+  sh.getRange(fila(''), 3).setValue(2500);
+  sh.getRange(fila('Junior'), 3).setValue(2000);
+  sh.getRange(fila('Senior'), 3).setValue(4000);
+  e.servicios.cache._vaciar();
+  e.gas.invalidarTabla_('Canales');
+
+  const t = e.registrar('20250001', { canal: 'Corporativo', sucursal: '' });
+  let d = e.api('getDashboard', { token: t }).data;
+  assert.equal(d.resumen.monto_por_cupon, 2500, 'sin nivel: el valor del Corporativo');
+  assert.equal(d.usuario.nivel, '');
+  e.vender(t, { dia: e.hoy, factura: 'N1', monto: 8000 });
+
+  e.editarUsuario('20250001', 'nivel', 'senior');
+  d = e.api('getDashboard', { token: t }).data;
+  assert.deepEqual([d.usuario.nivel, d.resumen.monto_por_cupon, d.resumen.cupones], ['Senior', 4000, 2], 'Senior: $8.000 / $4.000 = 2 cupones');
+  e.editarUsuario('20250001', 'nivel', 'Junior');
+  d = e.api('getDashboard', { token: t }).data;
+  assert.deepEqual([d.resumen.monto_por_cupon, d.resumen.cupones], [2000, 4]);
+
+  const admin = e.gas.calcularEstadisticas_(e.gas.leerRegistros_({ fresco: true }), e.gas.leerConfig_(), e.gas.leerUsuarios_({ fresco: true }));
+  assert.equal(admin.vendedores['20250001'].montoPorCuponCentavos, 200000);
+  assert.equal(e.gas.grupoDe_(e.gas.perfilUsuario_(e.gas.leerUsuarios_({ fresco: true }).find((u) => u.cedula === '20250001'), e.gas.leerConfig_())), 'Corporativo Junior');
 });
 
 test('el valor del cupón depende de la tienda o del canal (hoja Canales)', () => {

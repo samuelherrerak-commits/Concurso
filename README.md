@@ -107,8 +107,13 @@ Una fila por tienda (canal `Tienda`) y una para `Distribuidor` y otra para `Corp
 
 - `monto_por_cupon`: cuánto hay que vender para 1 cupón.
 - `meta`: lo que debería vender un vendedor de esa tienda o canal en toda la campaña. Es **informativa**: el vendedor ve su avance, pero no es requisito para el Gran Sorteo Final. Vacía = sin meta.
+- `nivel` (opcional): `Junior` o `Senior`. Sirve para que un mismo canal tenga dos valores de cupón; `setup()` agrega las filas **Corporativo Junior** y **Corporativo Senior**. La fila de Corporativo **sin** nivel es para quienes todavía no tienen nivel asignado.
 - `m2_por_cupon_austral`: m² o piezas de Austral para 1 cupón adicional del Gran Sorteo Final. Vacío = el de Configuracion (80). Distribuidores: 500.
 - Para agregar una tienda, agrega una fila con canal `Tienda`: aparece en el registro.
+
+### Nivel de los vendedores de Corporativo (Junior / Senior)
+
+El vendedor solo elige **Corporativo** al registrarse. Luego tú, en la hoja **Usuarios**, escribes `Junior` o `Senior` en la columna **`nivel`**. Su valor de cupón pasa a ser el de la fila Corporativo de ese nivel en la hoja Canales, y sus cupones se recalculan solos. Mientras la celda esté vacía usa la fila Corporativo sin nivel.
 
 ### 4d. Crear el usuario administrador
 
@@ -268,7 +273,7 @@ Otros casos en **Usuarios**:
 Requiere [Node.js](https://nodejs.org) 18 o superior. No hace falta instalar nada más.
 
 ```bash
-npm test          # 40 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
+npm test          # 41 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
 npm run dev       # portal en http://localhost:5173 con datos de prueba y un administrador
 ```
 

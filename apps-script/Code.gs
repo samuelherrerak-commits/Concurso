@@ -50,7 +50,7 @@ const HOJAS_OBSOLETAS = ['Periodos'];
 const COLUMNAS_USUARIOS = [
   'cedula', 'nombre', 'apellido', 'telefono', 'sucursal_o_zona',
   'password_hash', 'salt', 'fecha_registro', 'estado',
-  'intentos_fallidos', 'bloqueado_hasta', 'rol', 'canal',
+  'intentos_fallidos', 'bloqueado_hasta', 'rol', 'canal', 'nivel',
 ];
 
 const COLUMNAS_REGISTROS = [
@@ -60,7 +60,7 @@ const COLUMNAS_REGISTROS = [
 ];
 
 const COLUMNAS_RONDAS = ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'];
-const COLUMNAS_CANALES = ['canal', 'tienda', 'monto_por_cupon', 'meta', 'm2_por_cupon_austral'];
+const COLUMNAS_CANALES = ['canal', 'tienda', 'monto_por_cupon', 'meta', 'm2_por_cupon_austral', 'nivel'];
 
 const ESTADO = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' };
 const ESTADO_USUARIO = { ACTIVO: 'activo', BLOQUEADO: 'bloqueado' };
@@ -69,6 +69,8 @@ const ROL = { VENDEDOR: 'vendedor', ADMIN: 'admin' };
 const CANAL = { TIENDA: 'Tienda', DISTRIBUIDOR: 'Distribuidor', CORPORATIVO: 'Corporativo' };
 const CANALES = [CANAL.TIENDA, CANAL.DISTRIBUIDOR, CANAL.CORPORATIVO];
 const ETIQUETA_CANAL = { Tienda: 'Tiendas', Distribuidor: 'Distribuidores', Corporativo: 'Corporativo' };
+/** Nivel del vendedor (columna nivel de Usuarios, la pone el admin). Cada nivel puede tener su valor de cupón en Canales. */
+const NIVELES = ['Junior', 'Senior'];
 
 /** Los distribuidores venden mercancía Austral: su cupón Austral pide más m² o piezas. */
 const M2_AUSTRAL_DISTRIBUIDOR = 500;
@@ -612,7 +614,7 @@ function contextoAdmin_() {
 /** "Boleíta" para tiendas, "Distribuidores" o "Corporativo" para los otros canales. */
 function grupoDe_(perfil) {
   if (!perfil) return 'Sin canal';
-  return perfil.canal === CANAL.TIENDA ? perfil.tienda : ETIQUETA_CANAL[perfil.canal];
+  return nombreGrupo_(perfil.canal, perfil.tienda, perfil.nivel);
 }
 
 function apiAdminResumen_(req) {
@@ -657,7 +659,7 @@ function apiAdminResumen_(req) {
     }
     return grupos[nombre];
   };
-  cfg.canales.forEach(function (r) { grupo(r.canal === CANAL.TIENDA ? r.tienda : ETIQUETA_CANAL[r.canal], r.canal, r); });
+  cfg.canales.forEach(function (r) { grupo(nombreGrupo_(r.canal, r.tienda, r.nivel), r.canal, r); });
   const grupoUsuario = function (cedula) {
     const u = x.porCedula[cedula];
     const perfil = u ? perfilUsuario_(u, cfg) : null;
@@ -755,7 +757,7 @@ function apiAdminVendedores_(req) {
     };
   });
   lista.sort(function (a, b) { return (b.cupones - a.cupones) || (b.total - a.total) || compararTexto_(a.nombre, b.nombre); });
-  return ok_({ vendedores: lista, grupos: cfg.canales.map(function (r) { return r.canal === CANAL.TIENDA ? r.tienda : ETIQUETA_CANAL[r.canal]; }), ronda_actual: actual });
+  return ok_({ vendedores: lista, grupos: cfg.canales.map(function (r) { return nombreGrupo_(r.canal, r.tienda, r.nivel); }), ronda_actual: actual });
 }
 
 function apiAdminVentas_(req) {
@@ -777,7 +779,7 @@ function apiAdminVentas_(req) {
   });
   return ok_({
     ventas: ventas,
-    grupos: cfg.canales.map(function (r) { return r.canal === CANAL.TIENDA ? r.tienda : ETIQUETA_CANAL[r.canal]; }),
+    grupos: cfg.canales.map(function (r) { return nombreGrupo_(r.canal, r.tienda, r.nivel); }),
     rondas: cfg.rondas.map(function (p) { return { numero: p.numero, nombre: p.nombre }; }),
   });
 }
@@ -1383,7 +1385,7 @@ function leerConfig_() {
   cfg.canales = leerCanales_(cfg);
   cfg.sucursales = cfg.canales.filter(function (r) { return r.canal === CANAL.TIENDA; }).map(function (r) { return r.tienda; });
   cfg.reglas = {};
-  cfg.canales.forEach(function (r) { cfg.reglas[claveRegla_(r.canal, r.tienda)] = r; });
+  cfg.canales.forEach(function (r) { cfg.reglas[claveRegla_(r.canal, r.tienda, r.nivel)] = r; });
 
   cfg.rondas = leerRondas_(cfg);
   if (!cfg.rondas.length) throw errorApi_('SERVER', 'No hay rondas configuradas: revisa la hoja Rondas.');
@@ -1408,14 +1410,29 @@ function canalCanonico_(valor) {
   return '';
 }
 
-function claveRegla_(canal, tienda) {
-  return canal === CANAL.TIENDA ? 'T|' + sinAcentos_(tienda) : canal;
+/** 'Junior' o 'Senior' (acepta minúsculas y sin acentos). '' si está vacío o no coincide. */
+function nivelCanonico_(valor) {
+  const t = sinAcentos_(valor);
+  if (t.indexOf('jun') === 0) return 'Junior';
+  if (t.indexOf('sen') === 0) return 'Senior';
+  return '';
+}
+
+function claveRegla_(canal, tienda, nivel) {
+  return (canal === CANAL.TIENDA ? 'T|' + sinAcentos_(tienda) : canal) + (nivel ? '|' + nivel : '');
+}
+
+/** "Boleíta", "Distribuidores", "Corporativo" o "Corporativo Senior". */
+function nombreGrupo_(canal, tienda, nivel) {
+  return (canal === CANAL.TIENDA ? tienda : ETIQUETA_CANAL[canal]) + (nivel ? ' ' + nivel : '');
 }
 
 /**
- * Filas de la hoja Canales: { canal, tienda, montoCentavos, metaCentavos, m2Centesimas }.
+ * Filas de la hoja Canales: { canal, tienda, nivel, montoCentavos, metaCentavos, m2Centesimas }.
  * Meta vacía = sin meta (la meta es solo informativa). m2_por_cupon_austral vacío = el de
- * Configuracion. Si la hoja no existe o está vacía, se usan las tiendas por defecto.
+ * Configuracion. nivel (Junior/Senior) da otro valor de cupón a los vendedores de ese nivel;
+ * la fila sin nivel es la de quienes aún no tienen nivel. Si la hoja no existe o está vacía,
+ * se usan las tiendas por defecto.
  */
 function leerCanales_(cfg) {
   let filas = [];
@@ -1431,6 +1448,7 @@ function leerCanales_(cfg) {
           monto: isNaN(monto) ? null : monto,
           meta: isNaN(meta) ? null : meta,
           m2: isNaN(m2) ? null : m2,
+          nivel: nivelCanonico_(f.nivel),
         };
       }).filter(function (r) { return r.canal && (r.canal !== CANAL.TIENDA || r.tienda); });
     });
@@ -1440,20 +1458,21 @@ function leerCanales_(cfg) {
   const vistos = {};
   const lista = [];
   filas.forEach(function (f) {
-    const clave = claveRegla_(f.canal, f.tienda);
+    const clave = claveRegla_(f.canal, f.tienda, f.nivel);
     if (vistos[clave]) return;
     vistos[clave] = true;
     const monto = f.monto > 0 ? Math.round(f.monto * 100) : cfg.monto_por_cupon_centavos;
     lista.push({
       canal: f.canal,
       tienda: f.canal === CANAL.TIENDA ? f.tienda : '',
+      nivel: f.nivel || '',
       montoCentavos: monto,
       metaCentavos: f.meta > 0 ? Math.round(f.meta * 100) : 0,
       m2Centesimas: f.m2 > 0 ? Math.round(f.m2 * 100) : m2Base,
     });
   });
   [CANAL.DISTRIBUIDOR, CANAL.CORPORATIVO].forEach(function (c) {
-    if (!vistos[c]) lista.push({ canal: c, tienda: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0, m2Centesimas: c === CANAL.DISTRIBUIDOR ? M2_AUSTRAL_DISTRIBUIDOR * 100 : m2Base });
+    if (!vistos[c]) lista.push({ canal: c, tienda: '', nivel: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0, m2Centesimas: c === CANAL.DISTRIBUIDOR ? M2_AUSTRAL_DISTRIBUIDOR * 100 : m2Base });
   });
   return lista;
 }
@@ -1463,6 +1482,8 @@ function canalesPorDefecto_(monto) {
     .concat([
       { canal: CANAL.DISTRIBUIDOR, tienda: '', monto: monto, meta: null, m2: M2_AUSTRAL_DISTRIBUIDOR },
       { canal: CANAL.CORPORATIVO, tienda: '', monto: monto, meta: null, m2: null },
+      { canal: CANAL.CORPORATIVO, tienda: '', monto: monto, meta: null, m2: null, nivel: 'Junior' },
+      { canal: CANAL.CORPORATIVO, tienda: '', monto: monto, meta: null, m2: null, nivel: 'Senior' },
     ]);
 }
 
@@ -1476,13 +1497,14 @@ function perfilUsuario_(u, cfg) {
   let canal = canalCanonico_(u.canal);
   if (!canal && tienda) canal = CANAL.TIENDA;
   if (!canal || (canal === CANAL.TIENDA && !tienda)) return null;
-  return { canal: canal, tienda: canal === CANAL.TIENDA ? tienda : '' };
+  return { canal: canal, tienda: canal === CANAL.TIENDA ? tienda : '', nivel: u.nivel || '' };
 }
 
 /** Valor del cupón, meta y m² Austral por cupón de un usuario (el respaldo de Configuracion si no tiene canal). */
 function reglaDe_(u, cfg) {
   const perfil = perfilUsuario_(u, cfg);
-  const regla = perfil ? cfg.reglas[claveRegla_(perfil.canal, perfil.tienda)] : null;
+  // Primero la fila de su nivel (Corporativo Senior); si no hay, la de su canal o tienda.
+  const regla = perfil ? (perfil.nivel && cfg.reglas[claveRegla_(perfil.canal, perfil.tienda, perfil.nivel)]) || cfg.reglas[claveRegla_(perfil.canal, perfil.tienda)] : null;
   return regla || { canal: '', tienda: '', montoCentavos: cfg.monto_por_cupon_centavos, metaCentavos: 0, m2Centesimas: cfg.m2_por_cupon_austral_centesimas };
 }
 
@@ -1548,6 +1570,7 @@ function leerUsuarios_(opciones) {
         bloqueadoHasta: f.bloqueado_hasta ? aMillis_(f.bloqueado_hasta) : 0,
         rol: String(f.rol || '').trim().toLowerCase() === ROL.ADMIN ? ROL.ADMIN : ROL.VENDEDOR,
         canal: String(f.canal || '').trim(),
+        nivel: nivelCanonico_(f.nivel),
       };
     }).filter(function (u) { return u.cedula; });
   };
@@ -2075,6 +2098,7 @@ function usuarioPublico_(u, cfg) {
     canal: perfil ? perfil.canal : '',
     canal_etiqueta: perfil ? ETIQUETA_CANAL[perfil.canal] : '',
     sucursal: perfil ? perfil.tienda : '',
+    nivel: perfil ? perfil.nivel : '',
     rol: admin ? ROL.ADMIN : ROL.VENDEDOR,
     necesita_canal: !admin && !perfil,
   };
@@ -2198,15 +2222,22 @@ function setup() {
 
   // Canales (valor del cupón, meta y m² o piezas Austral por tienda y por canal)
   const existiaM2 = !!(ss.getSheetByName(HOJA.CANALES) && mapaColumnas_(ss.getSheetByName(HOJA.CANALES)).m2_por_cupon_austral);
+  const existiaNivel = !!(ss.getSheetByName(HOJA.CANALES) && mapaColumnas_(ss.getSheetByName(HOJA.CANALES)).nivel);
   const shCa = asegurarHoja_(ss, HOJA.CANALES, COLUMNAS_CANALES);
   formatoColumnas_(shCa, COLUMNAS_CANALES, { tienda: '@', monto_por_cupon: '#,##0.00', meta: '#,##0.00', m2_por_cupon_austral: '#,##0.##' });
   validacionColumna_(shCa, COLUMNAS_CANALES, 'canal', CANALES);
-  [130, 180, 150, 150, 190].forEach(function (w, i) { shCa.setColumnWidth(i + 1, w); });
+  validacionColumna_(shCa, COLUMNAS_CANALES, 'nivel', NIVELES, true);
+  [130, 180, 150, 150, 190, 110].forEach(function (w, i) { shCa.setColumnWidth(i + 1, w); });
   if (shCa.getLastRow() < 2) {
     const monto = leerConfig_().monto_por_cupon;
     const tiendas = sucursalesViejas.length ? sucursalesViejas : SUCURSALES_POR_DEFECTO;
-    const filas = tiendas.map(function (t) { return [CANAL.TIENDA, t, monto, '', '']; })
-      .concat([[CANAL.DISTRIBUIDOR, '', monto, '', M2_AUSTRAL_DISTRIBUIDOR], [CANAL.CORPORATIVO, '', monto, '', '']]);
+    const filas = tiendas.map(function (t) { return [CANAL.TIENDA, t, monto, '', '', '']; })
+      .concat([
+        [CANAL.DISTRIBUIDOR, '', monto, '', M2_AUSTRAL_DISTRIBUIDOR, ''],
+        [CANAL.CORPORATIVO, '', monto, '', '', ''],
+        [CANAL.CORPORATIVO, '', monto, '', '', 'Junior'],
+        [CANAL.CORPORATIVO, '', monto, '', '', 'Senior'],
+      ]);
     shCa.getRange(2, 1, filas.length, COLUMNAS_CANALES.length).setValues(filas);
   } else if (!existiaM2) {
     // Columna nueva: los distribuidores necesitan 500 m² o piezas por cupón Austral.
@@ -2214,6 +2245,22 @@ function setup() {
     filasComoObjetos_(shCa).forEach(function (f) {
       if (canalCanonico_(f.canal) === CANAL.DISTRIBUIDOR) shCa.getRange(f._fila, mapa.m2_por_cupon_austral).setValue(M2_AUSTRAL_DISTRIBUIDOR);
     });
+  }
+  if (!existiaNivel && shCa.getLastRow() >= 2) {
+    // Columna nueva: filas Corporativo Junior y Senior con los mismos valores del Corporativo
+    // (el admin luego les pone su propio valor de cupón).
+    const mapa = mapaColumnas_(shCa);
+    const corp = filasComoObjetos_(shCa).filter(function (f) { return canalCanonico_(f.canal) === CANAL.CORPORATIVO; })[0];
+    const tieneNiveles = filasComoObjetos_(shCa).some(function (f) { return nivelCanonico_(f.nivel); });
+    if (corp && !tieneNiveles) {
+      NIVELES.forEach(function (nivel) {
+        const fila = [];
+        for (let i = 0; i < shCa.getLastColumn(); i++) fila.push('');
+        Object.keys(mapa).forEach(function (col) { if (corp[col] !== undefined) fila[mapa[col] - 1] = corp[col]; });
+        fila[mapa.nivel - 1] = nivel;
+        shCa.appendRow(fila);
+      });
+    }
   }
   invalidarTabla_(HOJA.CANALES);
 
@@ -2232,6 +2279,7 @@ function setup() {
   validacionColumna_(shU, COLUMNAS_USUARIOS, 'estado', [ESTADO_USUARIO.ACTIVO, ESTADO_USUARIO.BLOQUEADO]);
   validacionColumna_(shU, COLUMNAS_USUARIOS, 'rol', [ROL.VENDEDOR, ROL.ADMIN]);
   validacionColumna_(shU, COLUMNAS_USUARIOS, 'canal', CANALES, true);
+  validacionColumna_(shU, COLUMNAS_USUARIOS, 'nivel', NIVELES, true);
   validacionColumna_(shU, COLUMNAS_USUARIOS, 'sucursal_o_zona', leerConfig_().sucursales, true);
 
   // Registros
