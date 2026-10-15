@@ -2362,7 +2362,18 @@ function asegurarHoja_(ss, nombre, encabezados) {
     if (!actuales.filter(String).length) {
       sh.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
     } else if (faltan.length) {
-      sh.getRange(1, actuales.length + 1, 1, faltan.length).setValues([faltan]);
+      // Si se borró un encabezado, se vuelve a escribir en su columna (si está vacía);
+      // solo los nuevos de verdad van al final. Así los datos de esa columna se siguen leyendo.
+      let siguiente = actuales.length + 1;
+      faltan.forEach(function (h) {
+        const i = encabezados.indexOf(h);
+        if (i < actuales.length && !String(actuales[i]).trim()) {
+          sh.getRange(1, i + 1).setValue(h);
+          actuales[i] = h;
+        } else {
+          sh.getRange(1, siguiente++).setValue(h);
+        }
+      });
     }
     const ancho = Math.max(encabezados.length, sh.getLastColumn());
     sh.getRange(1, 1, 1, ancho).setFontWeight('bold').setBackground(COLOR.MARCA).setFontColor('#FFFFFF');

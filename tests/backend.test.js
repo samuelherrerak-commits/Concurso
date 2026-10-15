@@ -142,6 +142,20 @@ test('setup crea las 6 hojas, el cronograma de rondas y los canales, y se puede 
   assert.deepEqual(plano(cfg.sucursales), ['Boleíta', 'La Castellana', 'Los Naranjos', 'El Bosque', 'Las Mercedes', 'San Martín', 'Maracaibo', 'Acarigua', 'Barquisimeto']);
 });
 
+test('setup repone encabezados borrados en su columna (no al final)', () => {
+  const e = entorno();
+  const t = e.registrar('20999001');
+  e.vender(t, { dia: e.hoy, factura: 'H-1', monto: 1500 });
+  const sh = e.servicios.ss.getSheetByName('Registros');
+  for (let c = 1; c <= 11; c++) sh.getRange(1, c).setValue(''); // alguien borró A–K de la fila 1
+  e.gas.setup();
+  const enc = plano(sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]);
+  assert.deepEqual(enc.slice(0, 14), ['id', 'fecha_carga', 'cedula', 'nombre', 'dia_venta', 'numero_factura', 'monto', 'vendio_austral', 'm2_austral', 'url_foto', 'estado', 'nota_admin', 'monto_factura', 'monto_excluido']);
+  assert.equal(enc.length, 14, 'no agrega encabezados repetidos al final');
+  e.servicios.cache._vaciar();
+  assert.equal(e.api('getDashboard', { token: t }).data.registros.length, 1, 'la venta se vuelve a leer');
+});
+
 test('setup funciona aunque no haya interfaz (ejecutado desde el editor)', () => {
   const e = crearEntorno({ silencioso: true, sinUi: true });
   assert.doesNotThrow(() => e.gas.setup());
