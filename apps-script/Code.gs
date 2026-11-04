@@ -42,6 +42,7 @@ const HOJA = {
   USUARIOS: 'Usuarios',
   REGISTROS: 'Registros',
   RANKING: 'Ranking',
+  GANADORES: 'Ganadores',
 };
 
 /** Hojas de versiones anteriores que setup() borra (no tienen datos de ventas). */
@@ -60,6 +61,12 @@ const COLUMNAS_REGISTROS = [
 ];
 
 const COLUMNAS_RONDAS = ['ronda', 'nombre', 'inicio', 'fin', 'sorteo'];
+/** Cada cupón que sale en un sorteo queda anotado aquí (también los anulados). */
+const COLUMNAS_GANADORES = [
+  'id', 'fecha', 'bolsa', 'sorteo', 'premio', 'codigo', 'cedula', 'vendedor', 'tienda_o_canal',
+  'factura', 'clave_cupon', 'admin', 'estado', 'nota',
+];
+const ESTADO_GANADOR = { VALIDO: 'Válido', ANULADO: 'Anulado' };
 const COLUMNAS_CANALES = ['canal', 'tienda', 'monto_por_cupon', 'meta', 'm2_por_cupon_austral', 'nivel'];
 
 const ESTADO = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' };
@@ -126,6 +133,7 @@ function configuracionPorDefecto_() {
     ['ronda_ranking', '', 'Ronda que muestra la hoja Ranking. Vacío = ronda en juego.'],
     ['dias_sesion', 7, 'Días que dura una sesión antes de pedir login otra vez.'],
     ['monto_maximo_venta', 100000, 'Tope por factura para atajar errores de tipeo.'],
+    ['premios_por_sorteo', 7, 'Premios de cada sorteo (rondas y Gran Sorteo Final): cuántos cupones se sacan de cada bolsa.'],
     ['token_api', 'copaprosein', 'Clave que el portal envía en cada solicitud (API_TOKEN en web/config.js). Si la cambias aquí, cámbiala también allá. Vacío = sin clave.'],
   ];
 }
@@ -181,6 +189,9 @@ const ACCIONES_ = {
   adminVentas: apiAdminVentas_,
   adminRonda: apiAdminRonda_,
   adminCupones: apiAdminCupones_,
+  adminSorteo: apiAdminSorteo_,
+  adminSacar: apiAdminSacar_,
+  adminAnular: apiAdminAnular_,
 };
 
 function enrutar_(solicitud) {
@@ -830,6 +841,158 @@ function apiAdminCupones_(req) {
 // ------------------------------------------------------------
 // Cálculo de cupones, rondas, metas y bolsas (todo desde Registros)
 // ------------------------------------------------------------
+// Sorteo en vivo: el servidor saca cada cupón y lo anota en la hoja Ganadores
+// ------------------------------------------------------------
+
+/** Identifica un cupón aunque su código (R1-0007) cambie si se rechaza una factura. */
+function claveCupon_(c) {
+  return [c.origen || 'cupon', c.cedula, c.n, c.factura || '', c.ronda || ''].join('|');
+}
+
+/**
+ * Entero al azar en [0, n) con un generador criptográfico: SHA-256 de UUID aleatorios,
+ * con rechazo para que todos los cupones tengan exactamente la misma probabilidad.
+ */
+function aleatorio_(n) {
+  if (!(n > 0)) throw errorApi_('SERVER', 'No hay cupones para sortear.');
+  const RANGO = 4294967296; // 2^32
+  const limite = RANGO - (RANGO % n);
+  for (let intento = 0; intento < 64; intento++) {
+    const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, Utilities.getUuid() + ':' + Utilities.getUuid(), Utilities.Charset.UTF_8);
+    for (let i = 0; i + 4 <= bytes.length; i += 4) {
+      const x = (((bytes[i] & 0xff) * 16777216) + ((bytes[i + 1] & 0xff) << 16) + ((bytes[i + 2] & 0xff) << 8) + (bytes[i + 3] & 0xff));
+      if (x < limite) return x % n;
+    }
+  }
+  throw errorApi_('SERVER', 'No se pudo generar un número al azar. Intenta de nuevo.');
+}
+
+function hojaGanadores_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(HOJA.GANADORES) || asegurarHoja_(ss, HOJA.GANADORES, COLUMNAS_GANADORES);
+}
+
+function leerGanadores_() {
+  return filasComoObjetos_(hojaGanadores_()).map(function (f) {
+    return {
+      fila: f._fila,
+      id: String(f.id || '').trim(),
+      fecha: aMillis_(f.fecha),
+      bolsa: String(f.bolsa || '').trim(),
+      sorteo: String(f.sorteo || '').trim(),
+      premio: parseInt(f.premio, 10) || 0,
+      codigo: String(f.codigo || '').trim(),
+      cedula: normalizarCedula_(f.cedula),
+      vendedor: String(f.vendedor || '').trim(),
+      grupo: String(f.tienda_o_canal || '').trim(),
+      factura: String(f.factura || '').trim(),
+      clave: String(f.clave_cupon || '').trim(),
+      estado: sinAcentos_(f.estado).indexOf('anul') === 0 ? ESTADO_GANADOR.ANULADO : ESTADO_GANADOR.VALIDO,
+      nota: String(f.nota || '').trim(),
+    };
+  }).filter(function (g) { return g.id && g.bolsa; });
+}
+
+function ganadorPublico_(g) {
+  return {
+    id: g.id, fecha: g.fecha, premio: g.premio, codigo: g.codigo, cedula: g.cedula, vendedor: g.vendedor,
+    grupo: g.grupo, factura: g.factura, estado: g.estado, nota: g.nota,
+  };
+}
+
+/** Bolsa, sus cupones y lo que ya salió de ella. */
+function estadoSorteo_(bolsaId) {
+  const x = contextoAdmin_();
+  const bolsa = armarBolsas_(x.stats, x.usuarios, x.cfg).filter(function (b) { return b.id === bolsaId; })[0];
+  if (!bolsa) throw errorApi_('NOT_FOUND', 'Ese sorteo no existe.');
+  const ganadores = leerGanadores_().filter(function (g) { return g.bolsa === bolsa.id; });
+  const sacadas = {};
+  ganadores.forEach(function (g) { sacadas[g.clave] = true; });
+  const validos = ganadores.filter(function (g) { return g.estado === ESTADO_GANADOR.VALIDO; });
+  return { cfg: x.cfg, bolsa: bolsa, ganadores: ganadores, validos: validos, sacadas: sacadas, cerrada: bolsa.corte <= ahora_() };
+}
+
+function respuestaSorteo_(e, extra) {
+  const P = e.cfg.premios_por_sorteo;
+  return ok_(Object.assign({
+    bolsa: { id: e.bolsa.id, tipo: e.bolsa.tipo, nombre: e.bolsa.nombre, fecha: e.bolsa.fecha, corte: e.bolsa.corte, cerrada: e.cerrada },
+    premios: P,
+    total: e.bolsa.cupones.length,
+    restantes: e.bolsa.cupones.filter(function (c) { return !e.sacadas[claveCupon_(c)]; }).length,
+    ganadores: e.ganadores.map(ganadorPublico_),
+    cupones: e.bolsa.cupones.map(function (c) {
+      return { codigo: c.codigo, cedula: c.cedula, vendedor: c.vendedor, grupo: c.sucursal, factura: c.factura, origen: c.origen || '', clave: claveCupon_(c), sacado: !!e.sacadas[claveCupon_(c)] };
+    }),
+  }, extra || {}));
+}
+
+function apiAdminSorteo_(req) {
+  requerirAdmin_(req.token);
+  return respuestaSorteo_(estadoSorteo_(String(req.bolsa || '')));
+}
+
+/**
+ * Saca un cupón de la bolsa y lo anota en Ganadores. Solo con la bolsa cerrada y hasta
+ * premios_por_sorteo ganadores válidos. Con uno_por_vendedor, quien ya ganó en esta bolsa
+ * no puede volver a salir.
+ */
+function apiAdminSacar_(req) {
+  const admin = requerirAdmin_(req.token);
+  const unoPorVendedor = req.uno_por_vendedor !== false && req.uno_por_vendedor !== 'NO';
+  let ganador;
+  conBloqueo_(function () {
+    MEMO_ = {};
+    invalidarTabla_(HOJA.REGISTROS);
+    invalidarTabla_(HOJA.USUARIOS);
+    const e = estadoSorteo_(String(req.bolsa || ''));
+    if (!e.cerrada) throw errorApi_('NOT_CLOSED', e.bolsa.nombre + ' todavía no cierra: el sorteo se hace después del ' + fechaCorta_(sumarDias_(Utilities.formatDate(new Date(e.bolsa.corte), ZONA_HORARIA, 'yyyy-MM-dd'), -1)) + '. Usa el modo ensayo para practicar.');
+    const P = e.cfg.premios_por_sorteo;
+    if (e.validos.length >= P) throw errorApi_('COMPLETO', 'Ya salieron los ' + P + ' premios de este sorteo.');
+    const yaGanaron = {};
+    if (unoPorVendedor) e.validos.forEach(function (g) { yaGanaron[g.cedula] = true; });
+    const bolsa = e.bolsa.cupones.filter(function (c) { return !e.sacadas[claveCupon_(c)] && !yaGanaron[c.cedula]; });
+    if (!bolsa.length) throw errorApi_('SIN_CUPONES', 'No quedan cupones que puedan salir en este sorteo.');
+    const c = bolsa[aleatorio_(bolsa.length)];
+    const usados = {};
+    e.validos.forEach(function (g) { usados[g.premio] = true; });
+    let premio = 1;
+    while (usados[premio]) premio++;
+    const ids = e.ganadores.concat(leerGanadores_()).map(function (g) { return parseInt(String(g.id).replace(/\D/g, ''), 10) || 0; });
+    const id = 'G-' + ('0000' + (Math.max.apply(null, [0].concat(ids)) + 1)).slice(-4);
+    const fila = {
+      id: id, fecha: new Date(ahora_()), bolsa: e.bolsa.id, sorteo: e.bolsa.nombre, premio: premio, codigo: c.codigo,
+      cedula: c.cedula, vendedor: c.vendedor, tienda_o_canal: c.sucursal, factura: c.factura || '', clave_cupon: claveCupon_(c),
+      admin: nombreCorto_(admin), estado: ESTADO_GANADOR.VALIDO, nota: '',
+    };
+    const sh = hojaGanadores_();
+    const mapa = mapaColumnas_(sh);
+    const valores = [];
+    for (let i = 0; i < Math.max(sh.getLastColumn(), COLUMNAS_GANADORES.length); i++) valores.push('');
+    COLUMNAS_GANADORES.forEach(function (col) { if (mapa[col]) valores[mapa[col] - 1] = protegerCelda_(fila[col]); });
+    sh.appendRow(valores);
+    ganador = { id: id, premio: premio, codigo: c.codigo, cedula: c.cedula, vendedor: c.vendedor, grupo: c.sucursal, factura: c.factura || '', clave: claveCupon_(c), participantes: bolsa.length };
+  });
+  return respuestaSorteo_(estadoSorteo_(String(req.bolsa || '')), { ganador: ganador });
+}
+
+/** Anula un ganador (por ejemplo, si su información no concuerda): su premio vuelve a sortearse. */
+function apiAdminAnular_(req) {
+  const admin = requerirAdmin_(req.token);
+  let bolsaId = '';
+  conBloqueo_(function () {
+    const g = leerGanadores_().filter(function (x) { return x.id === String(req.id || '').trim(); })[0];
+    if (!g) throw errorApi_('NOT_FOUND', 'No encontramos ese ganador.');
+    bolsaId = g.bolsa;
+    const sh = hojaGanadores_();
+    const mapa = mapaColumnas_(sh);
+    sh.getRange(g.fila, mapa.estado).setValue(ESTADO_GANADOR.ANULADO);
+    const motivo = String(req.nota || '').trim().slice(0, 200);
+    sh.getRange(g.fila, mapa.nota).setValue(protegerCelda_((motivo || 'Anulado') + ' · ' + nombreCorto_(admin) + ' · ' + fechaHoraTexto_(ahora_())));
+  });
+  return respuestaSorteo_(estadoSorteo_(bolsaId));
+}
+
+// ------------------------------------------------------------
 
 /** ¿Este registro suma para cupones y rankings? */
 function registroCuenta_(r, cfg) {
@@ -1401,6 +1564,7 @@ function leerConfig_() {
     ronda_ranking: parseInt(crudo.ronda_ranking, 10) || 0,
     dias_sesion: Math.max(1, numeroO_(crudo.dias_sesion, 7)),
     monto_maximo_venta: numeroO_(crudo.monto_maximo_venta, 100000),
+    premios_por_sorteo: Math.max(1, Math.floor(numeroO_(crudo.premios_por_sorteo, 7))),
     token_api: texto('token_api', ''),
   };
   cfg.monto_por_cupon_centavos = Math.round(cfg.monto_por_cupon * 100);
@@ -1569,6 +1733,7 @@ function configPublica_(cfg) {
     canales: CANALES.map(function (c) { return { canal: c, etiqueta: ETIQUETA_CANAL[c] }; }),
     sucursales: cfg.sucursales,
     cupones_por_cupon_final: cfg.cupones_por_cupon_final,
+    premios_por_sorteo: cfg.premios_por_sorteo,
     m2_por_cupon_austral: cfg.m2_por_cupon_austral,
     m2_austral_por_canal: CANALES.map(function (c) {
       const valores = cfg.canales.filter(function (r) { return r.canal === c; }).map(function (r) { return r.m2Centesimas / 100; });
@@ -2326,9 +2491,12 @@ function setup() {
   colorearEstados_(shR, COLUMNAS_REGISTROS.indexOf('estado') + 1);
 
   asegurarHoja_(ss, HOJA.RANKING, null);
+  const shG = asegurarHoja_(ss, HOJA.GANADORES, COLUMNAS_GANADORES);
+  formatoColumnas_(shG, COLUMNAS_GANADORES, { id: '@', fecha: 'dd/mm/yyyy hh:mm', cedula: '@', codigo: '@', factura: '@' });
+  validacionColumna_(shG, COLUMNAS_GANADORES, 'estado', [ESTADO_GANADOR.VALIDO, ESTADO_GANADOR.ANULADO]);
 
   // Orden de pestañas
-  [HOJA.CONFIG, HOJA.RONDAS, HOJA.CANALES, HOJA.REGISTROS, HOJA.USUARIOS, HOJA.RANKING].forEach(function (nombre, i) {
+  [HOJA.CONFIG, HOJA.RONDAS, HOJA.CANALES, HOJA.REGISTROS, HOJA.USUARIOS, HOJA.RANKING, HOJA.GANADORES].forEach(function (nombre, i) {
     ss.setActiveSheet(ss.getSheetByName(nombre));
     ss.moveActiveSheet(i + 1);
   });

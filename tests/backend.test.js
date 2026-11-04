@@ -106,12 +106,12 @@ function entorno(opciones = {}) {
 // Instalación y migración
 // ------------------------------------------------------------
 
-test('setup crea las 6 hojas, el cronograma de rondas y los canales, y se puede correr dos veces', () => {
+test('setup crea las 7 hojas, el cronograma de rondas y los canales, y se puede correr dos veces', () => {
   const e = crearEntorno({ silencioso: true });
   e.gas.setup();
   e.gas.setup();
   const nombres = e.servicios.ss.getSheets().map((h) => h.getName());
-  assert.deepEqual(nombres, ['Configuracion', 'Rondas', 'Canales', 'Registros', 'Usuarios', 'Ranking']);
+  assert.deepEqual(nombres, ['Configuracion', 'Rondas', 'Canales', 'Registros', 'Usuarios', 'Ranking', 'Ganadores']);
   const cfgFilas = e.servicios.ss.getSheetByName('Configuracion').getDataRange().getValues().slice(1);
   const claves = cfgFilas.map((f) => f[0]);
   assert.equal(new Set(claves).size, claves.length);
@@ -965,6 +965,81 @@ test('administrador: se crea a mano en Usuarios, define su clave y audita todo',
   ['adminResumen', 'adminVendedores', 'adminVentas', 'adminRonda', 'adminCupones'].forEach((accion) => {
     assert.equal(e.api(accion, { token: tokens[0] }).code, 'FORBIDDEN', accion);
   });
+});
+
+// ------------------------------------------------------------
+// Sorteo en vivo
+// ------------------------------------------------------------
+
+function entornoSorteo() {
+  const e = entorno({ inicioHaceDias: 16 });
+  // 10 vendedores con 1 a 3 cupones en la Ronda 1 (ya cerrada).
+  const tokens = [];
+  for (let i = 0; i < 10; i++) {
+    const t = e.registrar('6100000' + i, { nombre: 'Vende', apellido: 'Dor' + 'abcdefghij'[i] });
+    e.vender(t, { dia: e.dia(1), factura: 'SR' + i, monto: 1500 * (1 + (i % 3)), registro: 1 });
+    tokens.push(t);
+  }
+  e.agregarUsuarioAMano({ cedula: "'10200301", nombre: 'Coord', apellido: 'Sorteo', telefono: "'04121112299", rol: 'admin', estado: 'activo' });
+  const admin = e.api('setPassword', { cedula: '10200301', telefono: '04121112299', password: 'admin123' }).data.token;
+  return { e, admin, tokens };
+}
+
+test('sorteo: el servidor saca 7 ganadores distintos de la bolsa cerrada y los anota en Ganadores', () => {
+  const { e, admin, tokens } = entornoSorteo();
+  const inicio = e.api('adminSorteo', { token: admin, bolsa: 'r1' });
+  assert.equal(inicio.ok, true, JSON.stringify(inicio));
+  assert.deepEqual([inicio.data.total, inicio.data.premios, inicio.data.bolsa.cerrada, inicio.data.ganadores.length], [19, 7, true, 0]);
+  const salidos = [];
+  for (let i = 0; i < 7; i++) {
+    const r = e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: true });
+    assert.equal(r.ok, true, JSON.stringify(r));
+    assert.equal(r.data.ganador.premio, i + 1);
+    salidos.push(r.data.ganador);
+  }
+  assert.equal(new Set(salidos.map((g) => g.cedula)).size, 7, 'un premio por vendedor');
+  assert.equal(new Set(salidos.map((g) => g.codigo)).size, 7);
+  assert.equal(e.api('adminSacar', { token: admin, bolsa: 'r1' }).code, 'COMPLETO', 'no saca más de 7');
+  const hoja = e.servicios.ss.getSheetByName('Ganadores').getDataRange().getValues();
+  assert.equal(hoja.length, 8, 'encabezado + 7 ganadores');
+  assert.deepEqual(plano(hoja[1].slice(0, 6).map(String)).slice(0, 1), ['G-0001']);
+
+  // Anular un ganador libera su premio y su cupón no vuelve a salir.
+  const anulado = salidos[2];
+  const a = e.api('adminAnular', { token: admin, id: anulado.id, nota: 'No concuerda con el sistema' });
+  assert.equal(a.ok, true, JSON.stringify(a));
+  assert.equal(a.data.ganadores.find((g) => g.id === anulado.id).estado, 'Anulado');
+  const otra = e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: true });
+  assert.equal(otra.data.ganador.premio, 3, 'se vuelve a sortear el premio 3');
+  assert.notEqual(otra.data.ganador.clave, anulado.clave);
+  assert.equal(otra.data.restantes, 19 - 8);
+
+  // Ronda que no ha cerrado: solo ensayo.
+  e.vender(tokens[0], { dia: e.dia(15), factura: 'SR-R3', monto: 1500, registro: 15 });
+  assert.equal(e.api('adminSacar', { token: admin, bolsa: 'r3' }).code, 'NOT_CLOSED');
+  assert.equal(e.api('adminSacar', { token: tokens[0], bolsa: 'r1' }).code, 'FORBIDDEN', 'solo administradores');
+});
+
+test('sorteo: sin "un premio por vendedor" un mismo vendedor puede salir dos veces', () => {
+  const { e, admin } = entornoSorteo();
+  e.gas.escribirConfig_('premios_por_sorteo', 20);
+  e.servicios.cache._vaciar();
+  const cedulas = [];
+  for (let i = 0; i < 19; i++) cedulas.push(e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: false }).data.ganador.cedula);
+  assert.ok(new Set(cedulas).size < 19, 'con 19 cupones de 10 vendedores, alguien repite');
+  assert.equal(e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: false }).code, 'SIN_CUPONES', 'cada cupón sale una sola vez');
+});
+
+test('aleatorio_: uniforme (todos los cupones con la misma probabilidad)', () => {
+  const { e } = entornoSorteo();
+  const n = 7;
+  const veces = new Array(n).fill(0);
+  const total = 7000;
+  for (let i = 0; i < total; i++) veces[e.gas.aleatorio_(n)]++;
+  const esperado = total / n;
+  const chi = veces.reduce((t, v) => t + (v - esperado) ** 2 / esperado, 0);
+  assert.ok(chi < 22.46, 'chi² con 6 grados de libertad bajo el umbral del 0,1 %: ' + chi.toFixed(2) + ' ' + veces);
+  assert.equal(e.gas.aleatorio_(1), 0);
 });
 
 test('getPhoto: cada vendedor solo ve sus propias fotos', () => {

@@ -222,6 +222,16 @@ Otros casos en **Usuarios**:
 | **Resumen de los sorteos** | Cuántos cupones y vendedores hay en cada bolsa. |
 | **Cargar / Borrar datos de prueba** | 8 vendedores de prueba (cédulas 90000001–90000008, contraseña `prueba123`). Bórralos antes de empezar. |
 
+### Sorteo en pantalla (Administración → Sorteos → Sortear)
+
+Cada bolsa (Ronda 1, 2, 3 y Gran Sorteo Final) tiene el botón **Sortear**. Abre una pantalla completa para proyectar, con todos los cupones de la bolsa dando vueltas en un bowl.
+
+- **"Sacar cupón"**: el bowl se agita y sale un cupón. **El ganador lo elige el servidor** (Apps Script) al azar, con un generador criptográfico que da a cada cupón exactamente la misma probabilidad. Cada cupón que sale se anota en la hoja **Ganadores** (fecha, sorteo, premio, código, cédula, vendedor, tienda, factura y quién sorteó).
+- **`premios_por_sorteo`** (Configuracion, 7 de fábrica): cuántos premios tiene cada sorteo. Al completarlos, el botón se bloquea.
+- **Un premio por vendedor** (marcado de fábrica): quien ya ganó en ese sorteo no vuelve a salir. Ningún cupón sale dos veces.
+- **Anular**: si un ganador no concuerda con el sistema, tócale **Anular** y escribe el motivo. Queda como `Anulado` en Ganadores y su premio se vuelve a sortear.
+- **Modo ensayo**: para practicar. Sortea en el navegador y no anota nada. Mientras la ronda no cierra, solo se puede ensayar.
+
 ### Cada sorteo
 
 1. Espera el cierre de la ronda (al terminar su último día; para la Ronda 1, el jueves 5/11 a las 11:59 p. m.) y revisa las facturas pendientes.
@@ -273,7 +283,7 @@ Otros casos en **Usuarios**:
 Requiere [Node.js](https://nodejs.org) 18 o superior. No hace falta instalar nada más.
 
 ```bash
-npm test          # 41 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
+npm test          # 47 pruebas del backend (cupones, canales, rondas, metas, bolsas, admin, sesiones…)
 npm run dev       # portal en http://localhost:5173 con datos de prueba y un administrador
 ```
 

@@ -319,6 +319,21 @@ async function continuarImpresora(page) {
   const [csv] = await Promise.all([pa.waitForEvent('download'), pa.click('#admin-vista .admin__acciones button:has-text("CSV")')]);
   await csv.saveAs(path.join(OUT, csv.suggestedFilename()));
 
+  paso('Sorteo en vivo de la Ronda 1');
+  await pa.click('#admin-pestanas [data-vista=sorteo]');
+  await pa.waitForSelector('.urna button:has-text("Sortear")');
+  await pa.click('.urna button:has-text("Sortear")');
+  await pa.waitForSelector('#dlg-sorteo[data-abierto]');
+  await pa.waitForFunction(() => document.querySelector('#sorteo-cuenta').textContent.includes('premios'));
+  await pa.click('#sorteo-sacar');
+  await pa.waitForSelector('#sorteo-ganador:not([hidden])', { timeout: 15000 });
+  await pa.waitForTimeout(1000);
+  await pa.screenshot({ path: path.join(OUT, '24b-sorteo-ganador.png') });
+  comprobar(await pa.locator('.premio--lleno').count() === 1, 'el primer premio queda anotado');
+  await pa.click('#sorteo-ganador button');
+  await pa.click('#dlg-sorteo [data-cerrar]');
+  await pa.waitForSelector('#dlg-sorteo', { state: 'hidden' });
+
   paso('Cupones para imprimir');
   const pi = await admin.newPage();
   vigilar(pi, 'imprimir');

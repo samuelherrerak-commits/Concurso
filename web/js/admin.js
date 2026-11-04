@@ -6,6 +6,7 @@ import { llamar, sesion } from './api.js';
 import { $, $$, h, icono, avisar } from './dom.js';
 import { dinero, decimal, fechaCorta, fechaHora, rango, plural, iniciales, fechaConDia, enCaracas, conPunto } from './formato.js';
 import { textoRonda, textoCorte } from './panel.js';
+import { abrirSorteo } from './sorteo.js';
 
 const VISTAS = ['resumen', 'vendedores', 'ventas', 'rondas', 'sorteo'];
 const POR_PAGINA = 150;
@@ -446,7 +447,9 @@ function vistaSorteo(resumen) {
       h('p', { class: 'urna__cifra' }, h('strong', {}, String(b.cupones)), b.cupones === 1 ? ' cupón' : ' cupones'),
       h('p', { class: 'urna__sub' }, `${plural(b.vendedores, 'vendedor', 'vendedores')} · ${sub(b)}`),
       b.corte > ahora ? h('p', { class: 'urna__sub urna__provisional' }, `Provisional · cierra al terminar el ${diaCierre(b.corte)}`) : null,
-      b.cupones ? enlace(b.id, 'Imprimir cupones', 'btn--secundario btn--chico') : h('p', { class: 'urna__sub' }, 'Sin cupones todavía.')))),
+      b.cupones ? h('div', { class: 'urna__acciones' },
+        h('button', { type: 'button', class: 'btn btn--primario btn--chico', onclick: () => abrirSorteo(b.id, { alCerrar: () => irA('sorteo', { recargar: true }) }) }, icono('ticket'), b.corte > ahora ? 'Ensayar sorteo' : 'Sortear'),
+        enlace(b.id, 'Imprimir cupones', 'btn--secundario btn--chico')) : h('p', { class: 'urna__sub' }, 'Sin cupones todavía.')))),
     h('section', { class: 'admin__bloque' },
       h('h3', {}, 'Cómo armar cada bolsa'),
       h('ol', { class: 'admin__pasos superficie' },
@@ -454,5 +457,12 @@ function vistaSorteo(resumen) {
         h('li', {}, 'Recorta por las líneas punteadas, dobla cada cupón y ponlo en la bolsa de su sorteo.'),
         h('li', {}, 'Los cupones del Gran Sorteo Final llevan una banda roja; los cupones Austral van en la misma bolsa con una banda negra, y los de mejor vendedor con una banda dorada.'),
         h('li', {}, 'Al sacar un cupón, verifica su código (por ejemplo R1-0007) en la hoja Ranking → “Cupones para sorteo”, o en Vendedores.'))),
+    h('section', { class: 'admin__bloque' },
+      h('h3', {}, 'Sorteo en pantalla'),
+      h('ol', { class: 'admin__pasos superficie' },
+        h('li', {}, 'Toca “Sortear” en la bolsa de la ronda (cuando ya cerró). Se abre una pantalla para proyectar con todos los cupones dando vueltas en el bowl.'),
+        h('li', {}, `Cada “Sacar cupón” elige un cupón al azar en el servidor y lo anota en la hoja Ganadores. Son ${resumen.concurso.premios_por_sorteo || 7} premios por sorteo.`),
+        h('li', {}, 'Con “Un premio por vendedor”, quien ya ganó no vuelve a salir. Si un ganador no concuerda con el sistema, tócale “Anular” y saca otro cupón para ese premio.'),
+        h('li', {}, 'El modo ensayo sirve para practicar: no anota nada.'))),
   ];
 }
