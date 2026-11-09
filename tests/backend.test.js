@@ -1030,6 +1030,58 @@ test('sorteo: sin "un premio por vendedor" un mismo vendedor puede salir dos vec
   assert.equal(e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: false }).code, 'SIN_CUPONES', 'cada cupón sale una sola vez');
 });
 
+test('sorteo de ronda: premio 1 interior, 2 corporativo, 3 tiendas de Caracas, 4 distribuidores, 5-7 todos', () => {
+  const e = entorno({ inicioHaceDias: 16 });
+  const perfiles = [
+    { canal: 'Tienda', sucursal: 'Maracaibo' }, { canal: 'Tienda', sucursal: 'Barquisimeto' }, { canal: 'Tienda', sucursal: 'Acarigua' },
+    { canal: 'Corporativo', sucursal: '' }, { canal: 'Corporativo', sucursal: '' },
+    { canal: 'Tienda', sucursal: 'Boleíta' }, { canal: 'Tienda', sucursal: 'Las Mercedes' }, { canal: 'Tienda', sucursal: 'San Martín' },
+    { canal: 'Distribuidor', sucursal: '' }, { canal: 'Distribuidor', sucursal: '' },
+  ];
+  const categoriaDe = {};
+  perfiles.forEach((p, i) => {
+    const cedula = '6200000' + i;
+    const t = e.registrar(cedula, { ...p, nombre: 'Vende', apellido: 'Dor' + 'abcdefghij'[i] });
+    e.vender(t, { dia: e.dia(1), factura: 'SC' + i, monto: 30000, registro: 1 });
+    categoriaDe[cedula] = p.canal === 'Corporativo' ? 'corporativo' : p.canal === 'Distribuidor' ? 'distribuidor'
+      : ['Maracaibo', 'Barquisimeto', 'Acarigua'].includes(p.sucursal) ? 'interior' : 'caracas';
+  });
+  e.agregarUsuarioAMano({ cedula: "'10200301", nombre: 'Coord', apellido: 'Sorteo', telefono: "'04121112299", rol: 'admin', estado: 'activo' });
+  const admin = e.api('setPassword', { cedula: '10200301', telefono: '04121112299', password: 'admin123' }).data.token;
+
+  const inicio = e.api('adminSorteo', { token: admin, bolsa: 'r1' });
+  assert.deepEqual(inicio.data.categorias.map((c) => c.id), ['interior', 'corporativo', 'caracas', 'distribuidor', 'todos', 'todos', 'todos']);
+  inicio.data.cupones.forEach((c) => assert.equal(c.categoria, categoriaDe[c.cedula], c.codigo));
+
+  // Muchas veces, para que el azar no esconda un error.
+  for (let vuelta = 0; vuelta < 15; vuelta++) {
+    const ganadores = [];
+    for (let i = 0; i < 4; i++) {
+      const r = e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: true });
+      assert.equal(r.ok, true, JSON.stringify(r));
+      ganadores.push(r.data.ganador);
+    }
+    assert.deepEqual(ganadores.map((g) => categoriaDe[g.cedula]), ['interior', 'corporativo', 'caracas', 'distribuidor']);
+    ganadores.forEach((g) => e.api('adminAnular', { token: admin, id: g.id, nota: 'prueba' }));
+  }
+  // Los 7 premios: los 4 primeros por grupo y del 5 al 7 entre todos.
+  const g5 = [];
+  for (let i = 0; i < 7; i++) g5.push(e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: true }).data.ganador);
+  assert.deepEqual(g5.map((g) => g.premio), [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(g5[0].nota, 'Premio para Tiendas del interior');
+  assert.equal(g5[5].nota, '');
+  assert.deepEqual(g5.slice(0, 4).map((g) => categoriaDe[g.cedula]), ['interior', 'corporativo', 'caracas', 'distribuidor']);
+});
+
+test('sorteo de ronda: si no hay cupones del grupo del premio, sale entre todos (y lo anota)', () => {
+  const { e, admin } = entornoSorteo(); // todos son de Boleíta (Caracas)
+  const r = e.api('adminSacar', { token: admin, bolsa: 'r1', uno_por_vendedor: true });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.data.ganador.premio, 1);
+  assert.equal(r.data.ganador.nota, 'Sin cupones de Tiendas del interior: se sorteó entre todos');
+  assert.equal(r.data.ganadores[0].nota, 'Sin cupones de Tiendas del interior: se sorteó entre todos');
+});
+
 test('aleatorio_: uniforme (todos los cupones con la misma probabilidad)', () => {
   const { e } = entornoSorteo();
   const n = 7;

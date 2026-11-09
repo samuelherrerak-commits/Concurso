@@ -476,6 +476,7 @@ function vistaSorteo(resumen) {
       h('ol', { class: 'admin__pasos superficie' },
         h('li', {}, 'Toca “Sortear” en la bolsa de la ronda (cuando ya cerró). Se abre una pantalla para proyectar con todos los cupones dando vueltas en el bowl.'),
         h('li', {}, `Cada “Sacar cupón” elige un cupón al azar en el servidor y lo anota en la hoja Ganadores. Son ${resumen.concurso.premios_por_sorteo || 7} premios por sorteo.`),
+        h('li', {}, 'En los sorteos de ronda, el premio 1 sale entre las tiendas del interior (Maracaibo, Barquisimeto y Acarigua), el 2 entre Corporativo, el 3 entre las tiendas de Caracas y el 4 entre Distribuidores. Los demás salen entre todos. Si un grupo no tiene cupones, su premio sale entre todos y queda anotado en la hoja Ganadores.'),
         h('li', {}, 'Antes de entrar, marca en cada bolsa si “Se pueden repetir ganadores”. Sin marcar, quien ya ganó en esa ronda no vuelve a salir. Esta opción no se muestra en la pantalla del sorteo.'),
         h('li', {}, 'Si un ganador no concuerda con el sistema, tócale “Anular” y saca otro cupón para ese premio.'),
         h('li', {}, 'El modo ensayo sirve para practicar: no anota nada.'))),

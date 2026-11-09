@@ -82,6 +82,21 @@ const NIVELES = ['Junior', 'Senior'];
 /** Los distribuidores venden mercancía Austral: su cupón Austral pide más m² o piezas. */
 const M2_AUSTRAL_DISTRIBUIDOR = 500;
 
+/**
+ * Sorteos de ronda: los primeros premios se sortean solo entre cupones de un grupo.
+ * Premio 1: tiendas del interior (fuera de Caracas). Premio 2: canal Corporativo.
+ * Premio 3: tiendas de Caracas. Premio 4: Distribuidores. Del 5 en adelante: todos.
+ * El Gran Sorteo Final no tiene categorías.
+ */
+const TIENDAS_INTERIOR = ['Maracaibo', 'Acarigua', 'Barquisimeto'];
+const CATEGORIAS_PREMIO_RONDA = [
+  { id: 'interior', nombre: 'Tiendas del interior' },
+  { id: 'corporativo', nombre: 'Canal Corporativo' },
+  { id: 'caracas', nombre: 'Tiendas de Caracas' },
+  { id: 'distribuidor', nombre: 'Distribuidores' },
+];
+const CATEGORIA_TODOS = { id: 'todos', nombre: 'Todos los canales' };
+
 const SUCURSALES_POR_DEFECTO = [
   'Boleíta', 'La Castellana', 'Los Naranjos', 'El Bosque', 'Las Mercedes',
   'San Martín', 'Maracaibo', 'Acarigua', 'Barquisimeto',
@@ -917,11 +932,12 @@ function respuestaSorteo_(e, extra) {
   return ok_(Object.assign({
     bolsa: { id: e.bolsa.id, tipo: e.bolsa.tipo, nombre: e.bolsa.nombre, fecha: e.bolsa.fecha, corte: e.bolsa.corte, cerrada: e.cerrada },
     premios: P,
+    categorias: Array.apply(null, Array(P)).map(function (_, i) { return categoriaPremio_(e.bolsa, i + 1); }),
     total: e.bolsa.cupones.length,
     restantes: e.bolsa.cupones.filter(function (c) { return !e.sacadas[claveCupon_(c)]; }).length,
     ganadores: e.ganadores.map(ganadorPublico_),
     cupones: e.bolsa.cupones.map(function (c) {
-      return { codigo: c.codigo, cedula: c.cedula, vendedor: c.vendedor, grupo: c.sucursal, factura: c.factura, origen: c.origen || '', clave: claveCupon_(c), sacado: !!e.sacadas[claveCupon_(c)] };
+      return { codigo: c.codigo, cedula: c.cedula, vendedor: c.vendedor, grupo: c.sucursal, categoria: c.categoria || '', factura: c.factura, origen: c.origen || '', clave: claveCupon_(c), sacado: !!e.sacadas[claveCupon_(c)] };
     }),
   }, extra || {}));
 }
@@ -950,19 +966,27 @@ function apiAdminSacar_(req) {
     if (e.validos.length >= P) throw errorApi_('COMPLETO', 'Ya salieron los ' + P + ' premios de este sorteo.');
     const yaGanaron = {};
     if (unoPorVendedor) e.validos.forEach(function (g) { yaGanaron[g.cedula] = true; });
-    const bolsa = e.bolsa.cupones.filter(function (c) { return !e.sacadas[claveCupon_(c)] && !yaGanaron[c.cedula]; });
-    if (!bolsa.length) throw errorApi_('SIN_CUPONES', 'No quedan cupones que puedan salir en este sorteo.');
-    const c = bolsa[aleatorio_(bolsa.length)];
+    const posibles = e.bolsa.cupones.filter(function (c) { return !e.sacadas[claveCupon_(c)] && !yaGanaron[c.cedula]; });
+    if (!posibles.length) throw errorApi_('SIN_CUPONES', 'No quedan cupones que puedan salir en este sorteo.');
     const usados = {};
     e.validos.forEach(function (g) { usados[g.premio] = true; });
     let premio = 1;
     while (usados[premio]) premio++;
+    // El premio se sortea entre los cupones de su grupo; si ese grupo no tiene cupones, entre todos.
+    const cat = categoriaPremio_(e.bolsa, premio);
+    let bolsa = cat.id === CATEGORIA_TODOS.id ? posibles : posibles.filter(function (c) { return c.categoria === cat.id; });
+    let nota = cat.id === CATEGORIA_TODOS.id ? '' : 'Premio para ' + cat.nombre;
+    if (!bolsa.length) {
+      bolsa = posibles;
+      nota = 'Sin cupones de ' + cat.nombre + ': se sorteó entre todos';
+    }
+    const c = bolsa[aleatorio_(bolsa.length)];
     const ids = e.ganadores.concat(leerGanadores_()).map(function (g) { return parseInt(String(g.id).replace(/\D/g, ''), 10) || 0; });
     const id = 'G-' + ('0000' + (Math.max.apply(null, [0].concat(ids)) + 1)).slice(-4);
     const fila = {
       id: id, fecha: new Date(ahora_()), bolsa: e.bolsa.id, sorteo: e.bolsa.nombre, premio: premio, codigo: c.codigo,
       cedula: c.cedula, vendedor: c.vendedor, tienda_o_canal: c.sucursal, factura: c.factura || '', clave_cupon: claveCupon_(c),
-      admin: nombreCorto_(admin), estado: ESTADO_GANADOR.VALIDO, nota: '',
+      admin: nombreCorto_(admin), estado: ESTADO_GANADOR.VALIDO, nota: nota,
     };
     const sh = hojaGanadores_();
     const mapa = mapaColumnas_(sh);
@@ -970,7 +994,7 @@ function apiAdminSacar_(req) {
     for (let i = 0; i < Math.max(sh.getLastColumn(), COLUMNAS_GANADORES.length); i++) valores.push('');
     COLUMNAS_GANADORES.forEach(function (col) { if (mapa[col]) valores[mapa[col] - 1] = protegerCelda_(fila[col]); });
     sh.appendRow(valores);
-    ganador = { id: id, premio: premio, codigo: c.codigo, cedula: c.cedula, vendedor: c.vendedor, grupo: c.sucursal, factura: c.factura || '', clave: claveCupon_(c), participantes: bolsa.length };
+    ganador = { id: id, premio: premio, codigo: c.codigo, cedula: c.cedula, vendedor: c.vendedor, grupo: c.sucursal, factura: c.factura || '', clave: claveCupon_(c), participantes: bolsa.length, categoria: cat.nombre, nota: nota };
   });
   return respuestaSorteo_(estadoSorteo_(String(req.bolsa || '')), { ganador: ganador });
 }
@@ -1177,10 +1201,12 @@ function armarBolsas_(stats, usuarios, cfg) {
 
   valores_(stats.vendedores).forEach(function (v) {
     const u = porCedula[v.cedula];
+    const perfil = u ? perfilUsuario_(u, cfg) : null;
     const base = {
       cedula: v.cedula,
       vendedor: u ? (u.nombre + ' ' + u.apellido).trim() : v.cedula,
-      sucursal: grupoDe_(u ? perfilUsuario_(u, cfg) : null),
+      sucursal: grupoDe_(perfil),
+      categoria: categoriaDePerfil_(perfil),
     };
     v.detalleCupones.forEach(function (c) {
       const b = porRonda[c.ronda];
@@ -1209,6 +1235,21 @@ function armarBolsas_(stats, usuarios, cfg) {
     });
   });
   return todas;
+}
+
+/** 'interior', 'caracas', 'corporativo', 'distribuidor' o '' (sin canal). */
+function categoriaDePerfil_(perfil) {
+  if (!perfil) return '';
+  if (perfil.canal === CANAL.CORPORATIVO) return 'corporativo';
+  if (perfil.canal === CANAL.DISTRIBUIDOR) return 'distribuidor';
+  const interior = TIENDAS_INTERIOR.some(function (t) { return sinAcentos_(t) === sinAcentos_(perfil.tienda); });
+  return interior ? 'interior' : 'caracas';
+}
+
+/** Grupo entre el que se sortea un premio de una bolsa. */
+function categoriaPremio_(bolsa, premio) {
+  if (bolsa.tipo !== 'ronda') return CATEGORIA_TODOS;
+  return CATEGORIAS_PREMIO_RONDA[premio - 1] || CATEGORIA_TODOS;
 }
 
 function resumenBolsa_(b) {
