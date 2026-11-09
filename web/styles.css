@@ -1408,7 +1408,7 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 /* ---------- Aviso con cuenta regresiva del sorteo ---------- */
 .aviso-sorteo { position: fixed; inset: 0; margin: auto; width: min(420px, calc(100% - 32px)); height: fit-content; max-height: calc(100dvh - 32px); overflow: auto; border-radius: 26px; background: #A80E22; box-shadow: 0 30px 60px rgb(0 0 0 / 0.45); opacity: 0; transform: scale(0.96); transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out); }
 .aviso-sorteo[data-abierto] { opacity: 1; transform: none; }
-.aviso-sorteo__tarjeta { position: relative; padding: 26px 20px 22px; text-align: center; color: #fff; background: radial-gradient(120% 70% at 50% 0%, #EC2A42 0%, #DF1630 45%, #A80E22 100%); }
+.aviso-sorteo__tarjeta { position: relative; overflow: hidden; padding: 26px 20px 18px; text-align: center; color: #fff; background: radial-gradient(120% 70% at 50% 0%, #EC2A42 0%, #DF1630 45%, #A80E22 100%); }
 .aviso-sorteo__x { position: absolute; right: 12px; top: 12px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.18); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; }
 .aviso-sorteo__cab { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .aviso-sorteo__cab img { width: 58px; height: 58px; border-radius: 10px; border: 3px solid #fff; }
@@ -1431,4 +1431,53 @@ dialog[data-abierto]::backdrop { background: rgb(20 22 24 / 0.5); }
 .aviso-sorteo__caja span { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #FFE3E7; }
 .aviso-sorteo__ya { margin-top: 16px; font-size: 22px; font-weight: 800; color: #FFE08A; }
 .aviso-sorteo__boton { width: 100%; height: 52px; margin-top: 18px; border: 0; border-radius: 14px; background: #fff; color: var(--rojo); font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; }
-@media (prefers-reduced-motion: reduce) { .aviso-sorteo { transition: none; } }
+/* Animación: entrada escalonada, microondas que rebota con brillo, copos y dígitos que saltan. */
+.aviso-sorteo { transform: translateY(24px) scale(0.94); transition: opacity 300ms var(--ease-out), transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.aviso-sorteo[data-abierto] { transform: none; }
+.aviso-sorteo__tarjeta > *:not(.aviso-sorteo__nieve):not(.aviso-sorteo__x) { position: relative; opacity: 0; transform: translateY(14px); }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > *:not(.aviso-sorteo__nieve):not(.aviso-sorteo__x) { animation: aviso-sube 520ms var(--ease-out) forwards; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(3) { animation-delay: 60ms; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(4) { animation-delay: 140ms; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(5) { animation-delay: 220ms; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(6) { animation-delay: 300ms; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(7) { animation-delay: 380ms; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(8),
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(9) { animation-delay: 460ms; }
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(10),
+.aviso-sorteo[data-abierto] .aviso-sorteo__tarjeta > :nth-child(11) { animation-delay: 540ms; }
+@keyframes aviso-sube { to { opacity: 1; transform: none; } }
+.aviso-sorteo__micro svg { animation: aviso-rebota 2.4s ease-in-out 900ms infinite; transform-origin: 50% 100%; }
+@keyframes aviso-rebota { 0%, 60%, 100% { transform: translateY(0) rotate(0); } 70% { transform: translateY(-10px) rotate(-3deg); } 80% { transform: translateY(0) rotate(2deg); } 88% { transform: translateY(-4px) rotate(0); } }
+.aviso-sorteo__micro { position: relative; }
+.aviso-sorteo__micro::before { content: ''; position: absolute; left: 50%; top: 52%; width: 190px; height: 190px; margin: -95px 0 0 -95px; border-radius: 50%; background: radial-gradient(circle, rgb(255 224 138 / 0.45), transparent 65%); animation: aviso-brilla 2.4s ease-in-out infinite; pointer-events: none; }
+@keyframes aviso-brilla { 0%, 100% { opacity: 0.35; transform: scale(0.9); } 50% { opacity: 0.9; transform: scale(1.08); } }
+.aviso-sorteo__nieve { position: absolute; inset: 0; pointer-events: none; }
+.aviso-sorteo__nieve i { position: absolute; top: -10px; border-radius: 50%; background: #fff; animation: aviso-nieve linear infinite; }
+@keyframes aviso-nieve { to { transform: translate(18px, 680px); } }
+.aviso-sorteo__salta { display: inline-block; animation: aviso-salta 380ms var(--ease-out); }
+@keyframes aviso-salta { 0% { transform: translateY(-40%) scale(1.15); opacity: 0.2; } 100% { transform: none; opacity: 1; } }
+.aviso-sorteo__boton { animation: aviso-pulso 1.8s ease-in-out 1.2s infinite; }
+@keyframes aviso-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgb(255 255 255 / 0.55); } 60% { box-shadow: 0 0 0 10px rgb(255 255 255 / 0); } }
+.aviso-sorteo__participan { margin-top: 12px; font-size: 12px; font-weight: 500; color: #FFE3E7; opacity: 0.9; }
+/* Pantallas bajas (iPhone con barra del navegador): todo cabe sin desplazarse. */
+@media (max-height: 760px) {
+  .aviso-sorteo__tarjeta { padding: 18px 18px 14px; }
+  .aviso-sorteo__cab img { width: 48px; height: 48px; }
+  .aviso-sorteo__cab b { font-size: 18px; }
+  .aviso-sorteo h2 { margin-top: 12px; font-size: 26px; }
+  .aviso-sorteo__pregunta { margin-top: 8px; font-size: 16px; }
+  .aviso-sorteo__micro svg { width: 104px; margin-top: 8px; }
+  .aviso-sorteo__micro::before { width: 130px; height: 130px; margin: -65px 0 0 -65px; }
+  .aviso-sorteo__cuando { margin-top: 10px; padding: 8px 16px; font-size: 14px; }
+  .aviso-sorteo__contador { margin-top: 10px; }
+  .aviso-sorteo__caja { width: 78px; padding: 8px 0 6px; }
+  .aviso-sorteo__caja b { font-size: 32px; }
+  .aviso-sorteo__boton { height: 46px; margin-top: 12px; font-size: 16px; }
+  .aviso-sorteo__participan { margin-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aviso-sorteo { transition: none; transform: none; }
+  .aviso-sorteo__tarjeta > * { opacity: 1 !important; transform: none !important; animation: none !important; }
+  .aviso-sorteo__micro svg, .aviso-sorteo__micro::before, .aviso-sorteo__nieve, .aviso-sorteo__salta, .aviso-sorteo__boton { animation: none !important; }
+  .aviso-sorteo__nieve { display: none; }
+}
