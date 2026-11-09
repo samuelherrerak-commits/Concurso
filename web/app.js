@@ -13,6 +13,7 @@ import { iniciarInstalacion } from './js/instalar.js';
 import { iniciarAdmin, mostrarAdmin, salirAdmin } from './js/admin.js';
 import { mostrarIntroSiFalta } from './js/copa.js';
 import { aplicarAustral, aplicarAustralVenta } from './js/austral.js';
+import { mostrarAvisoSorteo } from './js/aviso-sorteo.js';
 import {
   pintarCabecera, pintarResumen, pintarEsqueleto, pintarErrorCarga, pintarAccion,
   pintarCupones, pintarViaje, pintarVentas, pintarRanking, pintarReglas,
@@ -103,6 +104,7 @@ async function cargarPanel({ silencioso = false } = {}) {
     return;
   }
   if (!silencioso) await mostrarIntroSiFalta(datos.concurso, { monto_por_cupon: datos.resumen.monto_por_cupon, m2_austral: datos.resumen.austral.m2_por_cupon });
+  if (!silencioso) await mostrarAvisoSorteo();
   revisarCuponesNuevos(vistos, vistosViaje);
 }
 

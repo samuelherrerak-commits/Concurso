@@ -20,7 +20,9 @@ const paso = (t) => console.log('·', t);
 const comprobar = (cond, mensaje) => { if (!cond) errores.push('fallo: ' + mensaje); };
 
 /** Para los demás contextos: las tarjetas de bienvenida ya se vieron. */
-const INTRO_VISTA = () => { try { localStorage.setItem('copa-prosein:intro-vista', 'true'); } catch { /* sin acción */ } };
+const INTRO_VISTA = () => { try { localStorage.setItem('copa-prosein:intro-vista', 'true'); localStorage.setItem('copa-prosein:sin-aviso', '1'); } catch { /* sin acción */ } };
+/** El aviso del sorteo se prueba aparte: en el recorrido no estorba. */
+const SIN_AVISO = () => { try { localStorage.setItem('copa-prosein:sin-aviso', '1'); } catch { /* sin acción */ } };
 
 async function captura(page, nombre, opciones = {}) {
   await page.screenshot({ path: path.join(OUT, nombre + '.png'), ...opciones });
@@ -73,6 +75,7 @@ async function continuarImpresora(page) {
 (async () => {
   const navegador = await chromium.launch();
   const ctx = await navegador.newContext({ ...devices['iPhone 13'], locale: 'es-VE', timezoneId: 'America/Caracas', acceptDownloads: true });
+  await ctx.addInitScript(SIN_AVISO);
   const page = await ctx.newPage();
   vigilar(page, 'móvil');
 
