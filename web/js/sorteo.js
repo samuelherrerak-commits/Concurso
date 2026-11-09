@@ -198,7 +198,6 @@ function armar() {
         h('aside', { class: 'sorteo__panel' },
           h('div', { class: 'sorteo__controles' },
             h('button', { type: 'button', class: 'btn btn--primario btn--grande btn--bloque', id: 'sorteo-sacar' }, h('span', { class: 'girador', 'aria-hidden': 'true' }), h('span', { 'data-texto': true }, 'Sacar cupón')),
-            h('p', { class: 'sorteo__grupo', id: 'sorteo-grupo' }),
             h('label', { class: 'sorteo__opcion' }, h('input', { type: 'checkbox', id: 'sorteo-ensayo' }), h('span', {}, 'Modo ensayo (no queda registrado)')),
             h('p', { class: 'sorteo__nota', id: 'sorteo-nota' })),
           h('h3', { class: 'sorteo__lista-titulo' }, 'Premios'),
@@ -289,8 +288,6 @@ function pintar() {
   boton.disabled = estado.sacando || completo || !quedan;
   const proximo = siguientePremio(validos);
   boton.querySelector('[data-texto]').textContent = completo ? 'Sorteo completo' : `Sacar cupón · premio ${proximo}${estado.ensayo ? ' (ensayo)' : ''}`;
-  $('#sorteo-grupo').textContent = completo ? '' : `Premio ${proximo}: ${categoriaDe(proximo).nombre}`;
-  $('#sorteo-grupo').hidden = completo;
   $('#sorteo-nota').textContent = estado.ensayo
     ? 'Ensayo: los cupones se sacan aquí mismo y no se anotan en la hoja Ganadores.'
     : 'Cada cupón que sale se anota en la hoja Ganadores con la fecha y la hora.';
@@ -303,7 +300,7 @@ function pintar() {
       g ? h('div', { class: 'premio__datos' },
         h('strong', {}, g.vendedor),
         h('span', {}, `${g.codigo} · ${g.grupo}${g.factura ? ' · Fact. ' + g.factura : ''}`))
-        : h('div', { class: 'premio__datos premio__datos--vacio' }, h('span', {}, 'Por sortear'), h('small', { class: 'premio__grupo' }, categoriaDe(n).nombre)),
+        : h('div', { class: 'premio__datos premio__datos--vacio' }, 'Por sortear'),
       g && !estado.ensayo ? h('button', { type: 'button', class: 'btn btn--fantasma btn--chico', onclick: () => anular(g) }, 'Anular') : null));
   }
   const anulados = ganadores.filter((g) => g.estado === 'Anulado');
@@ -391,7 +388,6 @@ function mostrarGanador(g, desde) {
   caja.replaceChildren(
     h('div', { class: 'ganador' + (g.ensayo ? ' ganador--ensayo' : '') },
       h('p', { class: 'ganador__premio' }, g.ensayo ? `ENSAYO · PREMIO ${g.premio}` : `PREMIO ${g.premio} DE ${d.premios}`),
-      h('p', { class: 'ganador__grupo' }, /^Sin cupones/.test(g.nota || '') ? g.nota : categoriaDe(g.premio).nombre),
       h('p', { class: 'ganador__codigo' }, g.codigo),
       h('p', { class: 'ganador__nombre' }, g.vendedor),
       h('p', { class: 'ganador__dato' }, [g.grupo, g.factura ? `Factura ${g.factura}` : ''].filter(Boolean).join(' · ')),
