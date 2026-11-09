@@ -428,6 +428,17 @@ function detalleRonda(d) {
 
 // ---------- Sorteos ----------
 
+const CLAVE_REPETIR = 'copa-prosein:repetir-ganadores:';
+
+/** Si en el sorteo de esa bolsa un vendedor puede ganar más de un premio (por defecto no). */
+function repiteGanadores(bolsaId) {
+  try { return localStorage.getItem(CLAVE_REPETIR + bolsaId) === 'si'; } catch { return false; }
+}
+
+function guardarRepetir(bolsaId, si) {
+  try { localStorage.setItem(CLAVE_REPETIR + bolsaId, si ? 'si' : 'no'); } catch { /* sin acción */ }
+}
+
 function vistaSorteo(resumen) {
   const c = resumen.concurso;
   const ahora = Date.now();
@@ -448,7 +459,10 @@ function vistaSorteo(resumen) {
       h('p', { class: 'urna__sub' }, `${plural(b.vendedores, 'vendedor', 'vendedores')} · ${sub(b)}`),
       b.corte > ahora ? h('p', { class: 'urna__sub urna__provisional' }, `Provisional · cierra al terminar el ${diaCierre(b.corte)}`) : null,
       b.cupones ? h('div', { class: 'urna__acciones' },
-        h('button', { type: 'button', class: 'btn btn--primario btn--chico', onclick: () => abrirSorteo(b.id, { alCerrar: () => irA('sorteo', { recargar: true }) }) }, icono('ticket'), b.corte > ahora ? 'Ensayar sorteo' : 'Sortear'),
+        h('label', { class: 'urna__repetir' },
+          h('input', { type: 'checkbox', checked: repiteGanadores(b.id), onchange: (ev) => guardarRepetir(b.id, ev.target.checked) }),
+          h('span', {}, 'Se pueden repetir ganadores')),
+        h('button', { type: 'button', class: 'btn btn--primario btn--chico', onclick: () => abrirSorteo(b.id, { repetir: repiteGanadores(b.id), alCerrar: () => irA('sorteo', { recargar: true }) }) }, icono('ticket'), b.corte > ahora ? 'Ensayar sorteo' : 'Sortear'),
         enlace(b.id, 'Imprimir cupones', 'btn--secundario btn--chico')) : h('p', { class: 'urna__sub' }, 'Sin cupones todavía.')))),
     h('section', { class: 'admin__bloque' },
       h('h3', {}, 'Cómo armar cada bolsa'),
@@ -462,7 +476,8 @@ function vistaSorteo(resumen) {
       h('ol', { class: 'admin__pasos superficie' },
         h('li', {}, 'Toca “Sortear” en la bolsa de la ronda (cuando ya cerró). Se abre una pantalla para proyectar con todos los cupones dando vueltas en el bowl.'),
         h('li', {}, `Cada “Sacar cupón” elige un cupón al azar en el servidor y lo anota en la hoja Ganadores. Son ${resumen.concurso.premios_por_sorteo || 7} premios por sorteo.`),
-        h('li', {}, 'Con “Un premio por vendedor”, quien ya ganó no vuelve a salir. Si un ganador no concuerda con el sistema, tócale “Anular” y saca otro cupón para ese premio.'),
+        h('li', {}, 'Antes de entrar, marca en cada bolsa si “Se pueden repetir ganadores”. Sin marcar, quien ya ganó en esa ronda no vuelve a salir. Esta opción no se muestra en la pantalla del sorteo.'),
+        h('li', {}, 'Si un ganador no concuerda con el sistema, tócale “Anular” y saca otro cupón para ese premio.'),
         h('li', {}, 'El modo ensayo sirve para practicar: no anota nada.'))),
   ];
 }

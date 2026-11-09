@@ -198,7 +198,6 @@ function armar() {
         h('aside', { class: 'sorteo__panel' },
           h('div', { class: 'sorteo__controles' },
             h('button', { type: 'button', class: 'btn btn--primario btn--grande btn--bloque', id: 'sorteo-sacar' }, h('span', { class: 'girador', 'aria-hidden': 'true' }), h('span', { 'data-texto': true }, 'Sacar cupón')),
-            h('label', { class: 'sorteo__opcion' }, h('input', { type: 'checkbox', id: 'sorteo-uno', checked: true }), h('span', {}, 'Un premio por vendedor')),
             h('label', { class: 'sorteo__opcion' }, h('input', { type: 'checkbox', id: 'sorteo-ensayo' }), h('span', {}, 'Modo ensayo (no queda registrado)')),
             h('p', { class: 'sorteo__nota', id: 'sorteo-nota' })),
           h('h3', { class: 'sorteo__lista-titulo' }, 'Premios'),
@@ -223,10 +222,10 @@ function armar() {
 }
 
 /** Abre el sorteo de una bolsa ('r1', 'r2', 'r3' o 'final'). */
-export async function abrirSorteo(bolsaId, { alCerrar } = {}) {
+export async function abrirSorteo(bolsaId, { alCerrar, repetir = false } = {}) {
   if (!dlg) armar();
   alCerrarCb = alCerrar || null;
-  estado = { bolsaId, datos: null, ensayo: false, ensayoGanadores: [], sacando: false };
+  estado = { bolsaId, datos: null, ensayo: false, ensayoGanadores: [], sacando: false, unoPorVendedor: !repetir };
   $('#sorteo-titulo').textContent = 'Cargando…';
   $('#sorteo-sub').textContent = '';
   $('#sorteo-ganador').hidden = true;
@@ -325,7 +324,7 @@ async function sacar() {
   const boton = $('#sorteo-sacar');
   boton.disabled = true;
   boton.setAttribute('aria-busy', 'true');
-  const unoPorVendedor = $('#sorteo-uno').checked;
+  const { unoPorVendedor } = estado;
 
   const sinMovimiento = reducir();
   if (!sinMovimiento) {
